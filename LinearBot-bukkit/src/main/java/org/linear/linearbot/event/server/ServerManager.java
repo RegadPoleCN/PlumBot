@@ -5,7 +5,6 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.linear.linearbot.LinearBot;
-import org.linear.linearbot.bot.Bot;
 import org.linear.linearbot.config.Config;
 
 import java.util.Arrays;
@@ -24,9 +23,9 @@ public class ServerManager {
 
     public static List<String> msgList = new LinkedList<>();
 
-    public static void sendCmd(String cmd,long groupID,boolean disp) {
+    public static void sendCmd(boolean isGroup, long id, String cmd, boolean disp) {
         if(!Config.CMD()){
-            return;
+            LinearBot.getBot().sendMsg(isGroup, "未开启CMD命令功能", id);
         }
 
         CommandSender commandSender = new ConsoleSender();
@@ -51,13 +50,14 @@ public class ServerManager {
             }
             if(!disp){
                 msgList.clear();
+                LinearBot.getBot().sendMsg(isGroup, "无返回值", id);
                 return;
             }
             if(stringBuilder.toString().length()<=5000){
-                LinearBot.getBot().sendGroupMsg(stringBuilder.toString(),groupID);
-                return;
+                LinearBot.getBot().sendMsg(isGroup, stringBuilder.toString(), id);
+            }else {
+                LinearBot.getBot().sendMsg(isGroup, "返回值过长", id);
             }
-            LinearBot.getBot().sendGroupMsg("返回值过长",groupID);
             msgList.clear();
         }, 4L);
     }

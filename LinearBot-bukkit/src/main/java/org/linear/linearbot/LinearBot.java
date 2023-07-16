@@ -116,56 +116,56 @@ public final class LinearBot extends JavaPlugin implements Listener{
         sender.sendMessage(s);
     }
 
-    public void runAfterDone() {
-        Runnable thread = () -> {
-//            http_config = new CQConfig(Config.getBotHttp(), Config.getBotToken(), Config.getBotIsAccessToken());
-//            bot = new Bot();
-//            LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
-//            Connection connection = null;
-//            try {
-//                connection = ConnectionFactory.createHttpServer(Config.getBotListenPort(),"/",blockingQueue);
-//            } catch (Exception e) {
-//                throw new RuntimeException(e);
-//            }
-//            connection.create();
-//            EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
-////            GroupMessageListener groupMessageListener = new GroupMessageListener();
-////            groupMessageListener.addHandler("天气", new Handler<GroupMessage>() {
+//    public void runAfterDone() {
+//        Runnable thread = () -> {
+////            http_config = new CQConfig(Config.getBotHttp(), Config.getBotToken(), Config.getBotIsAccessToken());
+////            bot = new Bot();
+////            LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
+////            Connection connection = null;
+////            try {
+////                connection = ConnectionFactory.createHttpServer(Config.getBotListenPort(),"/",blockingQueue);
+////            } catch (Exception e) {
+////                throw new RuntimeException(e);
+////            }
+////            connection.create();
+////            EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
+//////            GroupMessageListener groupMessageListener = new GroupMessageListener();
+//////            groupMessageListener.addHandler("天气", new Handler<GroupMessage>() {
+//////                @Override
+//////                public void handle(GroupMessage groupMessage) {
+//////                    System.out.println(groupMessage);
+//////                }
+//////            });
+//////            dispatchers.addListener(groupMessageListener);
+////            dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
 ////                @Override
-////                public void handle(GroupMessage groupMessage) {
-////                    System.out.println(groupMessage);
+////                public void onMessage(PrivateMessage privateMessage) {
+////                    // Create the event here
+////                    org.linear.linearbot.event.custom.PrivateMessage event = new org.linear.linearbot.event.custom.PrivateMessage();
+////                    // Call the event
+////                    Bukkit.getServer().getPluginManager().callEvent(event);
 ////                }
 ////            });
-////            dispatchers.addListener(groupMessageListener);
-//            dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
-//                @Override
-//                public void onMessage(PrivateMessage privateMessage) {
-//                    // Create the event here
-//                    org.linear.linearbot.event.custom.PrivateMessage event = new org.linear.linearbot.event.custom.PrivateMessage();
-//                    // Call the event
-//                    Bukkit.getServer().getPluginManager().callEvent(event);
-//                }
-//            });
-//            dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
-//                @Override
-//                public void onMessage(GroupMessage groupMessage) {
-//                    // Create the event here
-//                    org.linear.linearbot.event.custom.GroupMessage event = new org.linear.linearbot.event.custom.GroupMessage();
-//                    // Call the event
-//                    Bukkit.getServer().getPluginManager().callEvent(event);
-//                }
-//            });
+////            dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
+////                @Override
+////                public void onMessage(GroupMessage groupMessage) {
+////                    // Create the event here
+////                    org.linear.linearbot.event.custom.GroupMessage event = new org.linear.linearbot.event.custom.GroupMessage();
+////                    // Call the event
+////                    Bukkit.getServer().getPluginManager().callEvent(event);
+////                }
+////            });
+////
+////            dispatchers.start(10);//线程组处理任务
+////
+////            List<Long> groups = Config.getGroupQQs();
+////            for (long groupID : groups) {
+////                LinearBot.getBot().sendGroupMsg("LinearBot已启动", groupID);
+////            }
 //
-//            dispatchers.start(10);//线程组处理任务
-//
-//            List<Long> groups = Config.getGroupQQs();
-//            for (long groupID : groups) {
-//                LinearBot.getBot().sendGroupMsg("LinearBot已启动", groupID);
-//            }
-
-        };
-        INSTANCE.getServer().getScheduler().runTask(INSTANCE, thread);
-    }
+//        };
+//        INSTANCE.getServer().getScheduler().runTask(INSTANCE, thread);
+//    }
 
     public static Bot getBot() {
         return bot;

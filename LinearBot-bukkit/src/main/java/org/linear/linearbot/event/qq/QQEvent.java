@@ -3,18 +3,13 @@ package org.linear.linearbot.event.qq;
 import sdk.event.message.GroupMessage;
 import sdk.event.message.PrivateMessage;
 import org.bukkit.Bukkit;
-import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
 import org.linear.linearbot.LinearBot;
-import org.linear.linearbot.bot.Bot;
 import org.linear.linearbot.config.Config;
 import org.linear.linearbot.event.server.ServerManager;
 import org.linear.linearbot.event.server.ServerTps;
 import org.linear.linearbot.tool.StringTool;
 import org.linear.linearbot.config.Args;
 
-import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -31,7 +26,16 @@ public class QQEvent {
             if(!Config.Online()){
                 return;
             }
-            LinearBot.getBot().sendPrivateMsg("当前在线：" + Bukkit.getServer().getOnlinePlayers()+"("+Bukkit.getServer().getOnlinePlayers().size()+"人)", e.getUserId());
+            LinearBot.getBot().sendMsg(false, "当前在线：" + "("+Bukkit.getServer().getOnlinePlayers().size()+"人)"+ServerManager.listOnlinePlayer(), e.getUserId());
+            return;
+        }
+
+        if(e.getMessage().equals(Prefix+"tps")) {
+            if(!Config.TPS()){
+                return;
+            }
+            ServerTps st = new ServerTps();
+            LinearBot.getBot().sendMsg(false, "当前tps：" + st.getTps() + "\n" + "当前MSPT：" + st.getMSPT(),e.getUserId());
             return;
         }
 
@@ -46,9 +50,9 @@ public class QQEvent {
                 if(!Config.CMD()){
                     return;
                 }
-                String cmd = Pattern.compile(Prefix+"cmd .*").matcher(e.getMessage()).group().replace(Prefix+"cmd ", "");
-                ServerManager.sendCmd(cmd,e.getUserId(),false);
-                LinearBot.getBot().sendPrivateMsg("已发送指令至服务器",e.getUserId());
+                String cmd = matcher.group().replace(Prefix+"cmd ", "");
+                ServerManager.sendCmd(false, e.getUserId(), cmd, true);
+                LinearBot.getBot().sendMsg(false, "已发送指令至服务器",e.getUserId());
             }
 
             return;
@@ -77,6 +81,7 @@ public class QQEvent {
         pattern = Pattern.compile("\"ap.*");
         matcher = pattern.matcher(msg);
         if (matcher.find()){
+
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§f" + ":" + "不支持的消息类型，请在群聊中查看");
             return;
         }
@@ -99,14 +104,15 @@ public class QQEvent {
                     stringBuilder.append(message.replaceAll("§\\S", "")).append("\n");
                 }
             }
-            LinearBot.getBot().sendGroupMsg(stringBuilder.toString(),groupID);
+            LinearBot.getBot().sendMsg(true, stringBuilder.toString(),groupID);
+            return;
         }
 
         if(msg.equals(Prefix+"在线人数")) {
             if(!Config.Online()){
                 return;
             }
-            LinearBot.getBot().sendGroupMsg("当前在线：" + "("+Bukkit.getServer().getOnlinePlayers().size()+"人)"+ServerManager.listOnlinePlayer(),groupID);
+            LinearBot.getBot().sendMsg(true, "当前在线：" + "("+Bukkit.getServer().getOnlinePlayers().size()+"人)"+ServerManager.listOnlinePlayer(),groupID);
             return;
         }
 
@@ -115,7 +121,7 @@ public class QQEvent {
                 return;
             }
             ServerTps st = new ServerTps();
-            LinearBot.getBot().sendGroupMsg("当前tps：" + st.getTps() + "\n" + "当前MSPT：" + st.getMSPT(),groupID);
+            LinearBot.getBot().sendMsg(true, "当前tps：" + st.getTps() + "\n" + "当前MSPT：" + st.getMSPT(),groupID);
             return;
         }
 
@@ -171,16 +177,16 @@ public class QQEvent {
 //            return;
 //        }
 
-        pattern = Pattern.compile(Prefix+".*");
-        matcher = pattern.matcher(msg);
         if(matcher.find()){
+            pattern = Pattern.compile(Prefix+".*");
+            matcher = pattern.matcher(msg);
             if (!Config.SDC()){
                 return;
             }
             String scmd = matcher.group().replace(Prefix+"", "");
             String gcmd = Config.getCommandsYaml().getString("User."+scmd);
             if(gcmd!=null) {
-                ServerManager.sendCmd(gcmd,groupID,false);
+                ServerManager.sendCmd(true, groupID, gcmd, true);
                 return;
             }
         }
@@ -188,7 +194,7 @@ public class QQEvent {
         if (Config.SDR()){
             String back = Config.getReturnsYaml().getString(msg);
             if(back!=null){
-                LinearBot.getBot().sendGroupMsg(back,groupID);
+                LinearBot.getBot().sendMsg(true, back,groupID);
                 return;
             }
         }
@@ -202,7 +208,8 @@ public class QQEvent {
                     return;
                 }
                 String cmd = matcher.group().replace(Prefix+"cmd ", "");
-                ServerManager.sendCmd(cmd,groupID,true);
+                ServerManager.sendCmd(true, groupID, cmd, true);
+                LinearBot.getBot().sendMsg(true, "已发送指令至服务器",groupID);
                 return;
             }
 
@@ -227,16 +234,17 @@ public class QQEvent {
 //                return;
 //            }
 
-            pattern = Pattern.compile(Prefix+".*");
-            matcher = pattern.matcher(msg);
+
             if(matcher.find()){
+                pattern = Pattern.compile(Prefix+".*");
+                matcher = pattern.matcher(msg);
                 if (!Config.SDC()){
                     return;
                 }
                 String scmd = matcher.group().replace(Prefix+"", "");
                 String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
                 if(gcmd!=null) {
-                    ServerManager.sendCmd(gcmd,groupID,false);
+                    ServerManager.sendCmd(true, groupID, gcmd, true);
                     return;
                 }
             }
@@ -255,12 +263,27 @@ public class QQEvent {
             }
             String name = StringTool.filterColor(e.getSender().getNickname());
             String smsg = StringTool.filterColor(msg);
+            pattern = Pattern.compile("\\[CQ:.*].*");
+            matcher = pattern.matcher(smsg);
+            if (matcher.find()){
+                String useMsg = matcher.group().replaceAll("\\[CQ:.*]", "");
+                Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
+                return;
+            }
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
+            return;
         }
 
         if(Config.getGroupQQs().contains(groupID)) {
             String name = StringTool.filterColor(e.getSender().getNickname());
             String smsg = StringTool.filterColor(msg);
+            pattern = Pattern.compile("\\[CQ:.*].*");
+            matcher = pattern.matcher(smsg);
+            if (matcher.find()){
+                String useMsg = matcher.group().replaceAll("\\[CQ:.*]", "");
+                Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
+                return;
+            }
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
         }
 

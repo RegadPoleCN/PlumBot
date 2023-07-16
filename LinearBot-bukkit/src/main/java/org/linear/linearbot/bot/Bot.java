@@ -11,11 +11,22 @@ import org.junit.Test;
 import org.linear.linearbot.LinearBot;
 
 import java.util.List;
+import java.util.Objects;
 
 public class Bot {
 
     private GroupClient client =  new ClientFactory(LinearBot.getHttp_config()).createGroupClient();
     private MessageClient messageClient =  new ClientFactory(LinearBot.getHttp_config()).createMessageClient();
+
+    public void sendMsg(boolean isGroup, String msg, long id) {
+        if (id == 0L) {return;}
+        if ("".equals(msg)) {return;}
+        if (isGroup) {
+            this.sendGroupMsg(msg, id);
+        } else {
+            this.sendPrivateMsg(msg, id);
+        }
+    }
 
     /**
      * 发送私聊消息
@@ -83,7 +94,6 @@ public class Bot {
     /**
      * 获取群信息
      */
-    @Test
     public GroupInfo getGroupInfo(long groupId) {
         GroupInfo groupInfo = client.getGroupInfo(groupId);
         return groupInfo;

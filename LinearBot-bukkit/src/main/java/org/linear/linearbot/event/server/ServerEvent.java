@@ -1,7 +1,6 @@
 package org.linear.linearbot.event.server;
 
 import org.bukkit.Location;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -10,8 +9,6 @@ import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.linear.linearbot.LinearBot;
-import org.linear.linearbot.bot.Bot;
-import org.linear.linearbot.config.Args;
 import org.linear.linearbot.config.Config;
 import org.linear.linearbot.hook.AuthMeHook;
 import org.linear.linearbot.hook.GriefDefenderHook;
@@ -83,7 +80,7 @@ public class ServerEvent implements Listener{
         }
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
-            LinearBot.getBot().sendGroupMsg("玩家"+name+"加入游戏",groupID);
+            LinearBot.getBot().sendMsg(true, "玩家"+name+"加入游戏",groupID);
         }
 
     }
@@ -98,7 +95,7 @@ public class ServerEvent implements Listener{
         }
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
-            LinearBot.getBot().sendGroupMsg("玩家"+name+"退出游戏",groupID);
+            LinearBot.getBot().sendMsg(true, "玩家"+name+"退出游戏",groupID);
         }
     }
 
@@ -114,7 +111,7 @@ public class ServerEvent implements Listener{
         int y= (int) location.getY();
         int z= (int) location.getZ();
         String msg = "死在了"+location.getWorld().getName()+"世界"+"("+x+","+y+","+z+")";
-        ServerManager.sendCmd("msg "+name+" "+msg,0,false);
+        ServerManager.sendCmd(true, 0L, "msg "+name+" "+msg, false);
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
             LinearBot.getBot().sendGroupMsg("玩家"+name+msg,groupID);
