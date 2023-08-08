@@ -32,8 +32,14 @@ jobs:
     - name: Build with Maven
       run: mvn -B package --file pom.xml
 
-    - name: Upload a Build Artifact - LinearBot-bukkit
+    - name: Upload a Build Artifact - PlumBot-bukkit
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: "LinearBot-bukkit.jar"
-        path: LinearBot-bukkit/target/LinearBot-bukkit*.jar
+        name: "PlumBot-bukkit.jar"
+        path: PlumBot-bukkit/target/plumbot-bukkit*.jar
+
+    - name: Upload a Build Artifact - PlumBot-velocity
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: "PlumBot-bukkit.jar"
+        path: PlumBot-bukkit/target/plumbot-velocity*.jar

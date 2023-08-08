@@ -4,15 +4,15 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>org.linear</groupId>
-    <artifactId>LinearBot</artifactId>
-    <version>1.2.1</version>
+    <groupId>me.regadpole</groupId>
+    <artifactId>plumbot</artifactId>
+    <version>1.2.2-rc1</version>
     <packaging>pom</packaging>
 
-    <name>LinearBot</name>
+    <name>PlumBot</name>
     <modules>
-        <module>LinearBot-velocity</module>
-        <module>LinearBot-bukkit</module>
+        <module>plumbot-velocity</module>
+        <module>plumbot-bukkit</module>
     </modules>
 
     <properties>
@@ -77,6 +77,43 @@
             <version>3.0.0</version>
             <scope>compile</scope>
         </dependency>-->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.21</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.java-websocket</groupId>
+            <artifactId>Java-WebSocket</artifactId>
+            <version>1.5.3</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>2.0.32</version>
+            <scope>compile</scope>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.26</version>
+            <scope>compile</scope>
+        </dependency>
     </dependencies>
 
 
