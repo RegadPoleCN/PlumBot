@@ -41,5 +41,5 @@ jobs:
     - name: Upload a Build Artifact - PlumBot-velocity
       uses: actions/upload-artifact@v3.1.2
       with:
-        name: "PlumBot-bukkit.jar"
-        path: plumbot-bukkit/target/plumbot-velocity*.jar
+        name: "PlumBot-velocity.jar"
+        path: plumbot-velocity/target/plumbot-velocity*.jar
