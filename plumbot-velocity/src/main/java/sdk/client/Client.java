@@ -4,13 +4,13 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.json.JSONArray;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
-import cn.hutool.log.Log;
-import cn.hutool.log.LogFactory;
+import me.regadpole.plumbot.PlumBot;
 import sdk.anno.Param;
 import sdk.config.CQConfig;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
  */
 public class Client {
 
-    private static Log log = LogFactory.get();
+//    private static Log log = LogFactory.get();
 
     protected CQConfig config;
 
@@ -145,7 +145,8 @@ public class Client {
             }
             return paramMap;
         } catch (Exception e) {
-            log.error(e);
+//            log.error(e);
+            PlumBot.INSTANCE.getLogger().error(Arrays.toString(e.getStackTrace()));
         }
         return null;
     }

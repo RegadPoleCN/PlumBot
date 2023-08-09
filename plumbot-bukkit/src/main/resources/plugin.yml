@@ -10,7 +10,7 @@ softdepend:
   - Residence
 
 commands:
-  linearbot:
+  plumbot:
     aliases: [pb,PlumBot]
     description: PlumBot基本命令.
     usage: /<command>

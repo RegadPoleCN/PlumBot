@@ -1,16 +1,16 @@
 package sdk.connection.impl;
 
-import cn.hutool.log.Log;
-import cn.hutool.log.LogFactory;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import me.regadpole.plumbot.PlumBot;
 import sdk.connection.Connection;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 
 /**
@@ -22,7 +22,7 @@ public class CustomHttpServer implements Connection {
     private String path;
     private BlockingQueue<String> queue;
 
-    private static Log log = LogFactory.get();
+//    private static Log log = LogFactory.get();
 
     private HttpServer server;
 
@@ -33,7 +33,8 @@ public class CustomHttpServer implements Connection {
             server = HttpServer.create(new InetSocketAddress(port), 0);
             server.createContext(path, new CustomHttpHandler());
         } catch (IOException e) {
-            log.error(e);
+//            log.error(e);
+            PlumBot.INSTANCE.getLogger().error(Arrays.toString(e.getStackTrace()));
         }
         this.queue = queue;
     }
@@ -41,7 +42,8 @@ public class CustomHttpServer implements Connection {
     @Override
     public void create() {
         server.start();
-        log.info("HTTP服务器启动，正在监听端口：{}", port);
+//        log.info("HTTP服务器启动，正在监听端口：{}", port);
+        PlumBot.INSTANCE.getLogger().info("HTTP服务器启动，正在监听端口："+port);
     }
 
     class CustomHttpHandler implements HttpHandler {

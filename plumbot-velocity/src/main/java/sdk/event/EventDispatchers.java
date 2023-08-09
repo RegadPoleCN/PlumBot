@@ -1,14 +1,14 @@
 package sdk.event;
 
 import cn.hutool.json.JSONUtil;
-import cn.hutool.log.Log;
-import cn.hutool.log.LogFactory;
+import me.regadpole.plumbot.PlumBot;
 import sdk.event.global.Message;
 import sdk.listener.EnableListener;
 import sdk.listener.Listener;
 import sdk.utils.ListenerUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
@@ -21,7 +21,7 @@ import java.util.concurrent.Executors;
  */
 public class EventDispatchers implements Runnable {
 
-    private static Log log = LogFactory.get();
+//    private static Log log = LogFactory.get();
 
     //存储监听器对象
     protected List<Listener> listenerList = new ArrayList<>();
@@ -65,7 +65,8 @@ public class EventDispatchers implements Runnable {
             try {
                 this.runTask();
             } catch (Exception e) {
-                log.warn(e);
+//                log.warn(e);
+                PlumBot.INSTANCE.getLogger().warn(Arrays.toString(e.getStackTrace()));
             }
         }
     }
@@ -85,7 +86,7 @@ public class EventDispatchers implements Runnable {
         if (this.messageListener != null){
             this.messageListener.onMessage(message);
         }
-        log.debug("接收到上报消息：{}", messageType);
+//        log.debug("接收到上报消息：{}", messageType);
         Message bean = JSONUtil.toBean(message, messageType);//将消息反序列化为对象
         List<Listener> executeListener = (executeListener = cache.get(messageType)) == null ?
                 getMethod(messageType) : executeListener;//检查缓存
@@ -109,7 +110,8 @@ public class EventDispatchers implements Runnable {
         try {
             return this.queue.take();
         } catch (Exception e) {
-            log.error(e);
+//            log.error(e);
+            PlumBot.INSTANCE.getLogger().error(Arrays.toString(e.getStackTrace()));
         }
         return null;
     }

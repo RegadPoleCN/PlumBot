@@ -48,6 +48,8 @@ public class PlumBot {
     private static Bot bot;
     private static QQEvent qqEvent;
 
+    public static PlumBot INSTANCE;
+
     @Inject
     public PlumBot(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory, Metrics.Factory metricsFactory) {
         this.server = server;
@@ -60,6 +62,8 @@ public class PlumBot {
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
+
+        INSTANCE = this;
         // Do some operation demanding access to the Velocity API here.
         // For instance, we could register an event:
         try {
