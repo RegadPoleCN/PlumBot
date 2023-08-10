@@ -1,5 +1,8 @@
 package me.regadpole.plumbot.event.server;
 
+import me.regadpole.plumbot.PlumBot;
+import me.regadpole.plumbot.config.Args;
+import me.regadpole.plumbot.config.Config;
 import me.regadpole.plumbot.hook.AuthMeHook;
 import me.regadpole.plumbot.hook.GriefDefenderHook;
 import me.regadpole.plumbot.hook.QuickShopHook;
@@ -13,15 +16,19 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
-import me.regadpole.plumbot.PlumBot;
-import me.regadpole.plumbot.config.Config;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ServerEvent implements Listener{
 
     @EventHandler
     public void onChat(AsyncPlayerChatEvent event) {
+
+        Pattern pattern;
+        Matcher matcher;
+
         if (!Config.Forwarding()){
             return;
         }
@@ -32,6 +39,19 @@ public class ServerEvent implements Listener{
         if (QuickShopHook.hasQs) {if (event.getPlayer() == QsChatEvent.getQsSender() && event.getMessage() == QsChatEvent.getQsMessage()) {return;}}
         if (QuickShopHook.hasQsHikari) {if (event.getPlayer() == QsHikariChatEvent.getQsSender() && event.getMessage() == QsHikariChatEvent.getQsMessage()) {return;}}
         if (GriefDefenderHook.hasGriefDefender) {if (GDClaimEvent.getGDMessage() == event.getMessage()){return;}}
+        if (Args.ForwardingMode() == 1) {
+            pattern = Pattern.compile(Args.ForwardingPrefix()+".*");
+            matcher = pattern.matcher(message);
+            if(!matcher.find()){
+                return;
+            }
+            String fmsg = matcher.group().replaceAll(Args.ForwardingPrefix(), "");
+            List<Long> groups = Config.getGroupQQs();
+            for (long groupID : groups){
+                PlumBot.getBot().sendGroupMsg("[服务器]"+name+":"+fmsg,groupID);
+            }
+            return;
+        }
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
             PlumBot.getBot().sendGroupMsg("[服务器]"+name+":"+message,groupID);

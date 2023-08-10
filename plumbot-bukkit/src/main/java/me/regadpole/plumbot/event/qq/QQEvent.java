@@ -57,8 +57,6 @@ public class QQEvent {
 
             return;
         }
-
-        Bukkit.broadcastMessage("§6"+"[私聊消息]"+"§a"+e.getSender().getNickname()+"§f"+":"+e.getMessage());
     }
 
     public void onGroupMessageReceive(GroupMessage e){
@@ -209,8 +207,9 @@ public class QQEvent {
             if(!matcher.find()){
                 return;
             }
+            String fmsg = matcher.group().replace(Args.ForwardingPrefix(), "");
             String name = StringTool.filterColor(e.getSender().getCard());
-            String smsg = StringTool.filterColor(msg);
+            String smsg = StringTool.filterColor(fmsg);
             pattern = Pattern.compile("\\[CQ:.*].*");
             matcher = pattern.matcher(smsg);
             if (matcher.find()){
