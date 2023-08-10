@@ -65,6 +65,8 @@ public class VelocityConfig {
         Config.config.JoinAndLeave = !Objects.isNull(configObj.get("JoinAndLeave")) ? Boolean.parseBoolean(String.valueOf(configObj.get("JoinAndLeave"))) : false;
         Config.config.Online = !Objects.isNull(configObj.get("Online")) ? Boolean.parseBoolean(String.valueOf(configObj.get("Online"))) : false;
         Config.config.SDR = !Objects.isNull(configObj.get("SDR")) ? Boolean.parseBoolean(String.valueOf(configObj.get("SDR"))) : false;
+        Config.config.Maven = !Objects.isNull(configObj.get("Maven")) ? String.valueOf(configObj.get("Maven")) : "https://repo1.maven.org/maven2";
+
 
         Config.returns.Ver = !Objects.isNull(returnsObj.get("Ver")) ? String.valueOf(returnsObj.get("Ver")) : "1.0";
 

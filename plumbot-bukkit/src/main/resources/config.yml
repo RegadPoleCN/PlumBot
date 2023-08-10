@@ -35,3 +35,7 @@ SDC: true
 
 #自定义回复
 SDR: true
+
+#maven仓库地址，默认为官方仓库，如速度慢或下载失败可更换为镜像仓库
+#此值为空时默认使用官方仓库
+Maven: "https://repo1.maven.org/maven2"

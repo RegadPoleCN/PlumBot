@@ -17,6 +17,8 @@ import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.command.Commands;
 import me.regadpole.plumbot.config.VelocityConfig;
 import me.regadpole.plumbot.event.server.ServerEvent;
+import me.regadpole.plumbot.internal.Dependencies;
+import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.slf4j.Logger;
 import sdk.config.CQConfig;
@@ -57,13 +59,8 @@ public class PlumBot {
         this.dataDirectory = dataDirectory;
         this.metricsFactory = metricsFactory;
 
-        logger.info("It's a plugin for Minecraft!");
-    }
-
-    @Subscribe
-    public void onProxyInitialization(ProxyInitializeEvent event) {
-
         INSTANCE = this;
+
         // Do some operation demanding access to the Velocity API here.
         // For instance, we could register an event:
         try {
@@ -74,6 +71,17 @@ public class PlumBot {
             getLogger().warn("An error occurred while loading plugin.");
             e.printStackTrace();
         }
+
+        LibraryLoader.loadAll(Dependencies.class);
+        logger.info("PlumBot依赖已加载完成");
+
+        logger.info("It's a plugin for Minecraft!");
+    }
+
+
+
+    @Subscribe
+    public void onProxyInitialization(ProxyInitializeEvent event) {
 
         server.getEventManager().register(this, new ServerEvent());
         logger.info("服务器事件监听器注册成功");

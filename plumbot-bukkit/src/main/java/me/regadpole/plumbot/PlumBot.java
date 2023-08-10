@@ -9,6 +9,8 @@ import me.regadpole.plumbot.hook.AuthMeHook;
 import me.regadpole.plumbot.hook.GriefDefenderHook;
 import me.regadpole.plumbot.hook.QuickShopHook;
 import me.regadpole.plumbot.hook.ResidenceHook;
+import me.regadpole.plumbot.internal.Dependencies;
+import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
@@ -37,12 +39,17 @@ public final class PlumBot extends JavaPlugin implements Listener{
     private static QQEvent qqEvent;
 
     @Override
-    public void onEnable() {
-
+    public void onLoad() {
         INSTANCE = this;
 
-
         Config.createConfig();
+
+        LibraryLoader.loadAll(Dependencies.class);
+        getLogger().info("PlumBot依赖已加载成功");
+    }
+
+    @Override
+    public void onEnable() {
 
         Bukkit.getPluginManager().registerEvents(this, this);
         AuthMeHook.hookAuthme();

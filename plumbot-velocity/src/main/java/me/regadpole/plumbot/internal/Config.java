@@ -25,6 +25,7 @@ public class Config {
         public static boolean JoinAndLeave; // 进出游戏
         public static boolean Online; // 在线人数
         public static boolean SDR; // 自定义回复
+        public static String Maven; // Maven仓库地址
 
     }
 
