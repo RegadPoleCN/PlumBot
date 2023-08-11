@@ -1,14 +1,17 @@
 package me.regadpole.plumbot.event.qq;
 
+import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.config.Args;
+import me.regadpole.plumbot.config.Config;
+import me.regadpole.plumbot.config.DataBase;
+import me.regadpole.plumbot.event.server.ServerManager;
 import me.regadpole.plumbot.event.server.ServerTps;
+import me.regadpole.plumbot.internal.database.DatabaseManager;
 import me.regadpole.plumbot.tool.StringTool;
+import org.bukkit.Bukkit;
 import sdk.event.message.GroupMessage;
 import sdk.event.message.PrivateMessage;
-import org.bukkit.Bukkit;
-import me.regadpole.plumbot.PlumBot;
-import me.regadpole.plumbot.config.Config;
-import me.regadpole.plumbot.event.server.ServerManager;
+import sdk.event.notice.GroupDecreaseNotice;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -55,7 +58,6 @@ public class QQEvent {
                 PlumBot.getBot().sendMsg(false, "已发送指令至服务器",e.getUserId());
             }
 
-            return;
         }
     }
 
@@ -82,6 +84,58 @@ public class QQEvent {
 
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§f" + ":" + "不支持的消息类型，请在群聊中查看");
             return;
+        }
+
+        if(Config.getAdmins().contains(senderID)) {
+
+            pattern = Pattern.compile(Prefix+"cmd .*");
+            matcher = pattern.matcher(msg);
+            if (matcher.find()) {
+                if(!Config.CMD()){
+                    return;
+                }
+                String cmd = matcher.group().replace(Prefix+"cmd ", "");
+                ServerManager.sendCmd(true, groupID, cmd, true);
+                PlumBot.getBot().sendMsg(true, "已发送指令至服务器",groupID);
+                return;
+            }
+
+            pattern = Pattern.compile(Prefix+"删除白名单 .*");
+            matcher = pattern.matcher(msg);
+            if (matcher.find()) {
+                if(!Config.WhiteList()){
+                    return;
+                }
+                String name = matcher.group().replace(Prefix+"删除白名单 ", "");
+                if (name.isEmpty()) {
+                    PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
+                    return;
+                }
+                long nameForId = DatabaseManager.getBind(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                if (nameForId==0L) {
+                    PlumBot.getBot().sendMsg(true, "尚未申请白名单", groupID);
+                    return;
+                }
+                DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                PlumBot.getBot().sendMsg(true, "成功移出白名单",groupID);
+                return;
+            }
+
+
+            if(matcher.find()){
+                pattern = Pattern.compile(Prefix+".*");
+                matcher = pattern.matcher(msg);
+                if (!Config.SDC()){
+                    return;
+                }
+                String scmd = matcher.group().replace(Prefix+"", "");
+                String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
+                if(gcmd!=null) {
+                    ServerManager.sendCmd(true, groupID, gcmd, true);
+                    return;
+                }
+            }
+
         }
 
         if(msg.equals(Prefix+"帮助")) {
@@ -123,6 +177,54 @@ public class QQEvent {
             return;
         }
 
+
+        pattern = Pattern.compile(Prefix+"申请白名单 .*");
+        matcher = pattern.matcher(msg);
+        if (matcher.find()) {
+            if(!Config.WhiteList()){
+                return;
+            }
+            String PlayerName = matcher.group().replace(Prefix+"申请白名单 ", "");
+            if (PlayerName.isEmpty()) {
+                PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
+                return;
+            }
+            if ((DatabaseManager.getBind(senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase())!=null) || (DatabaseManager.getBind(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase())!=0L)) {
+                PlumBot.getBot().sendMsg(true, "绑定失败", groupID);
+                return;
+            }
+            DatabaseManager.addBind(PlayerName, senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+            PlumBot.getBot().sendMsg(true, "成功申请白名单",groupID);
+            return;
+        }
+
+        pattern = Pattern.compile(Prefix+"删除白名单 .*");
+        matcher = pattern.matcher(msg);
+        if (matcher.find()) {
+            if(!Config.WhiteList()){
+                return;
+            }
+            String name = matcher.group().replace(Prefix+"删除白名单 ", "");
+            String idForName = DatabaseManager.getBind(senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+            if (idForName==null || idForName.isEmpty()) {
+                PlumBot.getBot().sendMsg(true, "您尚未申请白名单", groupID);
+                return;
+            }
+            if (name.isEmpty()) {
+                PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
+                return;
+            }
+            if(!idForName.equals(name)){
+                PlumBot.getBot().sendMsg(true, "你无权这样做",groupID);
+                return;
+            }
+
+            DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+            PlumBot.getBot().sendMsg(true, "成功移出白名单",groupID);
+            return;
+        }
+
+
         if(matcher.find()){
             pattern = Pattern.compile(Prefix+".*");
             matcher = pattern.matcher(msg);
@@ -143,58 +245,6 @@ public class QQEvent {
                 PlumBot.getBot().sendMsg(true, back,groupID);
                 return;
             }
-        }
-
-        if(Config.getAdmins().contains(senderID)) {
-
-            pattern = Pattern.compile(Prefix+"cmd .*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()) {
-                if(!Config.CMD()){
-                    return;
-                }
-                String cmd = matcher.group().replace(Prefix+"cmd ", "");
-                ServerManager.sendCmd(true, groupID, cmd, true);
-                PlumBot.getBot().sendMsg(true, "已发送指令至服务器",groupID);
-                return;
-            }
-
-//            pattern = Pattern.compile(Prefix+"删除白名单 .*");
-//            matcher = pattern.matcher(msg);
-//            if (matcher.find()) {
-//                if(!Config.WhiteList()){
-//                    return;
-//                }
-//                YamlConfiguration white = YamlConfiguration.loadConfiguration(Config.WhitelistFile());
-//                List<String> nameList = white.getStringList("name");
-//                String name = matcher.group().replace(Prefix+"删除白名单 ", "");
-//                try {
-//                    nameList.remove(name);
-//                    white.set("name",nameList);
-//                    white.save(Config.WhitelistFile());
-//                    MiraiMC.removeBind(Bukkit.getOfflinePlayer(name).getUniqueId());
-//                } catch (IOException ex) {
-//                    Bot.sendMsg("出现异常:"+ex,groupID);
-//                }
-//                Bot.sendMsg("成功移出白名单",groupID);
-//                return;
-//            }
-
-
-            if(matcher.find()){
-                pattern = Pattern.compile(Prefix+".*");
-                matcher = pattern.matcher(msg);
-                if (!Config.SDC()){
-                    return;
-                }
-                String scmd = matcher.group().replace(Prefix+"", "");
-                String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
-                if(gcmd!=null) {
-                    ServerManager.sendCmd(true, groupID, gcmd, true);
-                    return;
-                }
-            }
-
         }
 
         if (!Config.Forwarding()){
@@ -236,25 +286,15 @@ public class QQEvent {
 
     }
 
-//    @EventHandler
-//    public void MemberLeaveEvent(MiraiMemberLeaveEvent event){
-//        long targetID = event.getTargetID();
-//        long groupID = event.getGroupID();
-//        UUID uuid = MiraiMC.getBind(targetID);
-//        if(uuid == null){
-//            return;
-//        }
-//        YamlConfiguration white = YamlConfiguration.loadConfiguration(Config.WhitelistFile());
-//        List<String> nameList = white.getStringList("name");
-//        try {
-//            nameList.remove(Bukkit.getOfflinePlayer(uuid).getName());
-//            white.set("name",nameList);
-//            white.save(Config.WhitelistFile());
-//            MiraiMC.removeBind(uuid);
-//        } catch (IOException ex) {
-//            Bot.sendMsg("出现异常:"+ex,groupID);
-//        }
-//    }
+    public void onGroupDecreaseNotice(GroupDecreaseNotice e){
+        long userId = e.getUserId();
+        long groupId = e.getGroupId();
+        String player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        if(player == null){
+            return;
+        }
+        DatabaseManager.removeBindid(player, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+    }
 
 
 }

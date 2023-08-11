@@ -39,3 +39,23 @@ SDR: true
 #maven仓库地址，默认为官方仓库，如速度慢或下载失败可更换为镜像仓库
 #此值为空时默认使用官方仓库
 Maven: "https://repo1.maven.org/maven2"
+
+database:
+  type: sqlite
+  settings:
+    sqlite:
+      path: "%plugin_folder%/database.db"
+    mysql:
+      host: localhost
+      port: 3306
+      database: plumbot
+      user: plumbot
+      password: plumbot
+      parameters: "?useSSL=false"
+    pool:
+      connectionTimeout: 30000
+      idleTimeout: 600000
+      maxLifetime: 1800000
+      maximumPoolSize: 15
+      keepaliveTime: 0
+      minimumIdle: 5

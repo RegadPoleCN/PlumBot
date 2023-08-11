@@ -6,10 +6,6 @@ public class Args {
         return Config.getConfigYaml().getInt("Forwarding.mode");
     }
 
-    public static int WhitelistMode(){
-        return Config.getConfigYaml().getInt("Whitelist.mode");
-    }
-
     public static String ForwardingPrefix(){
         return Config.getConfigYaml().getString("Forwarding.prefix");
     }

@@ -1,6 +1,7 @@
 package me.regadpole.plumbot;
 
 import me.regadpole.plumbot.command.Commands;
+import me.regadpole.plumbot.config.DataBase;
 import me.regadpole.plumbot.event.qq.QQEvent;
 import me.regadpole.plumbot.event.server.QsChatEvent;
 import me.regadpole.plumbot.event.server.QsHikariChatEvent;
@@ -10,6 +11,9 @@ import me.regadpole.plumbot.hook.GriefDefenderHook;
 import me.regadpole.plumbot.hook.QuickShopHook;
 import me.regadpole.plumbot.hook.ResidenceHook;
 import me.regadpole.plumbot.internal.Dependencies;
+import me.regadpole.plumbot.internal.database.Database;
+import me.regadpole.plumbot.internal.database.MySQL;
+import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.bukkit.Bukkit;
@@ -24,8 +28,10 @@ import sdk.config.CQConfig;
 import sdk.connection.Connection;
 import sdk.connection.ConnectionFactory;
 import sdk.event.EventDispatchers;
+import sdk.event.notice.GroupDecreaseNotice;
 import sdk.listener.SimpleListener;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -37,6 +43,8 @@ public final class PlumBot extends JavaPlugin implements Listener{
 
     private static Bot bot;
     private static QQEvent qqEvent;
+
+    private static Database database;
 
     @Override
     public void onLoad() {
@@ -50,6 +58,25 @@ public final class PlumBot extends JavaPlugin implements Listener{
 
     @Override
     public void onEnable() {
+
+        try {
+            switch (DataBase.type().toLowerCase()){
+                case "sqlite":
+                default: {
+                    getLogger().info("Initializing SQLite database.");
+                    database = (new SQLite());
+                    break;
+                }
+                case "mysql": {
+                    getLogger().info("Initializing MySQL database.");
+                    database = (new MySQL());
+                    break;
+                }
+            }
+            database.initialize();
+        } catch (ClassNotFoundException e) {
+            getLogger().warning("Failed to initialize database, reason: " + e);
+        }
 
         Bukkit.getPluginManager().registerEvents(this, this);
         AuthMeHook.hookAuthme();
@@ -91,12 +118,18 @@ public final class PlumBot extends JavaPlugin implements Listener{
                     qqEvent.onFriendMessageReceive(privateMessage);
                 }
             });
-            dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
-                @Override
-                public void onMessage(GroupMessage groupMessage) {
-                    qqEvent.onGroupMessageReceive(groupMessage);
-                }
-            });
+        dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
+            @Override
+            public void onMessage(GroupMessage groupMessage) {
+                qqEvent.onGroupMessageReceive(groupMessage);
+            }
+        });
+        dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
+            @Override
+            public void onMessage(GroupDecreaseNotice groupDecreaseNotice) {
+                qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
+            }
+        });
         dispatchers.start(10);//线程组处理任务
 
         List<Long> groups = Config.getGroupQQs();
@@ -107,6 +140,14 @@ public final class PlumBot extends JavaPlugin implements Listener{
 
     @Override
     public void onDisable() {
+
+        getLogger().info("Closing database.");
+        try {
+            database.close();
+        } catch (SQLException e) {
+            getLogger().info("在关闭数据库时出现错误"+e);
+        }
+
         getLogger().info("PlumBot已关闭");
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups) {
@@ -126,6 +167,11 @@ public final class PlumBot extends JavaPlugin implements Listener{
     public static CQConfig getHttp_config() {
         return http_config;
     }
+
+    public static Database getDatabase() {
+        return database;
+    }
+
 }
 
 

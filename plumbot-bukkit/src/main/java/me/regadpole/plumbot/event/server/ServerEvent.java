@@ -3,10 +3,12 @@ package me.regadpole.plumbot.event.server;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.config.Args;
 import me.regadpole.plumbot.config.Config;
+import me.regadpole.plumbot.config.DataBase;
 import me.regadpole.plumbot.hook.AuthMeHook;
 import me.regadpole.plumbot.hook.GriefDefenderHook;
 import me.regadpole.plumbot.hook.QuickShopHook;
 import me.regadpole.plumbot.hook.ResidenceHook;
+import me.regadpole.plumbot.internal.database.DatabaseManager;
 import me.regadpole.plumbot.tool.StringTool;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -66,33 +68,16 @@ public class ServerEvent implements Listener{
         String name = StringTool.filterColor(player.getDisplayName());
 
         String realName = StringTool.filterColor(player.getName());
-
-        /*if (Args.WhitelistMode()==1){
-            if (Config.getWhitelistYaml().getString(realName)==null){
-                player.kickPlayer(Config.getConfigYaml().getString("Whitelist.kickMsg"));
+        if (Config.WhiteList()){
+            if (DatabaseManager.getBind(realName, DataBase.type().toLowerCase(), PlumBot.getDatabase()) == 0L){
+                player.kickPlayer(Config.getConfigYaml().getString("WhiteList.kickMsg"));
+                List<Long> groups = Config.getGroupQQs();
+                for (long groupID : groups){
+                    PlumBot.getBot().sendMsg(true, "玩家"+realName+"因为未在白名单中被踢出",groupID);
+                }
+                return;
             }
-            List<Long> groups = Config.getGroupQQs();
-            for (long groupID : groups){
-                Bot.sendMsg("玩家"+name+"因为未在白名单中被踢出",groupID);
-            }
-            return;
-        }*/
-//        boolean whitelisted;
-//        YamlConfiguration white = YamlConfiguration.loadConfiguration(Config.WhitelistFile());
-//        List<String> names = white.getStringList("name");
-//        whitelisted = names.contains(event.getPlayer().getName());
-//
-//        if(!whitelisted){
-//            if (Config.getWhitelistYaml().getString(realName)==null){
-//                player.kickPlayer(Config.getConfigYaml().getString("Whitelist.kickMsg"));
-//            }
-//            List<Long> groups = Config.getGroupQQs();
-//            for (long groupID : groups){
-//                LinearBot.getBot().sendGroupMsg("玩家"+name+"因为未在白名单中被踢出",groupID);
-//            }
-//            return;
-//        }
-
+        }
         if (!Config.JoinAndLeave()){
             return;
         }

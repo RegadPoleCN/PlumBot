@@ -1,6 +1,5 @@
 package me.regadpole.plumbot.internal;
 
-import me.regadpole.plumbot.config.Args;
 import me.regadpole.plumbot.internal.maven.MavenLibraries;
 import me.regadpole.plumbot.internal.maven.MavenLibrary;
 
@@ -12,7 +11,10 @@ import static me.regadpole.plumbot.internal.Dependencies.*;
         @MavenLibrary(groupId = juint.groupId, artifactId = juint.artifactId, version = juint.version),
         @MavenLibrary(groupId = fastjson.groupId, artifactId = fastjson.artifactId, version = fastjson.version),
         @MavenLibrary(groupId = common.groupId, artifactId = common.artifactId, version = common.version),
-        @MavenLibrary(groupId = lombok.groupId, artifactId = lombok.artifactId, version = lombok.version)})
+        @MavenLibrary(groupId = lombok.groupId, artifactId = lombok.artifactId, version = lombok.version),
+        @MavenLibrary(groupId = HikariCP.groupId, artifactId = HikariCP.artifactId, version = HikariCP.version),
+        @MavenLibrary(groupId = MySQL.groupId, artifactId = MySQL.artifactId, version = MySQL.version),
+        @MavenLibrary(groupId = sqlite.groupId, artifactId = sqlite.artifactId, version = sqlite.version)})
 public class Dependencies {
     public static class hutool{
         public static final String groupId = "cn.hutool";
@@ -44,6 +46,21 @@ public class Dependencies {
         public static final String groupId = "org.projectlombok";
         public static final String artifactId = "lombok";
         public static final String version = "1.18.26";
+    }
+    public static class HikariCP{
+        public static final String groupId = "com.zaxxer";
+        public static final String artifactId = "HikariCP";
+        public static final String version = "4.0.3";
+    }
+    public static class MySQL{
+        public static final String groupId = "com.mysql";
+        public static final String artifactId = "mysql-connector-j";
+        public static final String version = "8.1.0";
+    }
+    public static class sqlite{
+        public static final String groupId = "org.xerial";
+        public static final String artifactId = "sqlite-jdbc";
+        public static final String version = "3.42.0.0";
     }
 
 }
