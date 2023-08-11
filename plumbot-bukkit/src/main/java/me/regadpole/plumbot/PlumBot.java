@@ -1,5 +1,7 @@
 package me.regadpole.plumbot;
 
+import com.github.Anon8281.universalScheduler.UniversalScheduler;
+import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import me.regadpole.plumbot.command.Commands;
 import me.regadpole.plumbot.config.DataBase;
 import me.regadpole.plumbot.event.qq.QQEvent;
@@ -39,6 +41,8 @@ public final class PlumBot extends JavaPlugin implements Listener{
 
     public static PlumBot INSTANCE;
 
+    private static TaskScheduler scheduler;
+
     private static CQConfig http_config;
 
     private static Bot bot;
@@ -77,6 +81,8 @@ public final class PlumBot extends JavaPlugin implements Listener{
         } catch (ClassNotFoundException e) {
             getLogger().warning("Failed to initialize database, reason: " + e);
         }
+
+        scheduler = UniversalScheduler.getScheduler(this);
 
         Bukkit.getPluginManager().registerEvents(this, this);
         AuthMeHook.hookAuthme();
@@ -158,6 +164,10 @@ public final class PlumBot extends JavaPlugin implements Listener{
     public static void say(String s) {
         CommandSender sender = Bukkit.getConsoleSender();
         sender.sendMessage(s);
+    }
+
+    public static TaskScheduler getScheduler() {
+        return scheduler;
     }
 
     public static Bot getBot() {

@@ -29,14 +29,12 @@ public class ServerManager {
         }
 
         CommandSender commandSender = new ConsoleSender();
-        new BukkitRunnable(){
-            @Override
-            public void run(){
-                msgList.clear();
-                Bukkit.dispatchCommand(commandSender, cmd);
-            }
-        }.runTask(PlumBot.INSTANCE);
-        Bukkit.getScheduler().runTaskLaterAsynchronously(PlumBot.INSTANCE, () -> {
+
+        PlumBot.getScheduler().runTask(() -> {
+            msgList.clear();
+            Bukkit.dispatchCommand(commandSender, cmd);
+        });
+        PlumBot.getScheduler().runTaskLaterAsynchronously(() -> {
             StringBuilder stringBuilder = new StringBuilder();
             if (msgList.size() == 0) {
                 msgList.add("无返回值");

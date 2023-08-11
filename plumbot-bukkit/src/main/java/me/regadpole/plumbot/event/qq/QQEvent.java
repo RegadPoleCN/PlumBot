@@ -111,13 +111,15 @@ public class QQEvent {
                     PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
                     return;
                 }
-                long nameForId = DatabaseManager.getBind(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                if (nameForId==0L) {
-                    PlumBot.getBot().sendMsg(true, "尚未申请白名单", groupID);
-                    return;
-                }
-                DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                PlumBot.getBot().sendMsg(true, "成功移出白名单",groupID);
+                PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                    long nameForId = DatabaseManager.getBind(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    if (nameForId==0L) {
+                        PlumBot.getBot().sendMsg(true, "尚未申请白名单", groupID);
+                        return;
+                    }
+                    DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    PlumBot.getBot().sendMsg(true, "成功移出白名单",groupID);
+                });
                 return;
             }
 
@@ -189,12 +191,14 @@ public class QQEvent {
                 PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
                 return;
             }
-            if ((DatabaseManager.getBind(senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase())!=null) || (DatabaseManager.getBind(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase())!=0L)) {
-                PlumBot.getBot().sendMsg(true, "绑定失败", groupID);
-                return;
-            }
-            DatabaseManager.addBind(PlayerName, senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-            PlumBot.getBot().sendMsg(true, "成功申请白名单",groupID);
+            PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                if ((DatabaseManager.getBind(senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase())!=null) || (DatabaseManager.getBind(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase())!=0L)) {
+                    PlumBot.getBot().sendMsg(true, "绑定失败", groupID);
+                    return;
+                }
+                DatabaseManager.addBind(PlayerName, senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                PlumBot.getBot().sendMsg(true, "成功申请白名单",groupID);
+            });
             return;
         }
 
@@ -205,22 +209,24 @@ public class QQEvent {
                 return;
             }
             String name = matcher.group().replace(Prefix+"删除白名单 ", "");
-            String idForName = DatabaseManager.getBind(senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-            if (idForName==null || idForName.isEmpty()) {
-                PlumBot.getBot().sendMsg(true, "您尚未申请白名单", groupID);
-                return;
-            }
-            if (name.isEmpty()) {
-                PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
-                return;
-            }
-            if(!idForName.equals(name)){
-                PlumBot.getBot().sendMsg(true, "你无权这样做",groupID);
-                return;
-            }
+            PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                String idForName = DatabaseManager.getBind(senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                if (idForName==null || idForName.isEmpty()) {
+                    PlumBot.getBot().sendMsg(true, "您尚未申请白名单", groupID);
+                    return;
+                }
+                if (name.isEmpty()) {
+                    PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
+                    return;
+                }
+                if(!idForName.equals(name)){
+                    PlumBot.getBot().sendMsg(true, "你无权这样做",groupID);
+                    return;
+                }
 
-            DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-            PlumBot.getBot().sendMsg(true, "成功移出白名单",groupID);
+                DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                PlumBot.getBot().sendMsg(true, "成功移出白名单",groupID);
+            });
             return;
         }
 
