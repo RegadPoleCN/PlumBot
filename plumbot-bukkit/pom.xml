@@ -99,6 +99,12 @@
             <scope>system</scope>
             <systemPath>${project.basedir}/lib/Residence5.1.0.1.jar</systemPath>
         </dependency>
+        <dependency>
+            <groupId>com.github.Anon8281</groupId>
+            <artifactId>UniversalScheduler</artifactId>
+            <version>0.1.6</version>
+            <scope>compile</scope>
+        </dependency>
         <!--
         <dependency>
             <groupId>org.bstats</groupId>

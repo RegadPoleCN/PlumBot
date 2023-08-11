@@ -20,6 +20,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -69,7 +70,9 @@ public class ServerEvent implements Listener{
 
         String realName = StringTool.filterColor(player.getName());
         if (Config.WhiteList()){
-            if (DatabaseManager.getBind(realName, DataBase.type().toLowerCase(), PlumBot.getDatabase()) == 0L){
+            AtomicLong qq = new AtomicLong();
+            PlumBot.getScheduler().runTaskAsynchronously(() -> qq.set(DatabaseManager.getBind(realName, DataBase.type().toLowerCase(), PlumBot.getDatabase())));
+            if (qq.get() == 0L){
                 player.kickPlayer(Config.getConfigYaml().getString("WhiteList.kickMsg"));
                 List<Long> groups = Config.getGroupQQs();
                 for (long groupID : groups){
