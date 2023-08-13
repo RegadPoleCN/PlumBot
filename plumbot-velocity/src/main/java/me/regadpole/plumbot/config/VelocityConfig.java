@@ -70,7 +70,7 @@ public class VelocityConfig {
 
         Config.returns.Ver = !Objects.isNull(returnsObj.get("Ver")) ? String.valueOf(returnsObj.get("Ver")) : "1.0";
 
-        if (!"1.1".equals(Config.bot.Ver)){
+        if (!"1.2.2".equals(Config.bot.Ver)){
             try (InputStream is = plugin.getClass().getResourceAsStream("/" + botFile.getName())) {
                 botIs.close();
                 assert is != null;
@@ -78,7 +78,7 @@ public class VelocityConfig {
                 Instance.loadConfig();
             }
         }
-        if (!Config.config.Ver.equals("1.2")){
+        if (!Config.config.Ver.equals("1.2.2")){
             try (InputStream is = plugin.getClass().getResourceAsStream("/" + configFile.getName())) {
                 configIs.close();
                 assert is != null;

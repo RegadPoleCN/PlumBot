@@ -14,6 +14,8 @@ public class Args {
         return Config.getConfigYaml().getString("Prefix");
     }
 
+    public static String WhitelistKick() {return Config.getConfigYaml().getString("WhiteList.kickMsg");}
+
     public static String Maven() {return Config.getConfigYaml().getString("Maven");}
 
 }

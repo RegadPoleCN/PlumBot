@@ -13,6 +13,7 @@ import me.regadpole.plumbot.hook.GriefDefenderHook;
 import me.regadpole.plumbot.hook.QuickShopHook;
 import me.regadpole.plumbot.hook.ResidenceHook;
 import me.regadpole.plumbot.internal.Dependencies;
+import me.regadpole.plumbot.internal.FoliaSupport;
 import me.regadpole.plumbot.internal.database.Database;
 import me.regadpole.plumbot.internal.database.MySQL;
 import me.regadpole.plumbot.internal.database.SQLite;
@@ -54,6 +55,8 @@ public final class PlumBot extends JavaPlugin implements Listener{
     public void onLoad() {
         INSTANCE = this;
 
+        if (Bukkit.getName().equals("Folia")) FoliaSupport.isFolia = true;
+
         Config.createConfig();
 
         LibraryLoader.loadAll(Dependencies.class);
@@ -64,26 +67,25 @@ public final class PlumBot extends JavaPlugin implements Listener{
     public void onEnable() {
 
         try {
-            switch (DataBase.type().toLowerCase()){
+            switch (DataBase.type().toLowerCase()) {
                 case "sqlite":
-                default: {
-                    getLogger().info("Initializing SQLite database.");
-                    database = (new SQLite());
-                    break;
+                    default: {
+                        getLogger().info("Initializing SQLite database.");
+                        database = (new SQLite());
+                        break;
+                    }
+                    case "mysql": {
+                        getLogger().info("Initializing MySQL database.");
+                        database = (new MySQL());
+                        break;
+                    }
                 }
-                case "mysql": {
-                    getLogger().info("Initializing MySQL database.");
-                    database = (new MySQL());
-                    break;
-                }
-            }
-            database.initialize();
+                database.initialize();
         } catch (ClassNotFoundException e) {
             getLogger().warning("Failed to initialize database, reason: " + e);
         }
 
         scheduler = UniversalScheduler.getScheduler(this);
-
         Bukkit.getPluginManager().registerEvents(this, this);
         AuthMeHook.hookAuthme();
         ResidenceHook.hookRes();
@@ -94,7 +96,6 @@ public final class PlumBot extends JavaPlugin implements Listener{
         if (QuickShopHook.hasQs) Bukkit.getPluginManager().registerEvents(new QsChatEvent(),this);
         if (QuickShopHook.hasQsHikari) Bukkit.getPluginManager().registerEvents(new QsHikariChatEvent(),this);
         getLogger().info("服务器事件监听器注册完毕");
-//        Bukkit.getPluginManager().registerEvents(new QQEvent(), this);
         qqEvent = new QQEvent();
         getLogger().info("QQ事件监听器注册完毕");
         Bukkit.getServer().getPluginCommand("plumbot").setExecutor(new Commands());
@@ -127,7 +128,12 @@ public final class PlumBot extends JavaPlugin implements Listener{
         dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
             @Override
             public void onMessage(GroupMessage groupMessage) {
-                qqEvent.onGroupMessageReceive(groupMessage);
+                List<Long> groups = Config.getGroupQQs();
+                for (long groupID : groups) {
+                    if (groupID == groupMessage.getGroupId()) {
+                        qqEvent.onGroupMessageReceive(groupMessage);
+                    }
+                }
             }
         });
         dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
@@ -147,18 +153,19 @@ public final class PlumBot extends JavaPlugin implements Listener{
     @Override
     public void onDisable() {
 
+        List<Long> groups = Config.getGroupQQs();
+        for (long groupID : groups) {
+            bot.sendGroupMsg( "PlumBot已关闭", groupID);
+        }
+
         getLogger().info("Closing database.");
         try {
             database.close();
         } catch (SQLException e) {
-            getLogger().info("在关闭数据库时出现错误"+e);
+            getLogger().info("在关闭数据库时出现错误" + e);
         }
 
         getLogger().info("PlumBot已关闭");
-        List<Long> groups = Config.getGroupQQs();
-        for (long groupID : groups) {
-            bot.sendMsg(true, "PlumBot已关闭", groupID);
-        }
     }
 
     public static void say(String s) {

@@ -4,6 +4,7 @@ main: me.regadpole.plumbot.PlumBot
 api-version: 1.16
 prefix: PlumBot
 authors: [ Linear,RegadPole ]
+folia-supported: true
 softdepend:
   - AuthMe
   - QuickShop

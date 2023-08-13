@@ -13,6 +13,7 @@ import me.regadpole.plumbot.tool.StringTool;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -26,7 +27,7 @@ import java.util.regex.Pattern;
 
 public class ServerEvent implements Listener{
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onChat(AsyncPlayerChatEvent event) {
 
         Pattern pattern;
@@ -51,36 +52,34 @@ public class ServerEvent implements Listener{
             String fmsg = matcher.group().replaceAll(Args.ForwardingPrefix(), "");
             List<Long> groups = Config.getGroupQQs();
             for (long groupID : groups){
-                PlumBot.getBot().sendGroupMsg("[服务器]"+name+":"+fmsg,groupID);
+                PlumBot.getBot().sendMsg(true, "[服务器]"+name+":"+fmsg,groupID);
             }
             return;
         }
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
-            PlumBot.getBot().sendGroupMsg("[服务器]"+name+":"+message,groupID);
+            PlumBot.getBot().sendMsg(true, "[服务器]"+name+":"+message,groupID);
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event){
 
-        Player player = event.getPlayer();
+        String name = event.getPlayer().getName();
 
-        String name = StringTool.filterColor(player.getDisplayName());
-
-        String realName = StringTool.filterColor(player.getName());
-        if (Config.WhiteList()){
+        if (Config.WhiteList()) {
             AtomicLong qq = new AtomicLong();
-            PlumBot.getScheduler().runTaskAsynchronously(() -> qq.set(DatabaseManager.getBind(realName, DataBase.type().toLowerCase(), PlumBot.getDatabase())));
-            if (qq.get() == 0L){
-                player.kickPlayer(Config.getConfigYaml().getString("WhiteList.kickMsg"));
+            PlumBot.getScheduler().runTaskAsynchronously(() -> qq.set(DatabaseManager.getBind(name, DataBase.type().toLowerCase(), PlumBot.getDatabase())));
+            if (qq.get() == 0L) {
+                PlumBot.getScheduler().runTaskLater(() -> {event.getPlayer().kickPlayer(Args.WhitelistKick());}, 2L);
                 List<Long> groups = Config.getGroupQQs();
-                for (long groupID : groups){
-                    PlumBot.getBot().sendMsg(true, "玩家"+realName+"因为未在白名单中被踢出",groupID);
+                for (long groupID : groups) {
+                    PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
                 }
                 return;
             }
         }
+
         if (!Config.JoinAndLeave()){
             return;
         }
@@ -88,7 +87,6 @@ public class ServerEvent implements Listener{
         for (long groupID : groups){
             PlumBot.getBot().sendMsg(true, "玩家"+name+"加入游戏",groupID);
         }
-
     }
 
     @EventHandler
@@ -120,7 +118,7 @@ public class ServerEvent implements Listener{
         ServerManager.sendCmd(true, 0L, "msg "+name+" "+msg, false);
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
-            PlumBot.getBot().sendGroupMsg("玩家"+name+msg,groupID);
+            PlumBot.getBot().sendMsg(true, "玩家"+name+msg,groupID);
         }
     }
 }
