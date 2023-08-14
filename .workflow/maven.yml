@@ -2,7 +2,7 @@ version: '1.0'
 name: maven
 displayName: maven
 triggers:
-  trigger: manual
+  trigger: auto
   push:
     branches:
       include:
