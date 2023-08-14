@@ -1,0 +1,113 @@
+version: '1.0'
+name: maven
+displayName: maven
+triggers:
+  trigger: manual
+  push:
+    branches:
+      include:
+        - .*
+  pr:
+    branches:
+      include:
+        - .*
+stages:
+  - name: stage-5e497231
+    displayName: 开源检测
+    strategy: naturally
+    trigger: auto
+    executor:
+      - regadpole
+    steps:
+      - step: sc@opensca
+        name: open_sca
+        displayName: OpenSCA 开源组件检测
+        detectPath: ./
+        notify: []
+        strategy:
+          retry: '0'
+  - name: stage-94399425
+    displayName: 构建
+    strategy: naturally
+    trigger: auto
+    executor:
+      - regadpole
+    steps:
+      - step: build@maven
+        name: build_bukkit
+        displayName: Maven 构建
+        jdkVersion: '17'
+        mavenVersion: 3.6.3
+        commands:
+          - '# 功能：打包'
+          - '# 参数说明：'
+          - '#    -Dmaven.test.skip=true：跳过单元测试'
+          - '#    -U：每次构建检查依赖更新，可避免缓存中快照版本依赖不更新问题，但会牺牲部分性能'
+          - '#    -e -X ：打印调试信息，定位疑难构建问题时建议使用此参数构建'
+          - '#    -B：以batch模式运行，可避免日志打印时出现ArrayIndexOutOfBoundsException异常'
+          - '# 使用场景：打包项目且不需要执行单元测试时使用'
+          - mvn clean package -Dmaven.test.skip=true -U -e -X -B
+          - ''
+          - '# 功能：自定义settings配置'
+          - '# 使用场景：如需手工指定settings.xml，可使用如下方式'
+          - '# 注意事项：如无需自定义settings配置且需要私有依赖仓库，可在该任务配置《私有仓库》处添加私有依赖'
+          - '# mvn -U clean package -s ./settings.xml'
+          - ''
+        artifacts:
+          - name: BUILD_BUKKIT
+            path:
+              - ./plumbot-bukkit/target/plumbot*.jar
+        settings: []
+        caches: []
+        notify: []
+        strategy:
+          retry: '0'
+      - step: publish@general_artifacts
+        name: publish_bukkit_artifacts
+        displayName: 上传制品
+        dependArtifact: BUILD_BUKKIT
+        artifactName: plumbot-bukkit
+        notify: []
+        strategy:
+          retry: '0'
+        dependsOn: build_bukkit
+      - step: build@maven
+        name: build_velocity
+        displayName: Maven 构建
+        jdkVersion: '17'
+        mavenVersion: 3.6.3
+        commands:
+          - '# 功能：打包'
+          - '# 参数说明：'
+          - '#    -Dmaven.test.skip=true：跳过单元测试'
+          - '#    -U：每次构建检查依赖更新，可避免缓存中快照版本依赖不更新问题，但会牺牲部分性能'
+          - '#    -e -X ：打印调试信息，定位疑难构建问题时建议使用此参数构建'
+          - '#    -B：以batch模式运行，可避免日志打印时出现ArrayIndexOutOfBoundsException异常'
+          - '# 使用场景：打包项目且不需要执行单元测试时使用'
+          - mvn clean package -Dmaven.test.skip=true -U -e -X -B
+          - ''
+          - '# 功能：自定义settings配置'
+          - '# 使用场景：如需手工指定settings.xml，可使用如下方式'
+          - '# 注意事项：如无需自定义settings配置且需要私有依赖仓库，可在该任务配置《私有仓库》处添加私有依赖'
+          - '# mvn -U clean package -s ./settings.xml'
+          - ''
+        artifacts:
+          - name: BUILD_VELOCITY
+            path:
+              - ./plumbot-velocity/target/plumbot*.jar
+        settings: []
+        caches: []
+        notify: []
+        strategy:
+          retry: '0'
+      - step: publish@general_artifacts
+        name: publish_velocity_artifacts
+        displayName: 上传制品
+        dependArtifact: BUILD_VELOCITY
+        artifactName: plumbot-velocity
+        notify: []
+        strategy:
+          retry: '0'
+        dependsOn: build_velocity
+strategy:
+  blocking: true
