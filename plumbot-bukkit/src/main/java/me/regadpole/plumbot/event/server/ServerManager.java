@@ -2,6 +2,7 @@ package me.regadpole.plumbot.event.server;
 
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.config.Config;
+import me.regadpole.plumbot.tool.TextToImg;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -41,9 +42,9 @@ public class ServerManager {
             }
             for (String msg : msgList) {
                 if (msgList.get(msgList.size() - 1).equalsIgnoreCase(msg)) {
-                    stringBuilder.append(msg.replaceAll("§\\S", ""));
+                    stringBuilder.append(msg);
                 } else {
-                    stringBuilder.append(msg.replaceAll("§\\S", "")).append("\n");
+                    stringBuilder.append(msg).append("\n");
                 }
             }
             if(!disp){
@@ -52,12 +53,17 @@ public class ServerManager {
                 return;
             }
             if(stringBuilder.toString().length()<=5000){
-                PlumBot.getBot().sendMsg(isGroup, stringBuilder.toString(), id);
+//                PlumBot.getBot().sendMsg(isGroup, stringBuilder.toString(), id);
+                try {
+                    PlumBot.getBot().sendCQMsg(isGroup, TextToImg.toImgCQCode(stringBuilder.toString()), id);
+                } catch (Exception e) {
+                    PlumBot.INSTANCE.getSLF4JLogger().error(e.toString());
+                }
             }else {
                 PlumBot.getBot().sendMsg(isGroup, "返回值过长", id);
             }
             msgList.clear();
-        }, 4L);
+        }, 10L);
     }
 
 }

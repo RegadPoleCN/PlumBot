@@ -96,9 +96,11 @@ public class ConsoleSender implements ConsoleCommandSender {
     }
 
     public void sendRawMessage(String s) {
+        ServerManager.msgList.add(s);
     }
 
     public void sendRawMessage(@Nullable UUID sender, @NotNull String message) {
+        ServerManager.msgList.add(message);
     }
 
     public PermissionAttachment addAttachment(Plugin plugin, String s, boolean b) {
@@ -111,6 +113,7 @@ public class ConsoleSender implements ConsoleCommandSender {
     }
 
     public PermissionAttachment addAttachment(Plugin plugin, String s, boolean b, int i) {
+        ServerManager.msgList.add(s);
         throw new UnsupportedOperationException();
     }
 

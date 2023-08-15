@@ -28,6 +28,18 @@ public class Bot {
         });
     }
 
+    public void sendCQMsg(boolean isGroup, String msg, long id) {
+        if (id == 0L) {return;}
+        if ("".equals(msg)) {return;}
+        PlumBot.getScheduler().runTaskAsynchronously(() -> {
+            if (isGroup) {
+                this.sendGroupCQMsg(msg, id);
+            } else {
+                this.sendPrivateCQMsg(msg, id);
+            }
+        });
+    }
+
     /**
      * 发送私聊消息
      */
@@ -40,6 +52,20 @@ public class Bot {
      */
     public void sendGroupMsg(String msg, long groupId) {
         messageClient.sendGroupMsg(groupId, msg);
+    }
+
+    /**
+     * 发送私聊消息
+     */
+    public void sendPrivateCQMsg(String msg, long userID){
+        messageClient.sendPrivateMsg(userID, msg, false);
+    }
+
+    /**
+     * 发送群聊消息
+     */
+    public void sendGroupCQMsg(String msg, long groupId) {
+        messageClient.sendGroupMsg(groupId, msg, false);
     }
 
 //    /**
