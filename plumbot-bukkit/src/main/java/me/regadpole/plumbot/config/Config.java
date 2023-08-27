@@ -12,7 +12,7 @@ public class Config {
     private static final File configFile = new File(INSTANCE.getDataFolder(), "config.yml");
     private static final File returnsFile = new File(INSTANCE.getDataFolder(), "returns.yml");
     private static final File commandsFile = new File(INSTANCE.getDataFolder(), "commands.yml");
-    private static final File ttf = new File(INSTANCE.getDataFolder(), "libraries/MiSans-Normal.ttf");
+    private static final File ttf = new File(INSTANCE.getDataFolder(), "MiSans-Normal.ttf");
     private static YamlConfiguration bot;
     private static YamlConfiguration config;
     private static YamlConfiguration returns;

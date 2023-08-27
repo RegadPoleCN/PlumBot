@@ -43,7 +43,7 @@ public class ConsoleSender implements ConsoleCommandSender {
 
     public void sendMessage(@Nullable UUID sender, @NotNull String[] messages) {
         for (String msg : messages)
-            sendMessage(null, messages);
+            sendMessage(null, msg);
     }
 
     public boolean isPermissionSet(String s) {

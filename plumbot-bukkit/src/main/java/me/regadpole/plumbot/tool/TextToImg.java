@@ -12,7 +12,7 @@ import java.util.Base64;
 public class TextToImg {
     private static Font font=null;
     private static FontMetrics fm=null;
-    private static File ttfFile = new File(PlumBot.INSTANCE.getDataFolder(), "libraries/MiSans-Normal.ttf");
+    private static final File ttfFile = new File(PlumBot.INSTANCE.getDataFolder(), "MiSans-Normal.ttf");
     private static InputStream toImg(String text) throws IOException {
         if (fm ==null){
             try {
@@ -42,7 +42,7 @@ public class TextToImg {
                 BufferedImage.TYPE_INT_BGR);
         Graphics g = image.getGraphics();
         g.setClip(0, 0, minX, Y);
-        g.setColor(new Color(Integer.parseInt("cacdca", 16)));
+        g.setColor(new Color(Integer.parseInt("FFFFFF", 16)));
         g.fillRect(0, 0,minX, Y);// 先用黑色填充整张图片,也就是背景
         g.setColor(Color.black);// 在换成黑色
         g.setFont(font);// 设置画笔字体

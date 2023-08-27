@@ -143,7 +143,26 @@
                     </execution>
                 </executions>
             </plugin>
-        </plugins>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-resources-plugin</artifactId>
+            <version>3.3.1</version>
+            <configuration>
+                <encoding>UTF-8</encoding>
+                <!-- 过滤后缀不需要转码的文件后缀名.ttf-->
+                <nonFilteredFileExtensions>
+                    <nonFilteredFileExtension>ttf</nonFilteredFileExtension>
+                </nonFilteredFileExtensions>
+            </configuration>
+        </plugin>
+    </plugins>
+    <resources>
+        <resource>
+            <directory>src/main/resources</directory>
+            <filtering>true</filtering>
+        </resource>
+    </resources>
     </build>
+
 
 </project>
