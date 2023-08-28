@@ -6,7 +6,7 @@
     <parent>
         <groupId>me.regadpole</groupId>
         <artifactId>plumbot</artifactId>
-        <version>1.2.2-rc3</version>
+        <version>1.2.2</version>
     </parent>
 
     <artifactId>plumbot-bukkit</artifactId>
