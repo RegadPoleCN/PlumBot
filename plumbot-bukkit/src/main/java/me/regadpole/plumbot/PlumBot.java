@@ -108,46 +108,48 @@ public final class PlumBot extends JavaPlugin implements Listener{
 
         getLogger().info( "PlumBot已启动");
 
-        http_config = new CQConfig(Config.getBotHttp(), Config.getBotToken(), Config.getBotIsAccessToken());
-        bot = new Bot();
-        LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
-        Connection connection = null;
-        try {
-            connection = ConnectionFactory.createHttpServer(Config.getBotListenPort(),"/",blockingQueue);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        connection.create();
-        EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
-        dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
-            @Override
+        getScheduler().runTaskAsynchronously(() -> {
+            http_config = new CQConfig(Config.getBotHttp(), Config.getBotToken(), Config.getBotIsAccessToken());
+            bot = new Bot();
+            LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
+            Connection connection = null;
+            try {
+                connection = ConnectionFactory.createHttpServer(Config.getBotListenPort(),"/",blockingQueue);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+            connection.create();
+            EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
+            dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
+                @Override
                 public void onMessage(PrivateMessage privateMessage) {
                     qqEvent.onFriendMessageReceive(privateMessage);
                 }
             });
-        dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
-            @Override
-            public void onMessage(GroupMessage groupMessage) {
-                List<Long> groups = Config.getGroupQQs();
-                for (long groupID : groups) {
-                    if (groupID == groupMessage.getGroupId()) {
-                        qqEvent.onGroupMessageReceive(groupMessage);
+            dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
+                @Override
+                public void onMessage(GroupMessage groupMessage) {
+                    List<Long> groups = Config.getGroupQQs();
+                    for (long groupID : groups) {
+                        if (groupID == groupMessage.getGroupId()) {
+                            qqEvent.onGroupMessageReceive(groupMessage);
+                        }
                     }
                 }
+            });
+            dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
+                @Override
+                public void onMessage(GroupDecreaseNotice groupDecreaseNotice) {
+                    qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
+                }
+            });
+            dispatchers.start(10);//线程组处理任务
+            List<Long> groups = Config.getGroupQQs();
+            for (long groupID : groups) {
+                PlumBot.getBot().sendMsg(true, "PlumBot已启动", groupID);
             }
         });
-        dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
-            @Override
-            public void onMessage(GroupDecreaseNotice groupDecreaseNotice) {
-                qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
-            }
-        });
-        dispatchers.start(10);//线程组处理任务
 
-        List<Long> groups = Config.getGroupQQs();
-        for (long groupID : groups) {
-            PlumBot.getBot().sendMsg(true, "PlumBot已启动", groupID);
-        }
     }
 
     @Override

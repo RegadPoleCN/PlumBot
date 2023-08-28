@@ -21,7 +21,6 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -68,16 +67,17 @@ public class ServerEvent implements Listener{
         String name = event.getPlayer().getName();
 
         if (Config.WhiteList()) {
-            AtomicLong qq = new AtomicLong();
-            PlumBot.getScheduler().runTaskAsynchronously(() -> qq.set(DatabaseManager.getBind(name, DataBase.type().toLowerCase(), PlumBot.getDatabase())));
-            if (qq.get() == 0L) {
-                PlumBot.getScheduler().runTaskLater(() -> {event.getPlayer().kickPlayer(Args.WhitelistKick());}, 2L);
-                List<Long> groups = Config.getGroupQQs();
-                for (long groupID : groups) {
-                    PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
+            PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                long qq;
+                qq = (DatabaseManager.getBind(name, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
+                if (qq == 0L) {
+                    PlumBot.getScheduler().runTaskLater(() -> {event.getPlayer().kickPlayer(Args.WhitelistKick());}, 2L);
+                    List<Long> groups = Config.getGroupQQs();
+                    for (long groupID : groups) {
+                        PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
+                    }
                 }
-                return;
-            }
+            });
         }
 
         if (!Config.JoinAndLeave()){

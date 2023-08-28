@@ -323,13 +323,11 @@ public class QQEvent {
     public void onGroupDecreaseNotice(GroupDecreaseNotice e) {
         long userId = e.getUserId();
         long groupId = e.getGroupId();
-        if (!FoliaSupport.isFolia) {
-            String player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-            if (player == null) {
-                return;
-            }
-            DatabaseManager.removeBindid(player, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        String player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        if (player == null) {
+            return;
         }
+        DatabaseManager.removeBindid(player, DataBase.type().toLowerCase(), PlumBot.getDatabase());
     }
 
 

@@ -40,6 +40,7 @@ public class DatabaseManager {
                     resultSetqq.close();
                     statement.close();
                     statement1.close();
+                    connection.close();
 
                     break;
                 }
@@ -60,6 +61,7 @@ public class DatabaseManager {
 
                     resultSetid.close();
                     resultSetqq.close();
+                    connection.close();
                     break;
                 }
             }
@@ -90,6 +92,7 @@ public class DatabaseManager {
                     }
                     resultSet.close();
                     statement.close();
+                    connection.close();
 
                     break;
                 }
@@ -103,6 +106,7 @@ public class DatabaseManager {
                         connection.prepareStatement(delete).executeUpdate();
                     }
                     resultSet.close();
+                    connection.close();
                     break;
                 }
             }
@@ -133,6 +137,7 @@ public class DatabaseManager {
                     }
                     resultSet.close();
                     statement.close();
+                    connection.close();
 
                     break;
                 }
@@ -146,6 +151,7 @@ public class DatabaseManager {
                         connection.prepareStatement(delete).executeUpdate();
                     }
                     resultSet.close();
+                    connection.close();
                     break;
                 }
             }
@@ -173,6 +179,7 @@ public class DatabaseManager {
                     }
                     qq = resultSet.getLong("qq");
                     resultSet.close();
+                    connection.close();
                     break;
                 }
                 case "sqlite":
@@ -188,7 +195,7 @@ public class DatabaseManager {
                     qq = resultSet.getLong("qq");
                     resultSet.close();
                     statement.close();
-
+                    connection.close();
                     break;
                 }
             }
@@ -218,6 +225,7 @@ public class DatabaseManager {
                     }
                     id = resultSet.getString("id");
                     resultSet.close();
+                    connection.close();
                     break;
                 }
                 case "sqlite":
@@ -233,6 +241,7 @@ public class DatabaseManager {
                     id = resultSet.getString("id");
                     resultSet.close();
                     statement.close();
+                    connection.close();
 
                     break;
                 }

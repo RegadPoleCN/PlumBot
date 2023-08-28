@@ -66,7 +66,7 @@ public class EventDispatchers implements Runnable {
                 this.runTask();
             } catch (Exception e) {
 //                log.warn(e);
-                PlumBot.INSTANCE.getSLF4JLogger().warn(Arrays.toString(e.getStackTrace()));
+//                PlumBot.INSTANCE.getSLF4JLogger().warn(Arrays.toString(e.getStackTrace()));
             }
         }
     }
