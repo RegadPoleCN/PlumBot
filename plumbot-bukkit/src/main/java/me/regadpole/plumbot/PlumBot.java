@@ -140,7 +140,12 @@ public final class PlumBot extends JavaPlugin implements Listener{
             dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
                 @Override
                 public void onMessage(GroupDecreaseNotice groupDecreaseNotice) {
-                    qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
+                    List<Long> groups = Config.getGroupQQs();
+                    for (long groupID : groups) {
+                        if (groupID == groupDecreaseNotice.getGroupId()) {
+                            qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
+                        }
+                    }
                 }
             });
             dispatchers.start(10);//线程组处理任务

@@ -19,11 +19,13 @@ public class Bot {
     public void sendMsg(boolean isGroup, String msg, long id) {
         if (id == 0L) {return;}
         if ("".equals(msg)) {return;}
-        if (isGroup) {
-            this.sendGroupMsg(msg, id);
-        } else {
-            this.sendPrivateMsg(msg, id);
-        }
+        PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
+            if (isGroup) {
+                this.sendGroupMsg(msg, id);
+            } else {
+                this.sendPrivateMsg(msg, id);
+            }
+        }).schedule();
     }
 
     /**

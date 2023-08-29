@@ -21,7 +21,15 @@ public class Config {
 
     public static class config{ // bot
         public static String Ver; // version
-        public static boolean Forwarding; // 消息转发
+        public static class Forwarding {
+            public static boolean enable;
+            public static int mode;
+            public static String prefix;
+        }
+        public static class WhiteList{
+            public static boolean enable;
+            public static String kickMsg;
+        }
         public static boolean JoinAndLeave; // 进出游戏
         public static boolean Online; // 在线人数
         public static boolean SDR; // 自定义回复

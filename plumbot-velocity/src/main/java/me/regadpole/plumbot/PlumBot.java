@@ -17,7 +17,11 @@ import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.command.Commands;
 import me.regadpole.plumbot.config.VelocityConfig;
 import me.regadpole.plumbot.event.server.ServerEvent;
+import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.Dependencies;
+import me.regadpole.plumbot.internal.database.Database;
+import me.regadpole.plumbot.internal.database.MySQL;
+import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.slf4j.Logger;
@@ -27,10 +31,12 @@ import sdk.connection.ConnectionFactory;
 import sdk.event.EventDispatchers;
 import sdk.event.message.GroupMessage;
 import sdk.event.message.PrivateMessage;
+import sdk.event.notice.GroupDecreaseNotice;
 import sdk.listener.SimpleListener;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -51,6 +57,8 @@ public class PlumBot {
     private static QQEvent qqEvent;
 
     public static PlumBot INSTANCE;
+
+    private static Database database;
 
     @Inject
     public PlumBot(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory, Metrics.Factory metricsFactory) {
@@ -83,6 +91,25 @@ public class PlumBot {
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
 
+        try {
+            switch (DbConfig.type.toLowerCase()) {
+                case "sqlite":
+                default: {
+                    getLogger().info("Initializing SQLite database.");
+                    database = (new SQLite());
+                    break;
+                }
+                case "mysql": {
+                    getLogger().info("Initializing MySQL database.");
+                    database = (new MySQL());
+                    break;
+                }
+            }
+            database.initialize();
+        } catch (ClassNotFoundException e) {
+            getLogger().warn("Failed to initialize database, reason: " + e);
+        }
+
         server.getEventManager().register(this, new ServerEvent());
         logger.info("服务器事件监听器注册成功");
         qqEvent = new QQEvent(this);
@@ -99,36 +126,53 @@ public class PlumBot {
         metrics.addCustomChart(new Metrics.SimplePie("chart_id", () -> "value"));
         logger.info("PlumBot 已启动");
 
-
-        http_config = new CQConfig(Config.bot.Bot.HTTP, Config.bot.Bot.Token, Config.bot.Bot.IsAccessToken);
-        bot = new Bot();
-        LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
-        Connection connection = null;
-        try {
-            connection = ConnectionFactory.createHttpServer(Config.bot.Bot.ListenPort,"/",blockingQueue);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        connection.create();
-        EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
-        dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
-            @Override
-            public void onMessage(PrivateMessage privateMessage) {
-                qqEvent.onFriendMessageReceive(privateMessage);
+        getServer().getScheduler().buildTask(this, () -> {
+            http_config = new CQConfig(Config.bot.Bot.HTTP, Config.bot.Bot.Token, Config.bot.Bot.IsAccessToken);
+            bot = new Bot();
+            LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
+            Connection connection = null;
+            try {
+                connection = ConnectionFactory.createHttpServer(Config.bot.Bot.ListenPort,"/",blockingQueue);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        });
-        dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
-            @Override
-            public void onMessage(GroupMessage groupMessage) {
-                qqEvent.onGroupMessageReceive(groupMessage);
-            }
-        });
-        dispatchers.start(10);//线程组处理任务
+            connection.create();
+            EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
+            dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
+                @Override
+                public void onMessage(PrivateMessage privateMessage) {
+                    qqEvent.onFriendMessageReceive(privateMessage);
+                }
+            });
+            dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
+                @Override
+                public void onMessage(GroupMessage groupMessage) {
+                    List<Long> groups = Config.bot.Groups;
+                    for (long groupID : groups) {
+                        if (groupID == groupMessage.getGroupId()) {
+                            qqEvent.onGroupMessageReceive(groupMessage);
+                        }
+                    }
+                }
+            });
+            dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
+                @Override
+                public void onMessage(GroupDecreaseNotice groupDecreaseNotice) {
+                    List<Long> groups = Config.bot.Groups;
+                    for (long groupID : groups) {
+                        if (groupID == groupDecreaseNotice.getGroupId()) {
+                            qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
+                        }
+                    }
+                }
+            });
+            dispatchers.start(10);//线程组处理任务
 
-        List<Long> groups = Config.bot.Groups;
-        for (long groupID : groups) {
-            PlumBot.getBot().sendGroupMsg("PlumBot已启动", groupID);
-        }
+            List<Long> groups = Config.bot.Groups;
+            for (long groupID : groups) {
+                PlumBot.getBot().sendGroupMsg("PlumBot已启动", groupID);
+            }
+        }).schedule();
     }
 
     @Subscribe(order = PostOrder.FIRST)
@@ -136,6 +180,13 @@ public class PlumBot {
         List<Long> groups = Config.bot.Groups;
         for (long groupID : groups) {
             bot.sendMsg(true, "PlumBot已关闭", groupID);
+        }
+
+        getLogger().info("Closing database.");
+        try {
+            database.close();
+        } catch (SQLException e) {
+            getLogger().info("在关闭数据库时出现错误" + e);
         }
 
         getLogger().info("PlumBot已关闭");
@@ -162,5 +213,9 @@ public class PlumBot {
 
     public static CQConfig getHttp_config() {
         return http_config;
+    }
+
+    public static Database getDatabase() {
+        return database;
     }
 }

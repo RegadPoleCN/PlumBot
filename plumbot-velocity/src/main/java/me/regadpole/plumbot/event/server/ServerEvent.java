@@ -6,18 +6,39 @@ import com.velocitypowered.api.event.player.PlayerChatEvent;
 import com.velocitypowered.api.event.player.ServerConnectedEvent;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.internal.Config;
+import me.regadpole.plumbot.internal.DbConfig;
+import me.regadpole.plumbot.internal.database.DatabaseManager;
 import me.regadpole.plumbot.tool.StringTool;
+import net.kyori.adventure.text.Component;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ServerEvent {
     @Subscribe
     public void onPlayerChat(PlayerChatEvent event) {
-        if (!Config.config.Forwarding){
+        Pattern pattern;
+        Matcher matcher;
+        if (!Config.config.Forwarding.enable){
             return;
         }
         String name = StringTool.filterColor(event.getPlayer().getUsername());
         String message = StringTool.filterColor(event.getMessage());
+        if (Config.config.Forwarding.mode == 1) {
+            pattern = Pattern.compile(Config.config.Forwarding.prefix+".*");
+            matcher = pattern.matcher(message);
+            if(!matcher.find()){
+                return;
+            }
+            String fmsg = matcher.group().replaceAll(Config.config.Forwarding.prefix, "");
+            List<Long> groups = Config.bot.Groups;
+            for (long groupID : groups){
+                PlumBot.getBot().sendMsg(true, "[" + event.getPlayer().getCurrentServer().get().getServer().getServerInfo().getName() + "]" + name+":"+fmsg,groupID);
+            }
+            return;
+        }
         List<Long> groups = Config.bot.Groups;
         for (long groupID : groups){
             PlumBot.getBot().sendMsg(true, "[" + event.getPlayer().getCurrentServer().get().getServer().getServerInfo().getName() + "]" + name+":"+message,groupID);
@@ -28,6 +49,20 @@ public class ServerEvent {
     public void onJoin(ServerConnectedEvent event){
 
         String name = StringTool.filterColor(event.getPlayer().getUsername());
+
+        if (Config.config.WhiteList.enable) {
+            PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
+                long qq;
+                qq = (DatabaseManager.getBind(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase()));
+                if (qq == 0L) {
+                    PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {event.getPlayer().disconnect(Component.text(Config.config.WhiteList.kickMsg));}).delay(2L, TimeUnit.SECONDS).schedule();
+                    List<Long> groups = Config.bot.Groups;
+                    for (long groupID : groups) {
+                        PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
+                    }
+                }
+            });
+        }
 
         if (!Config.config.JoinAndLeave){
             return;

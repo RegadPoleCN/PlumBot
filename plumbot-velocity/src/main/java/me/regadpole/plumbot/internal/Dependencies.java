@@ -12,7 +12,10 @@ import static me.regadpole.plumbot.internal.Dependencies.*;
         @MavenLibrary(groupId = fastjson.groupId, artifactId = fastjson.artifactId, version = fastjson.version),
         @MavenLibrary(groupId = common.groupId, artifactId = common.artifactId, version = common.version),
         @MavenLibrary(groupId = lombok.groupId, artifactId = lombok.artifactId, version = lombok.version),
-        @MavenLibrary(groupId = snakeyaml.groupId, artifactId = snakeyaml.artifactId, version = snakeyaml.version)})
+        @MavenLibrary(groupId = snakeyaml.groupId, artifactId = snakeyaml.artifactId, version = snakeyaml.version),
+        @MavenLibrary(groupId = HikariCP.groupId, artifactId = HikariCP.artifactId, version = HikariCP.version),
+        @MavenLibrary(groupId = MySQL.groupId, artifactId = MySQL.artifactId, version = MySQL.version),
+        @MavenLibrary(groupId = sqlite.groupId, artifactId = sqlite.artifactId, version = sqlite.version)})
 public class Dependencies {
     public static class hutool{
         public static final String groupId = "cn.hutool";
@@ -49,5 +52,20 @@ public class Dependencies {
         public static final String groupId = "org.yaml";
         public static final String artifactId = "snakeyaml";
         public static final String version = "2.0";
+    }
+    public static class HikariCP{
+        public static final String groupId = "com.zaxxer";
+        public static final String artifactId = "HikariCP";
+        public static final String version = "4.0.3";
+    }
+    public static class MySQL{
+        public static final String groupId = "com.mysql";
+        public static final String artifactId = "mysql-connector-j";
+        public static final String version = "8.1.0";
+    }
+    public static class sqlite{
+        public static final String groupId = "org.xerial";
+        public static final String artifactId = "sqlite-jdbc";
+        public static final String version = "3.42.0.0";
     }
 }

@@ -3,6 +3,7 @@ package me.regadpole.plumbot.config;
 import com.alibaba.fastjson.JSONArray;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.internal.Config;
+import me.regadpole.plumbot.internal.DbConfig;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -61,12 +62,37 @@ public class VelocityConfig {
         Config.bot.Admins = !Objects.isNull(botObj.get("Admins")) ? JSONArray.parseArray(botObj.get("Admins").toString(), Long.class) : new ArrayList<>();
 
         Config.config.Ver = !Objects.isNull(configObj.get("Ver")) ? String.valueOf(configObj.get("Ver")) : "1.0";
-        Config.config.Forwarding = !Objects.isNull(configObj.get("Forwarding")) ? Boolean.parseBoolean(String.valueOf(configObj.get("Forwarding"))) : false;
+        Map<String, Object> forwardingMap = !Objects.isNull(configObj.get("Forwarding")) ? (Map<String, Object>) configObj.get("Forwarding") : new HashMap<>();
+        Config.config.Forwarding.enable = !Objects.isNull(forwardingMap.get("enable")) ? Boolean.parseBoolean(String.valueOf(forwardingMap.get("enable"))) : true;
+        Config.config.Forwarding.mode = !Objects.isNull(forwardingMap.get("mode")) ? Integer.parseInt(String.valueOf(forwardingMap.get("mode"))) : 0;
+        Config.config.Forwarding.prefix = !Objects.isNull(forwardingMap.get("prefix")) ? String.valueOf(forwardingMap.get("prefix")) : "#";
+        Map<String, Object> wlMap = !Objects.isNull(configObj.get("WhiteList")) ? (Map<String, Object>) configObj.get("WhiteList") : new HashMap<>();
+        Config.config.WhiteList.enable = !Objects.isNull(configObj.get("enable")) ? Boolean.parseBoolean(String.valueOf(wlMap.get("enable"))) : false;
+        Config.config.WhiteList.kickMsg = !Objects.isNull(configObj.get("kickMsg")) ? String.valueOf(wlMap.get("kickMsg")) : "请加入qq群:xxx申请白名单";
         Config.config.JoinAndLeave = !Objects.isNull(configObj.get("JoinAndLeave")) ? Boolean.parseBoolean(String.valueOf(configObj.get("JoinAndLeave"))) : false;
         Config.config.Online = !Objects.isNull(configObj.get("Online")) ? Boolean.parseBoolean(String.valueOf(configObj.get("Online"))) : false;
         Config.config.SDR = !Objects.isNull(configObj.get("SDR")) ? Boolean.parseBoolean(String.valueOf(configObj.get("SDR"))) : false;
         Config.config.Maven = !Objects.isNull(configObj.get("Maven")) ? String.valueOf(configObj.get("Maven")) : "https://repo1.maven.org/maven2";
 
+        Map<String, Object> dbMap = !Objects.isNull(configObj.get("database")) ? (Map<String, Object>) configObj.get("database") : new HashMap<>();
+        DbConfig.type = !Objects.isNull(dbMap.get("type")) ? String.valueOf(dbMap.get("type")) : "sqlite";
+        Map<String, Object> dbsettingsMap = !Objects.isNull(dbMap.get("settings")) ? (Map<String, Object>) dbMap.get("settings") : new HashMap<>();
+        Map<String, Object> sqliteMap = !Objects.isNull(dbsettingsMap.get("sqlite")) ? (Map<String, Object>) dbsettingsMap.get("sqlite") : new HashMap<>();
+        DbConfig.settings.sqlite.path = (!Objects.isNull(sqliteMap.get("path")) ? String.valueOf(sqliteMap.get("path")) : "%plugin_folder%/database.db").replace("%plugin_folder%", PlumBot.INSTANCE.getDataFolder().toPath().toString());
+        Map<String, Object> mysqlMap = !Objects.isNull(dbsettingsMap.get("mysql")) ? (Map<String, Object>) dbsettingsMap.get("mysql") : new HashMap<>();
+        DbConfig.settings.mysql.host = !Objects.isNull(mysqlMap.get("host")) ? String.valueOf(mysqlMap.get("host")) : "localhost";
+        DbConfig.settings.mysql.port = !Objects.isNull(mysqlMap.get("port")) ? String.valueOf(mysqlMap.get("port")) : "3306";
+        DbConfig.settings.mysql.database = !Objects.isNull(mysqlMap.get("database")) ? String.valueOf(mysqlMap.get("database")) : "plumbot";
+        DbConfig.settings.mysql.user = !Objects.isNull(mysqlMap.get("user")) ? String.valueOf(mysqlMap.get("user")) : "plumbot";
+        DbConfig.settings.mysql.password = !Objects.isNull(mysqlMap.get("password")) ? String.valueOf(mysqlMap.get("password")) : "plumbot";
+        DbConfig.settings.mysql.parameters = !Objects.isNull(mysqlMap.get("parameters")) ? String.valueOf(mysqlMap.get("parameters")) : "?useSSL=false";
+        Map<String, Object> poolMap = !Objects.isNull(dbsettingsMap.get("pool")) ? (Map<String, Object>) dbsettingsMap.get("pool") : new HashMap<>();
+        DbConfig.settings.pool.connectionTimeout = !Objects.isNull(poolMap.get("connectionTimeout")) ? Long.parseLong(String.valueOf(poolMap.get("connectionTimeout"))) : 30000;
+        DbConfig.settings.pool.idleTimeout = !Objects.isNull(poolMap.get("idleTimeout")) ? Long.parseLong(String.valueOf(poolMap.get("idleTimeout"))) : 600000;
+        DbConfig.settings.pool.maxLifetime = !Objects.isNull(poolMap.get("maxLifetime")) ? Long.parseLong(String.valueOf(poolMap.get("maxLifetime"))) : 1800000;
+        DbConfig.settings.pool.maximumPoolSize = !Objects.isNull(poolMap.get("maximumPoolSize")) ? Integer.parseInt(String.valueOf(poolMap.get("maximumPoolSize"))) : 15;
+        DbConfig.settings.pool.keepaliveTime = !Objects.isNull(poolMap.get("keepaliveTime")) ? Long.parseLong(String.valueOf(poolMap.get("keepaliveTime"))) : 0;
+        DbConfig.settings.pool.minimumIdle = !Objects.isNull(poolMap.get("minimumIdle")) ? Integer.parseInt(String.valueOf(poolMap.get("minimumIdle"))) : 5;
 
         Config.returns.Ver = !Objects.isNull(returnsObj.get("Ver")) ? String.valueOf(returnsObj.get("Ver")) : "1.0";
 

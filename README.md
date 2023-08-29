@@ -25,4 +25,8 @@
 
 本项目所用代码部分来自于[LinearBot](https://github.com/LinearBit/LinearBot)和[go-cqhttp-sdk](https://github.com/nulltoworld/go-cqhttp-sdk)
 
+[ChatSync](https://github.com/MakesYT/chatsync)：文字转图片部分代码
+
+[helper](https://github.com/lucko/helper)：动态加载依赖
+
 本项目使用GNU AGPL3.0协议

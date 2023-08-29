@@ -265,7 +265,7 @@ public class QQEvent {
             return;
         }
 
-        if (Args.ForwardingMode()==1){
+        if (Args.ForwardingMode()==1 && Config.getGroupQQs().contains(groupID)){
             pattern = Pattern.compile(Args.ForwardingPrefix()+".*");
             matcher = pattern.matcher(msg);
             if(!matcher.find()){
