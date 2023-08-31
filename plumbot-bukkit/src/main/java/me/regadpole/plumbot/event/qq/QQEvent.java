@@ -156,11 +156,11 @@ public class QQEvent {
             messages.add("成员命令:");
             messages.add(Prefix+"在线人数 查看服务器当前在线人数");
             messages.add(Prefix+"tps 查看服务器当前tps");
-            messages.add(Prefix+"申请白名单 为自己申请白名单");
-            messages.add(Prefix+"删除白名单 删除自己的白名单");
+            messages.add(Prefix+"申请白名单 <ID> 为自己申请白名单");
+            messages.add(Prefix+"删除白名单 <ID> 删除自己的白名单");
             messages.add("管理命令:");
             messages.add(Prefix+"cmd 向服务器发送命令");
-            messages.add(Prefix+"删除白名单 删除指定游戏id的白名单");
+            messages.add(Prefix+"删除白名单 <ID> 删除指定游戏id的白名单");
         for (String message : messages) {
                 if (messages.get(messages.size() - 1).equalsIgnoreCase(message)) {
                     stringBuilder.append(message.replaceAll("§\\S", ""));
