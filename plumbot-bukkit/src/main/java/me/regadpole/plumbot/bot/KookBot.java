@@ -5,6 +5,7 @@ import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.config.Config;
 import me.regadpole.plumbot.event.kook.KookEvent;
 import me.regadpole.plumbot.internal.kook.KookClient;
+import me.regadpole.plumbot.tool.TextToImg;
 import snw.jkook.JKook;
 import snw.jkook.config.ConfigurationSection;
 import snw.jkook.config.file.YamlConfiguration;
@@ -25,6 +26,8 @@ import snw.kookbc.impl.CoreImpl;
 import snw.kookbc.impl.KBCClient;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -61,6 +64,10 @@ public class KookBot implements Bot {
 
     @Override
     public void shutdown() {
+        List<Long> groups = Config.getGroupQQs();
+        for (long groupID : groups) {
+            sendChannelMessage("PlumBot已关闭", getChannel(groupID));
+        }
         kookClient.shutdown();
     }
 
@@ -142,12 +149,16 @@ public class KookBot implements Bot {
     private void sendPrivateMessage(BaseComponent s,User user) {user.sendPrivateMessage(s);}
 
     private String createFile(String s) {
-        AtomicReference<String> result = null;
-        PlumBot.getScheduler().runTaskAsynchronously(() -> {
-            result.set(getKookClient().getNetworkClient().postContent("https://www.kookapp.cn/api/v3/asset/create", s, "multipart/form-data"));
-        });
-        String json = JSONObject.parseObject(result.get()).getJSONObject("data").getString("url");
-        return json;
+        try {
+            File file = File.createTempFile("PlumBot-", ".png");
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(TextToImg.toImgBinArray(s));
+            fos.close();
+            return kookClient.getCore().getHttpAPI().uploadFile(file);
+        } catch (IOException e) {
+            INSTANCE.getSLF4JLogger().error(e.getMessage());
+        }
+        return null;
     }
 
     @Override

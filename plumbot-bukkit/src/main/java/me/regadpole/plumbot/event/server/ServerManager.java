@@ -59,7 +59,7 @@ public class ServerManager {
                         returnStr.set(TextToImg.toImgCQCode(stringBuilder.toString()));
                         break;
                     case "kook":
-                        returnStr.set(TextToImg.toImgBinary(stringBuilder.toString()));
+                        returnStr.set(stringBuilder.toString());
                         break;
                     default:
                         break;

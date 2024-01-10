@@ -118,22 +118,20 @@ public final class PlumBot extends JavaPlugin implements Listener {
     @Override
     public void onDisable() {
 
-        getScheduler().runTaskAsynchronously(() -> {
-            switch (Config.getBotMode()) {
-                case "go-cqhttp":
-                    bot.shutdown();
-                    getLogger().info("已关闭go-cqhttp服务");
-                    break;
-                case "kook":
-                    bot.shutdown();
-                    getLogger().info("已关闭kook服务");
-                    break;
-                default:
-                    getLogger().warning("无法正常关闭服务，将在服务器关闭后强制关闭");
-                    Bukkit.getPluginManager().disablePlugin(this);
-                    break;
-            }
-        });
+        switch (Config.getBotMode()) {
+            case "go-cqhttp":
+                bot.shutdown();
+                getLogger().info("已关闭go-cqhttp服务");
+                break;
+            case "kook":
+                bot.shutdown();
+                getLogger().info("已关闭kook服务");
+                break;
+            default:
+                getLogger().warning("无法正常关闭服务，将在服务器关闭后强制关闭");
+                Bukkit.getPluginManager().disablePlugin(this);
+                break;
+        }
 
         getLogger().info("Closing database.");
         try {

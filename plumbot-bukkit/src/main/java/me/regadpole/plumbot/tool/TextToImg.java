@@ -202,11 +202,15 @@ public class TextToImg {
     public static String toImgBinary(String string) {
         String bytes = "";
         try {
-            bytes2String(toImg(string));
+            bytes = bytes2String(toImg(string));
         } catch (IOException e) {
             PlumBot.INSTANCE.getSLF4JLogger().error(e.toString());
         }
         return bytes;
+    }
+
+    public static byte[] toImgBinArray(String string) throws IOException {
+        return toImg(string);
     }
 
 }

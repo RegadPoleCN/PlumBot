@@ -38,7 +38,7 @@ public class Config {
             INSTANCE.saveResource(kookConf.getParentFile().getName()+File.separator+kookConf.getName(), true);
         }
         loadConfig();
-        if (!Config.getBotYamlVersion().equals("1.2.3")){
+        if (!Config.getBotYamlVersion().equals("1.3.0")){
             INSTANCE.saveResource(botFile.getName(), true);
         }
         if (!Config.getConfigYamlVersion().equals("1.2.2")){
