@@ -6,11 +6,11 @@ import me.regadpole.plumbot.tool.TextToImg;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ServerManager {
 
@@ -24,9 +24,10 @@ public class ServerManager {
 
     public static List<String> msgList = new LinkedList<>();
 
-    public static void sendCmd(boolean isGroup, long id, String cmd, boolean disp) {
+    public static String sendCmd(String cmd, boolean disp) {
+        AtomicReference<String> returnStr = new AtomicReference<>("无返回值");
         if(!Config.CMD()){
-            PlumBot.getBot().sendMsg(isGroup, "未开启CMD命令功能", id);
+            returnStr.set("未开启CMD命令功能");
         }
 
         CommandSender commandSender = new ConsoleSender();
@@ -49,21 +50,26 @@ public class ServerManager {
             }
             if(!disp){
                 msgList.clear();
-                PlumBot.getBot().sendMsg(isGroup, "无返回值", id);
-                return;
+                returnStr.set("无返回值");
             }
             if(stringBuilder.toString().length()<=5000){
 //                PlumBot.getBot().sendMsg(isGroup, stringBuilder.toString(), id);
-                try {
-                    PlumBot.getBot().sendCQMsg(isGroup, TextToImg.toImgCQCode(stringBuilder.toString()), id);
-                } catch (Exception e) {
-                    PlumBot.INSTANCE.getSLF4JLogger().error(e.toString());
+                switch (Config.getBotMode()) {
+                    case "go-cqhttp":
+                        returnStr.set(TextToImg.toImgCQCode(stringBuilder.toString()));
+                        break;
+                    case "kook":
+                        returnStr.set(TextToImg.toImgBinary(stringBuilder.toString()));
+                        break;
+                    default:
+                        break;
                 }
             }else {
-                PlumBot.getBot().sendMsg(isGroup, "返回值过长", id);
+                returnStr.set("返回值过长");
             }
             msgList.clear();
         }, 10L);
+        return returnStr.get();
     }
 
 }

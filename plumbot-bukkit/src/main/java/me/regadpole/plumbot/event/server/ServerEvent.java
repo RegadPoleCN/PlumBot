@@ -55,6 +55,7 @@ public class ServerEvent implements Listener{
             }
             return;
         }
+
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
             PlumBot.getBot().sendMsg(true, "[服务器]"+name+":"+message,groupID);
@@ -69,7 +70,7 @@ public class ServerEvent implements Listener{
         if (Config.WhiteList()) {
             PlumBot.getScheduler().runTaskAsynchronously(() -> {
                 long qq;
-                qq = (DatabaseManager.getBind(name, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
+                qq = (DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
                 if (qq == 0L) {
                     PlumBot.getScheduler().runTaskLater(() -> {event.getPlayer().kickPlayer(Args.WhitelistKick());}, 2L);
                     List<Long> groups = Config.getGroupQQs();
@@ -115,7 +116,7 @@ public class ServerEvent implements Listener{
         int y= (int) location.getY();
         int z= (int) location.getZ();
         String msg = "死在了"+location.getWorld().getName()+"世界"+"("+x+","+y+","+z+")";
-        ServerManager.sendCmd(true, 0L, "msg "+name+" "+msg, false);
+        ServerManager.sendCmd("msg "+name+" "+msg, false);
         List<Long> groups = Config.getGroupQQs();
         for (long groupID : groups){
             PlumBot.getBot().sendMsg(true, "玩家"+name+msg,groupID);

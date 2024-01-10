@@ -13,20 +13,32 @@ public class Config {
     private static final File returnsFile = new File(INSTANCE.getDataFolder(), "returns.yml");
     private static final File commandsFile = new File(INSTANCE.getDataFolder(), "commands.yml");
     private static final File ttf = new File(INSTANCE.getDataFolder(), "MiSans-Normal.ttf");
+    private static final File kook = new File(INSTANCE.getDataFolder(), "kook");
+    private static final File kookConf = new File(kook, "kbc.yml");
+    private static final File kookPlu = new File(kook, "plugins");
     private static YamlConfiguration bot;
     private static YamlConfiguration config;
     private static YamlConfiguration returns;
     private static YamlConfiguration commands;
 
     public static void createConfig(){
+        if (!kook.exists()) {
+            kook.mkdirs();
+        }
+        if (!kookPlu.exists()) {
+            kookPlu.mkdirs();
+        }
         File[] allFile = {botFile,configFile,returnsFile,commandsFile, ttf};
         for (File file : allFile) {
             if (!file.exists()) {
                 INSTANCE.saveResource(file.getName(), true);
             }
         }
+        if (!kookConf.exists()) {
+            INSTANCE.saveResource(kookConf.getParentFile().getName()+File.separator+kookConf.getName(), true);
+        }
         loadConfig();
-        if (!Config.getBotYamlVersion().equals("1.2.2")){
+        if (!Config.getBotYamlVersion().equals("1.2.3")){
             INSTANCE.saveResource(botFile.getName(), true);
         }
         if (!Config.getConfigYamlVersion().equals("1.2.2")){
@@ -75,18 +87,25 @@ public class Config {
 
     public static YamlConfiguration getCommandsYaml() {return commands;}
 
-    public static String getBotHttp() {
-        return getBotYaml().getString("Bot.Http");
+    public static String getBotMode() {
+        return getBotYaml().getString("Bot.Mode").toLowerCase();
     }
-    public static String getBotToken() {
-        return getBotYaml().getString("Bot.Token");
+    public static String getCqBotHttp() {
+        return getBotYaml().getString("Bot.go-cqhttp.Http");
     }
-    public static boolean getBotIsAccessToken() {
-        return getBotYaml().getBoolean("Bot.IsAccessToken");
+    public static String getCqBotToken() {
+        return getBotYaml().getString("Bot.go-cqhttp.Token");
     }
-    public static int getBotListenPort() {
-        return getBotYaml().getInt("Bot.ListenPort");
+    public static boolean getCqBotIsAccessToken() {
+        return getBotYaml().getBoolean("Bot.go-cqhttp.IsAccessToken");
     }
+    public static int getCqBotListenPort() {
+        return getBotYaml().getInt("Bot.go-cqhttp.ListenPort");
+    }
+    public static String getKookBotToken() {
+        return getBotYaml().getString("Bot.Kook.Token");
+    }
+
     public static List<Long> getGroupQQs(){
         return getBotYaml().getLongList("Groups");
     }

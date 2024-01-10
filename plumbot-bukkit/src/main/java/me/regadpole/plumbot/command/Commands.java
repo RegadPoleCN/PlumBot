@@ -1,10 +1,16 @@
 package me.regadpole.plumbot.command;
 
+import me.regadpole.plumbot.bot.KookBot;
 import me.regadpole.plumbot.config.Config;
 
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import snw.jkook.command.ConsoleCommandSender;
+import snw.jkook.plugin.Plugin;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class Commands implements CommandExecutor{
 
@@ -16,25 +22,48 @@ public class Commands implements CommandExecutor{
             return true;
         }
 
-        if(args.length != 0) {
-            switch (args[0]) {
-                case "reload":
-                    if (args.length != 1) return true;
-                    Config.loadConfig();
-                    sender.sendMessage("PlumBot配置文件已重载");
-                    break;
-                case "help":
-                    if (args.length != 1) return true;
-                    sender.sendMessage("§6PlumBot 机器人帮助菜单");
-                    sender.sendMessage("§6/pb reload :§f重载插件");
-                    sender.sendMessage("§6/pb help :§f获取插件帮助");
-                    break;
-                default:
-                    if (args.length != 1) return true;
-                    sender.sendMessage("错误的指令用法，请使用/pb help查看命令使用方法");
-                    break;
-            }
+        switch (args[0]) {
+            case "reload":
+                if (args.length != 1) return true;
+                Config.loadConfig();
+                sender.sendMessage("PlumBot配置文件已重载");
+                break;
+            case "help":
+                if (args.length != 1) return true;
+                sender.sendMessage("§6PlumBot 机器人帮助菜单");
+                sender.sendMessage("§6/pb reload :§f重载插件");
+                sender.sendMessage("§6/pb help :§f获取插件帮助");
+                sender.sendMessage("§6/pb kook help :§f获取kook帮助");
+                sender.sendMessage("§6/pb kook plugins :§f获取kook插件列表");
+                break;
+            case "kook":
+                if (args.length == 1) {
+                    sender.sendMessage("命令错误，格式：/plumbot kook <value>");
+                    sender.sendMessage("value可选值：plugins，help");
+                    return true;
+                }
+                if (args.length > 2) return true;
+                if (args.length == 2) {
+                    if (KookBot.isKookEnabled()) {
+                        sender.sendMessage("kook客户端未启动");
+                        return true;
+                    }
+                    switch (args[1]) {
+                        case "plugins":
+                            Plugin[] plugins = KookBot.getKookClient().getCore().getPluginManager().getPlugins();
+                            String result = String.format("%s (%d): %s", sender instanceof ConsoleCommandSender ? "Installed and running plugins" : "已安装并正在运行的插件", plugins.length, String.join(", ", (Iterable) Arrays.stream(plugins).map((plugin) -> {
+                                return plugin.getDescription().getName();
+                            }).collect(Collectors.toSet())));
+                            sender.sendMessage(result);
+                            return true;
+                    }
+                }
+                break;
+            default:
+                if (args.length != 1) return true;
+                sender.sendMessage("错误的指令用法，请使用/pb help查看命令使用方法");
+                break;
         }
-    return true;
+        return true;
     }
 }

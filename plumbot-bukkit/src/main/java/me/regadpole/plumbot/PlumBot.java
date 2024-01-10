@@ -2,9 +2,10 @@ package me.regadpole.plumbot;
 
 import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
+import me.regadpole.plumbot.bot.Bot;
+import me.regadpole.plumbot.bot.KookBot;
 import me.regadpole.plumbot.command.Commands;
 import me.regadpole.plumbot.config.DataBase;
-import me.regadpole.plumbot.event.qq.QQEvent;
 import me.regadpole.plumbot.event.server.QsChatEvent;
 import me.regadpole.plumbot.event.server.QsHikariChatEvent;
 import me.regadpole.plumbot.event.server.ServerEvent;
@@ -23,33 +24,19 @@ import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
-import me.regadpole.plumbot.bot.Bot;
+import me.regadpole.plumbot.bot.QQBot;
 import me.regadpole.plumbot.config.Config;
-import sdk.event.message.GroupMessage;
-import sdk.event.message.PrivateMessage;
-import sdk.config.CQConfig;
-import sdk.connection.Connection;
-import sdk.connection.ConnectionFactory;
-import sdk.event.EventDispatchers;
-import sdk.event.notice.GroupDecreaseNotice;
-import sdk.listener.SimpleListener;
 
 import java.sql.SQLException;
-import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
 
-public final class PlumBot extends JavaPlugin implements Listener{
+public final class PlumBot extends JavaPlugin implements Listener {
 
     public static PlumBot INSTANCE;
 
     private static TaskScheduler scheduler;
 
-    private static CQConfig http_config;
-
-    private static Bot bot;
-    private static QQEvent qqEvent;
-
     private static Database database;
+    private static Bot bot;
 
     @Override
     public void onLoad() {
@@ -96,10 +83,28 @@ public final class PlumBot extends JavaPlugin implements Listener{
         if (QuickShopHook.hasQs) Bukkit.getPluginManager().registerEvents(new QsChatEvent(),this);
         if (QuickShopHook.hasQsHikari) Bukkit.getPluginManager().registerEvents(new QsHikariChatEvent(),this);
         getLogger().info("服务器事件监听器注册完毕");
-        qqEvent = new QQEvent();
-        getLogger().info("QQ事件监听器注册完毕");
         Bukkit.getServer().getPluginCommand("plumbot").setExecutor(new Commands());
         getLogger().info("命令注册完毕");
+
+        getScheduler().runTaskAsynchronously(() -> {
+            switch (Config.getBotMode()) {
+                case "go-cqhttp":
+                    bot = new QQBot();
+                    bot.start();
+                    getLogger().info("已启动go-cqhttp服务");
+                    break;
+                case "kook":
+                    bot = new KookBot();
+                    bot.start();
+                    KookBot.setKookEnabled(true);
+                    getLogger().info("已启动kook服务");
+                    break;
+                default:
+                    getLogger().warning("无法启动服务，请检查配置文件，插件已关闭");
+                    Bukkit.getPluginManager().disablePlugin(this);
+                    break;
+            }
+        });
 
         // All you have to do is adding the following two lines in your onEnable method.
         // You can find the plugin ids of your plugins on the page https://bstats.org/what-is-my-plugin-id
@@ -108,62 +113,27 @@ public final class PlumBot extends JavaPlugin implements Listener{
 
         getLogger().info( "PlumBot已启动");
 
-        getScheduler().runTaskAsynchronously(() -> {
-            http_config = new CQConfig(Config.getBotHttp(), Config.getBotToken(), Config.getBotIsAccessToken());
-            bot = new Bot();
-            LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
-            Connection connection = null;
-            try {
-                connection = ConnectionFactory.createHttpServer(Config.getBotListenPort(),"/",blockingQueue);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            connection.create();
-            EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
-            dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
-                @Override
-                public void onMessage(PrivateMessage privateMessage) {
-                    qqEvent.onFriendMessageReceive(privateMessage);
-                }
-            });
-            dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
-                @Override
-                public void onMessage(GroupMessage groupMessage) {
-                    List<Long> groups = Config.getGroupQQs();
-                    for (long groupID : groups) {
-                        if (groupID == groupMessage.getGroupId()) {
-                            qqEvent.onGroupMessageReceive(groupMessage);
-                        }
-                    }
-                }
-            });
-            dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
-                @Override
-                public void onMessage(GroupDecreaseNotice groupDecreaseNotice) {
-                    List<Long> groups = Config.getGroupQQs();
-                    for (long groupID : groups) {
-                        if (groupID == groupDecreaseNotice.getGroupId()) {
-                            qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
-                        }
-                    }
-                }
-            });
-            dispatchers.start(10);//线程组处理任务
-            List<Long> groups = Config.getGroupQQs();
-            for (long groupID : groups) {
-                PlumBot.getBot().sendMsg(true, "PlumBot已启动", groupID);
-            }
-        });
-
     }
 
     @Override
     public void onDisable() {
 
-        List<Long> groups = Config.getGroupQQs();
-        for (long groupID : groups) {
-            bot.sendGroupMsg( "PlumBot已关闭", groupID);
-        }
+        getScheduler().runTaskAsynchronously(() -> {
+            switch (Config.getBotMode()) {
+                case "go-cqhttp":
+                    bot.shutdown();
+                    getLogger().info("已关闭go-cqhttp服务");
+                    break;
+                case "kook":
+                    bot.shutdown();
+                    getLogger().info("已关闭kook服务");
+                    break;
+                default:
+                    getLogger().warning("无法正常关闭服务，将在服务器关闭后强制关闭");
+                    Bukkit.getPluginManager().disablePlugin(this);
+                    break;
+            }
+        });
 
         getLogger().info("Closing database.");
         try {
@@ -186,10 +156,6 @@ public final class PlumBot extends JavaPlugin implements Listener{
 
     public static Bot getBot() {
         return bot;
-    }
-
-    public static CQConfig getHttp_config() {
-        return http_config;
     }
 
     public static Database getDatabase() {

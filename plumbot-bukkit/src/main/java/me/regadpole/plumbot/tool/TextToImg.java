@@ -7,13 +7,14 @@ import javax.imageio.stream.MemoryCacheImageOutputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.Arrays;
 import java.util.Base64;
 
 public class TextToImg {
     private static Font font=null;
     private static FontMetrics fm=null;
     private static final File ttfFile = new File(PlumBot.INSTANCE.getDataFolder(), "MiSans-Normal.ttf");
-    private static InputStream toImg(String text) throws IOException {
+    private static byte[] toImg(String text) throws IOException {
         if (fm ==null){
             try {
                 font= Font.createFont(Font.TRUETYPE_FONT, ttfFile.toURI().toURL().openStream());
@@ -129,20 +130,21 @@ public class TextToImg {
         ImageIO.write(image, "png", mcios);
 // 关闭mcios
         mcios.close();
-        InputStream input = new ByteArrayInputStream(os.toByteArray());
-        return input;
+        return os.toByteArray();
     }
 
     /**
      * 将inputstream转为Base64
      *
-     * @param is
+     * @param bytes
      * @return
      * @throws Exception
      */
-    private static String getBase64FromInputStream(InputStream is) throws Exception {
+    private static String getBase64FromInputStream(byte[] bytes) throws Exception {
         // 将图片文件转化为字节数组字符串，并对其进行Base64编码处理
         byte[] data;
+
+        InputStream is = new ByteArrayInputStream(bytes);
 
         // 读取图片字节数组
         try {
@@ -169,9 +171,42 @@ public class TextToImg {
         return null;
     }
 
-    public static String toImgCQCode(String string) throws Exception {
-        String base64 = getBase64FromInputStream(toImg(string));
+    /**
+     * 字节数组转字符串，如 A0 09 70 -> 101000000000100101110000。
+     * @param bts 转入字节数组。
+     * @return 转换好的只有“1”和“0”的字符串。
+     */
+    private static String bytes2String(byte[] bts) {
+        String[] dic = { "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111",
+                "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111" };
+        StringBuilder out = new StringBuilder();
+        for (byte b : bts) {
+            String s = String.format("%x", b);
+            s = s.length() == 1? "0" + s: s;
+            out.append(dic[Integer.parseInt(s.substring(0, 1), 16)]);
+            out.append(dic[Integer.parseInt(s.substring(1, 2), 16)]);
+        }
+        return out.toString();
+    }
+
+    public static String toImgCQCode(String string) {
+        String base64 = null;
+        try {
+            base64 = getBase64FromInputStream(toImg(string));
+        } catch (Exception e) {
+            PlumBot.INSTANCE.getSLF4JLogger().error(e.toString());
+        }
         return "[CQ:image,file=base64://"+base64+"]";
+    }
+
+    public static String toImgBinary(String string) {
+        String bytes = "";
+        try {
+            bytes2String(toImg(string));
+        } catch (IOException e) {
+            PlumBot.INSTANCE.getSLF4JLogger().error(e.toString());
+        }
+        return bytes;
     }
 
 }

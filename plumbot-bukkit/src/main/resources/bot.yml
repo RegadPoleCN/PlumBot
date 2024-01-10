@@ -1,15 +1,22 @@
 #Bot配置
-Ver: '1.2.2'
+Ver: '1.3.0'
 
 Bot:
-  Http: "http://127.0.0.1:5700"
-  #go-cqhttp的config文件中的adapters下http的address字符串
-  Token: ""
-  #go-cqhttp是否开启了access-token模式，如是，请填写，如否，则该项无效
-  IsAccessToken: false
-  #go-cqhttp是否开启了access-token模式
-  ListenPort: 5701
-  #插件监听的端口号，请在go-cqhttp的config文件中的adapters下http的post里面仿照示例添加且仅添加url为插件所在服务器ip:端口
+  Mode: "kook"
+  #机器人模式，可选go-cqhttp、kook
+  go-cqhttp:
+    Http: "http://127.0.0.1:5700"
+    #go-cqhttp的config文件中的adapters下http的address字符串
+    Token: ""
+    #go-cqhttp是否开启了access-token模式，如是，请填写，如否，则该项无效
+    IsAccessToken: false
+    #go-cqhttp是否开启了access-token模式
+    ListenPort: 5701
+    #插件监听的端口号，请在go-cqhttp的config文件中的adapters下http的post里面仿照示例添加且仅添加url为插件所在服务器ip:端口
+  Kook:
+  #kook机器人，只支持websocket
+    Token: ""
+    #kook机器人Token
 
 Groups:
   - 111
