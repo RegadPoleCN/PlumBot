@@ -14,11 +14,10 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import me.regadpole.plumbot.bot.Bot;
 import me.regadpole.plumbot.bot.KookBot;
 import me.regadpole.plumbot.bot.QQBot;
-import me.regadpole.plumbot.event.qq.QQEvent;
-import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.command.Commands;
 import me.regadpole.plumbot.config.VelocityConfig;
 import me.regadpole.plumbot.event.server.ServerEvent;
+import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.Dependencies;
 import me.regadpole.plumbot.internal.database.Database;
@@ -27,20 +26,10 @@ import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.slf4j.Logger;
-import sdk.config.CQConfig;
-import sdk.connection.Connection;
-import sdk.connection.ConnectionFactory;
-import sdk.event.EventDispatchers;
-import sdk.event.message.GroupMessage;
-import sdk.event.message.PrivateMessage;
-import sdk.event.notice.GroupDecreaseNotice;
-import sdk.listener.SimpleListener;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.sql.SQLException;
-import java.util.List;
-import java.util.concurrent.LinkedBlockingQueue;
 
 @Plugin(id = "plumbot", name = "PlumBot", version = "1.2.1",
         url = "https://github.com/RegadPoleCN/PlumBot", description = "A plugin for Minecraft!", authors = {"Linear,RegadPole"})
