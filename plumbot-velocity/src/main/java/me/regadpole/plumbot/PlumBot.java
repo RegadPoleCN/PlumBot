@@ -12,6 +12,8 @@ import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import me.regadpole.plumbot.bot.Bot;
+import me.regadpole.plumbot.bot.KookBot;
+import me.regadpole.plumbot.bot.QQBot;
 import me.regadpole.plumbot.event.qq.QQEvent;
 import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.command.Commands;
@@ -50,14 +52,9 @@ public class PlumBot {
     private PluginContainer pluginContainer;
     private final Metrics.Factory metricsFactory;
     public VelocityConfig vconf;
-
-    private static CQConfig http_config;
-
     private static Bot bot;
-    private static QQEvent qqEvent;
 
     public static PlumBot INSTANCE;
-
     private static Database database;
 
     @Inject
@@ -112,12 +109,29 @@ public class PlumBot {
 
         server.getEventManager().register(this, new ServerEvent());
         logger.info("服务器事件监听器注册成功");
-        qqEvent = new QQEvent(this);
-        logger.info("QQ事件监听器注册成功");
         CommandManager manager = server.getCommandManager();
         CommandMeta linearbot = manager.metaBuilder("plumbot").aliases("pb", "PlumBot").build();
         manager.register(linearbot, new Commands(this));
         logger.info("插件命令监听器注册成功");
+
+        getServer().getScheduler().buildTask(this, () -> {
+            switch (Config.bot.Bot.Mode) {
+                case "go-cqhttp":
+                    bot = new QQBot(INSTANCE);
+                    bot.start();
+                    getLogger().info("已启动go-cqhttp服务");
+                    break;
+                case "kook":
+                    bot = new KookBot(this);
+                    bot.start();
+                    KookBot.setKookEnabled(true);
+                    getLogger().info("已启动kook服务");
+                    break;
+                default:
+                    getLogger().warn("无法启动服务，请检查配置文件");
+                    break;
+            }
+        });
 
         // All you have to do is adding the following two lines in your onProxyInitialization method.
         // You can find the plugin ids of your plugins on the page https://bstats.org/what-is-my-plugin-id
@@ -126,60 +140,24 @@ public class PlumBot {
         metrics.addCustomChart(new Metrics.SimplePie("chart_id", () -> "value"));
         logger.info("PlumBot 已启动");
 
-        getServer().getScheduler().buildTask(this, () -> {
-            http_config = new CQConfig(Config.bot.Bot.HTTP, Config.bot.Bot.Token, Config.bot.Bot.IsAccessToken);
-            bot = new Bot();
-            LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
-            Connection connection = null;
-            try {
-                connection = ConnectionFactory.createHttpServer(Config.bot.Bot.ListenPort,"/",blockingQueue);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-            connection.create();
-            EventDispatchers dispatchers = new EventDispatchers(blockingQueue);//创建事件分发器
-            dispatchers.addListener(new SimpleListener<PrivateMessage>() {//私聊监听
-                @Override
-                public void onMessage(PrivateMessage privateMessage) {
-                    qqEvent.onFriendMessageReceive(privateMessage);
-                }
-            });
-            dispatchers.addListener(new SimpleListener<GroupMessage>() {//群聊消息监听
-                @Override
-                public void onMessage(GroupMessage groupMessage) {
-                    List<Long> groups = Config.bot.Groups;
-                    for (long groupID : groups) {
-                        if (groupID == groupMessage.getGroupId()) {
-                            qqEvent.onGroupMessageReceive(groupMessage);
-                        }
-                    }
-                }
-            });
-            dispatchers.addListener(new SimpleListener<GroupDecreaseNotice>() {//群聊人数减少监听
-                @Override
-                public void onMessage(GroupDecreaseNotice groupDecreaseNotice) {
-                    List<Long> groups = Config.bot.Groups;
-                    for (long groupID : groups) {
-                        if (groupID == groupDecreaseNotice.getGroupId()) {
-                            qqEvent.onGroupDecreaseNotice(groupDecreaseNotice);
-                        }
-                    }
-                }
-            });
-            dispatchers.start(10);//线程组处理任务
 
-            List<Long> groups = Config.bot.Groups;
-            for (long groupID : groups) {
-                PlumBot.getBot().sendGroupMsg("PlumBot已启动", groupID);
-            }
-        }).schedule();
     }
 
     @Subscribe(order = PostOrder.FIRST)
     public void onProxyShutdown(ProxyShutdownEvent event) {
-        List<Long> groups = Config.bot.Groups;
-        for (long groupID : groups) {
-            bot.sendMsg(true, "PlumBot已关闭", groupID);
+
+        switch (Config.bot.Bot.Mode) {
+            case "go-cqhttp":
+                bot.shutdown();
+                getLogger().info("已关闭go-cqhttp服务");
+                break;
+            case "kook":
+                bot.shutdown();
+                getLogger().info("已关闭kook服务");
+                break;
+            default:
+                getLogger().warn("无法正常关闭服务，将在服务器关闭后强制关闭");
+                break;
         }
 
         getLogger().info("Closing database.");
@@ -209,10 +187,6 @@ public class PlumBot {
 
     public static Bot getBot() {
         return bot;
-    }
-
-    public static CQConfig getHttp_config() {
-        return http_config;
     }
 
     public static Database getDatabase() {

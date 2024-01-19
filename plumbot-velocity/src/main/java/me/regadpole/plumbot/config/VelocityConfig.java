@@ -29,6 +29,9 @@ public class VelocityConfig {
         File botFile = new File(plugin.getDataFolder(), "bot.yml");
         File configFile = new File(plugin.getDataFolder(), "config.yml");
         File returnsFile = new File(plugin.getDataFolder(), "returns.yml");
+        File kook = new File(plugin.getDataFolder(), "kook");
+        File kookConf = new File(kook, "kbc.yml");
+        File kookPlu = new File(kook, "plugins");
 
         if(!Config.PluginDir.exists() && !Config.PluginDir.mkdirs()) throw new RuntimeException("Failed to create data folder!");
         File[] allFile = {botFile,configFile,returnsFile};
@@ -38,6 +41,19 @@ public class VelocityConfig {
                     assert is != null;
                     Files.copy(is, file.toPath());
                 }
+            }
+        }
+
+        if (!kook.exists()) {
+            kook.mkdirs();
+        }
+        if (!kookPlu.exists()) {
+            kookPlu.mkdirs();
+        }
+        if (!kookConf.exists()) {
+            try (InputStream is = plugin.getClass().getResourceAsStream("/" + kookConf.getParentFile().getName() + File.separator + kookConf.getName())) {
+                assert is != null;
+                Files.copy(is, kookConf.toPath());
             }
         }
 
@@ -54,10 +70,14 @@ public class VelocityConfig {
 
         Config.bot.Ver = !Objects.isNull(botObj.get("Ver")) ? String.valueOf(botObj.get("Ver")) : "1.0";
         Map<String, Object> botMap = !Objects.isNull(botObj.get("Bot")) ? (Map<String, Object>) botObj.get("Bot") : new HashMap<>();
-        Config.bot.Bot.HTTP = !Objects.isNull(botMap.get("Http")) ? String.valueOf(botMap.get("Http")) : "http://127.0.0.1:5700";
-        Config.bot.Bot.Token = !Objects.isNull(botMap.get("Token")) ? String.valueOf(botMap.get("Token")) : "";
-        Config.bot.Bot.IsAccessToken = !Objects.isNull(botMap.get("IsAccessToken")) ? Boolean.parseBoolean(String.valueOf(botMap.get("IsAccessToken"))) : false;
-        Config.bot.Bot.ListenPort = !Objects.isNull(botMap.get("ListenPort")) ? Integer.parseInt(String.valueOf(botMap.get("ListenPort"))) : 5701;
+        Config.bot.Bot.Mode = !Objects.isNull(botMap.get("Mode")) ? String.valueOf(botMap.get("Mode")).toLowerCase() : "go-cqhttp";
+        Map<String, Object> cqMap = !Objects.isNull(botMap.get("go-cqhttp")) ? (Map<String, Object>) botMap.get("go-cqhttp") : new HashMap<>();
+        Config.bot.Bot.gocqhttp.HTTP = !Objects.isNull(cqMap.get("Http")) ? String.valueOf(cqMap.get("Http")) : "http://127.0.0.1:5700";
+        Config.bot.Bot.gocqhttp.Token = !Objects.isNull(cqMap.get("Token")) ? String.valueOf(cqMap.get("Token")) : "";
+        Config.bot.Bot.gocqhttp.IsAccessToken = !Objects.isNull(cqMap.get("IsAccessToken")) ? Boolean.parseBoolean(String.valueOf(cqMap.get("IsAccessToken"))) : false;
+        Config.bot.Bot.gocqhttp.ListenPort = !Objects.isNull(cqMap.get("ListenPort")) ? Integer.parseInt(String.valueOf(cqMap.get("ListenPort"))) : 5701;
+        Map<String, Object> kookMap = !Objects.isNull(botMap.get("Kook")) ? (Map<String, Object>) botMap.get("Kook") : new HashMap<>();
+        Config.bot.Bot.kook.Token = !Objects.isNull(kookMap.get("Token")) ? String.valueOf(kookMap.get("Token")) : "";
         Config.bot.Groups = !Objects.isNull(botObj.get("Groups")) ? JSONArray.parseArray(botObj.get("Groups").toString(), Long.class) : new ArrayList<>();
         Config.bot.Admins = !Objects.isNull(botObj.get("Admins")) ? JSONArray.parseArray(botObj.get("Admins").toString(), Long.class) : new ArrayList<>();
 
@@ -96,7 +116,7 @@ public class VelocityConfig {
 
         Config.returns.Ver = !Objects.isNull(returnsObj.get("Ver")) ? String.valueOf(returnsObj.get("Ver")) : "1.0";
 
-        if (!"1.2.2".equals(Config.bot.Ver)){
+        if (!"1.3.0".equals(Config.bot.Ver)){
             try (InputStream is = plugin.getClass().getResourceAsStream("/" + botFile.getName())) {
                 botIs.close();
                 assert is != null;

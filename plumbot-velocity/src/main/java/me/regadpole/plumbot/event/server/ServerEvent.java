@@ -53,7 +53,7 @@ public class ServerEvent {
         if (Config.config.WhiteList.enable) {
             PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
                 long qq;
-                qq = (DatabaseManager.getBind(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase()));
+                qq = (DatabaseManager.getBindId(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase()));
                 if (qq == 0L) {
                     PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {event.getPlayer().disconnect(Component.text(Config.config.WhiteList.kickMsg));}).delay(2L, TimeUnit.SECONDS).schedule();
                     List<Long> groups = Config.bot.Groups;

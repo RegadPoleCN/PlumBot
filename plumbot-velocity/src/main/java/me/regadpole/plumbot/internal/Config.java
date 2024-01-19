@@ -10,10 +10,16 @@ public class Config {
         public static String Ver; // version
 
         public static class Bot{
+            public static String Mode; // bot's mode
+            public static class gocqhttp{
             public static String HTTP; // bot's HTTP
             public static String Token; // bot's Token
             public static boolean IsAccessToken; // bot's IsAccessToken
             public static int ListenPort; // bot's ListenPort
+            }
+            public static class kook{
+                public static String Token; // bot's Token
+            }
         }
         public static List<Long> Groups; // group's number
         public static List<Long> Admins; // admin's QQ

@@ -8,7 +8,7 @@ import java.sql.Statement;
 
 public class DatabaseManager {
 
-    public static void addBind(String id, long qq, String mode, Database db) {
+    public static void addBind(String id, String qq, String mode, Database db) {
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";
         String selectid = "SELECT * FROM whitelist WHERE id='" + id + "' LIMIT 1";
         String selectqq = "SELECT * FROM whitelist WHERE qq=" + qq + " LIMIT 1";
@@ -114,8 +114,8 @@ public class DatabaseManager {
             throw new RuntimeException(e);
         }
     }
-    
-    public static void removeBind(long qq,String mode, Database db) {
+
+    public static void removeBind(String qq,String mode, Database db) {
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";
         String select = "SELECT * FROM whitelist WHERE qq=" + qq + " LIMIT 1;";
         String delete = "DELETE FROM whitelist WHERE qq=" + qq+";";
@@ -159,8 +159,8 @@ public class DatabaseManager {
             throw new RuntimeException(e);
         }
     }
-    
-    public static long getBind(String id,String mode, Database db) {
+
+    public static long getBindId(String id,String mode, Database db) {
         long qq = 0L;
 
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";
@@ -204,9 +204,9 @@ public class DatabaseManager {
         }
         return qq;
     }
-    
+
     @Nullable
-    public static String getBind(long qq,String mode, Database db) {
+    public static String getBind(String qq,String mode, Database db) {
         String id = null;
 
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";

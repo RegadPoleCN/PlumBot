@@ -2,6 +2,7 @@ package me.regadpole.plumbot.event.qq;
 
 import com.velocitypowered.api.proxy.Player;
 import me.regadpole.plumbot.PlumBot;
+import me.regadpole.plumbot.bot.QQBot;
 import me.regadpole.plumbot.config.VelocityConfig;
 import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
@@ -50,11 +51,12 @@ public class QQEvent {
         Pattern pattern;
         Matcher matcher;
 
+        QQBot bot = (QQBot) PlumBot.getBot();
         String msg = e.getMessage();
         long groupID= e.getGroupId();
         long senderID = e.getUserId();
         String senderName;
-        String groupName = PlumBot.getBot().getGroupInfo(e.getGroupId()).getGroupName();
+        String groupName = bot.getGroupInfo(e.getGroupId()).getGroupName();
         {
             if (e.getSender().getCard().isEmpty()) {
                 senderName = e.getSender().getNickname();
@@ -88,7 +90,7 @@ public class QQEvent {
                     return;
                 }
                 PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
-                    long nameForId = DatabaseManager.getBind(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                    long nameForId = DatabaseManager.getBindId(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                     if (nameForId == 0L) {
                         PlumBot.getBot().sendMsg(true, "尚未申请白名单", groupID);
                         return;
@@ -144,11 +146,11 @@ public class QQEvent {
                 return;
             }
             PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
-                if ((DatabaseManager.getBind(senderID, DbConfig.type.toLowerCase(), PlumBot.getDatabase()) != null) || (DatabaseManager.getBind(PlayerName, DbConfig.type.toLowerCase(), PlumBot.getDatabase()) != 0L)) {
+                if ((DatabaseManager.getBind(String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase()) != null) || (DatabaseManager.getBindId(PlayerName, DbConfig.type.toLowerCase(), PlumBot.getDatabase()) != 0L)) {
                     PlumBot.getBot().sendMsg(true, "绑定失败", groupID);
                     return;
                 }
-                DatabaseManager.addBind(PlayerName, senderID, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                DatabaseManager.addBind(PlayerName, String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 PlumBot.getBot().sendMsg(true, "成功申请白名单", groupID);
             }).schedule();
             return;
@@ -162,7 +164,7 @@ public class QQEvent {
             }
             String name = matcher.group().replace("/删除白名单 ", "");
             PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
-                String idForName = DatabaseManager.getBind(senderID, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                String idForName = DatabaseManager.getBind(String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 if (idForName == null || idForName.isEmpty()) {
                     PlumBot.getBot().sendMsg(true, "您尚未申请白名单", groupID);
                     return;
@@ -237,7 +239,7 @@ public class QQEvent {
     public void onGroupDecreaseNotice(GroupDecreaseNotice e) {
         long userId = e.getUserId();
         long groupId = e.getGroupId();
-        String player = DatabaseManager.getBind(userId, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+        String player = DatabaseManager.getBind(String.valueOf(userId), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
         if (player == null) {
             return;
         }
