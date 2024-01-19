@@ -10,7 +10,7 @@
 
 本插件适用于[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)中的http通信模式
 
-测试性功能：[kook](kookapp.cn)的websocket模式（beta版，目前仅bukkit可用）
+测试性功能：[kook](kookapp.cn)的websocket模式（beta版，目前bukkit可用,velocity未进行测试）
 
 测试环境：[go-cqhttp1.1.0](https://github.com/Mrs4s/go-cqhttp/releases/tag/v1.1.0)+[paper1.20](https://papermc.io/downloads/paper)+[zulujdk17](https://www.azul.com/downloads)
 

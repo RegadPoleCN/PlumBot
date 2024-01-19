@@ -31,7 +31,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.sql.SQLException;
 
-@Plugin(id = "plumbot", name = "PlumBot", version = "1.2.1",
+@Plugin(id = "plumbot", name = "PlumBot", version = "1.3.0-beta1",
         url = "https://github.com/RegadPoleCN/PlumBot", description = "A plugin for Minecraft!", authors = {"Linear,RegadPole"})
 public class PlumBot {
 

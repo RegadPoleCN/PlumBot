@@ -38,7 +38,7 @@ public class QQBot implements Bot {
     public void start() {
         qqEvent = new QQEvent(plugin);
         plugin.getLogger().info("QQ事件监听器注册完毕");
-        plugin.getServer().getScheduler().buildTask(this, () -> {
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
             http_config = new CQConfig(Config.bot.Bot.gocqhttp.HTTP, Config.bot.Bot.gocqhttp.Token, Config.bot.Bot.gocqhttp.IsAccessToken);
             LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
             Connection connection = null;
@@ -98,7 +98,7 @@ public class QQBot implements Bot {
     public void sendMsg(boolean isGroup, String msg, long id) {
         if (id == 0L) {return;}
         if ("".equals(msg)) {return;}
-        plugin.getServer().getScheduler().buildTask(this, () -> {
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
             if (isGroup) {
                 this.sendGroupMsg(msg, id);
             } else {
@@ -110,7 +110,7 @@ public class QQBot implements Bot {
     public void sendCQMsg(boolean isGroup, String msg, long id) {
         if (id == 0L) {return;}
         if ("".equals(msg)) {return;}
-        plugin.getServer().getScheduler().buildTask(this, () -> {
+        plugin.getServer().getScheduler().buildTask(plugin, () -> {
             if (isGroup) {
                 this.sendGroupCQMsg(msg, id);
             } else {

@@ -70,7 +70,7 @@ public class KookEvent implements Listener {
         matcher = pattern.matcher(msg);
         if (matcher.find()){
             String sendmsg = "§6" + "[" + groupName + "]" + "§f" + ":" + "不支持的消息类型，请在群聊中查看";
-            plugin.getServer().getAllServers().forEach(server -> {server.sendMessage(SERIALIZER.deserialize(sendmsg));});
+             plugin.getServer().getAllServers().forEach(server -> {server.sendMessage(SERIALIZER.deserialize(sendmsg));});
             return;
         }
 
@@ -86,7 +86,7 @@ public class KookEvent implements Listener {
                     e.getMessage().reply("id不能为空");
                     return;
                 }
-                plugin.getServer().getScheduler().buildTask(this, () -> {
+                plugin.getServer().getScheduler().buildTask(plugin, () -> {
                     long nameForId = DatabaseManager.getBindId(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                     if (nameForId == 0L) {
                         e.getMessage().reply("尚未申请白名单");
@@ -143,7 +143,7 @@ public class KookEvent implements Listener {
                 e.getMessage().reply("id不能为空");
                 return;
             }
-            plugin.getServer().getScheduler().buildTask(this, () -> {
+            plugin.getServer().getScheduler().buildTask(plugin, () -> {
                 if ((DatabaseManager.getBind(senderID, DbConfig.type.toLowerCase(), PlumBot.getDatabase())!=null) || (DatabaseManager.getBindId(PlayerName, DbConfig.type.toLowerCase(), PlumBot.getDatabase()) != 0L)) {
                     e.getMessage().reply("绑定失败");
                     return;
@@ -161,7 +161,7 @@ public class KookEvent implements Listener {
                 return;
             }
             String name = matcher.group().replace(Prefix + "删除白名单 ", "");
-            plugin.getServer().getScheduler().buildTask(this, () -> {
+            plugin.getServer().getScheduler().buildTask(plugin, () -> {
                 String idForName = DatabaseManager.getBind(senderID, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 if (idForName == null || idForName.isEmpty()) {
                     e.getMessage().reply("您尚未申请白名单");
