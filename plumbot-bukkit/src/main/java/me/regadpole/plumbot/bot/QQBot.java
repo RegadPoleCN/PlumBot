@@ -24,8 +24,8 @@ import static me.regadpole.plumbot.PlumBot.*;
 public class QQBot implements Bot {
 
     private static CQConfig http_config;
-    private GroupClient client =  new ClientFactory(http_config).createGroupClient();
-    private MessageClient messageClient =  new ClientFactory(http_config).createMessageClient();
+    private GroupClient client;
+    private MessageClient messageClient;
     private static QQEvent qqEvent;
 
     @Override
@@ -34,6 +34,8 @@ public class QQBot implements Bot {
         PlumBot.INSTANCE.getLogger().info("QQ事件监听器注册完毕");
         getScheduler().runTaskAsynchronously(() -> {
             http_config = new CQConfig(Config.getCqBotHttp(), Config.getCqBotToken(), Config.getCqBotIsAccessToken());
+            client =  new ClientFactory(http_config).createGroupClient();
+            messageClient =  new ClientFactory(http_config).createMessageClient();
             LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
             Connection connection = null;
             try {

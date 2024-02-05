@@ -30,8 +30,8 @@ public class QQBot implements Bot {
 
     private PlumBot plugin;
     private static CQConfig http_config;
-    private GroupClient client =  new ClientFactory(http_config).createGroupClient();
-    private MessageClient messageClient =  new ClientFactory(http_config).createMessageClient();
+    private GroupClient client;
+    private MessageClient messageClient;
     private static QQEvent qqEvent;
 
     @Override
@@ -40,6 +40,8 @@ public class QQBot implements Bot {
         plugin.getLogger().info("QQ事件监听器注册完毕");
         plugin.getServer().getScheduler().buildTask(plugin, () -> {
             http_config = new CQConfig(Config.bot.Bot.gocqhttp.HTTP, Config.bot.Bot.gocqhttp.Token, Config.bot.Bot.gocqhttp.IsAccessToken);
+            client =  new ClientFactory(http_config).createGroupClient();
+            messageClient =  new ClientFactory(http_config).createMessageClient();
             LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
             Connection connection = null;
             try {

@@ -83,6 +83,7 @@ public class ServerEvent implements Listener{
                     for (long groupID : groups) {
                         PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
                     }
+                    return;
                 }
                 for (long groupID : Config.getGroupQQs()) {
                     if(!PlumBot.getBot().checkUserInGroup(qq, groupID)){
@@ -91,6 +92,7 @@ public class ServerEvent implements Listener{
                         for (long group : groups) {
                             PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", group);
                         }
+                        return;
                     }
                 }
                 event.allow();
