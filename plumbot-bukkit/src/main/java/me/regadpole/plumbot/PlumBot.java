@@ -79,7 +79,7 @@ public final class PlumBot extends JavaPlugin implements Listener {
         QuickShopHook.hookQuickShop();
         GriefDefenderHook.hookGriefDefender();
         getLogger().info("关联插件连接完毕");
-        Bukkit.getPluginManager().registerEvents(new ServerEvent(), this);
+        Bukkit.getPluginManager().registerEvents(new ServerEvent(this), this);
         if (QuickShopHook.hasQs) Bukkit.getPluginManager().registerEvents(new QsChatEvent(),this);
         if (QuickShopHook.hasQsHikari) Bukkit.getPluginManager().registerEvents(new QsHikariChatEvent(),this);
         getLogger().info("服务器事件监听器注册完毕");

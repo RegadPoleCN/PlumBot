@@ -7,6 +7,5 @@ public interface Bot {
     void shutdown();
     void sendMsg(boolean isGroup, String message, long id);
     default void sendMsg(boolean isGroup, BaseComponent message, long id) {}
-    default void reply(){}
     String getGroupName(long groupId);
 }

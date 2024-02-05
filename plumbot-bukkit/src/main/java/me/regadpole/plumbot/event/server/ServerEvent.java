@@ -17,6 +17,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
@@ -25,6 +26,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ServerEvent implements Listener{
+
+    private PlumBot plugin;
+
+    public ServerEvent(PlumBot plugin){
+        this.plugin=plugin;
+    }
 
     @EventHandler(priority = EventPriority.LOWEST)
     public void onChat(AsyncPlayerChatEvent event) {
@@ -63,23 +70,38 @@ public class ServerEvent implements Listener{
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onJoin(PlayerJoinEvent event){
-
-        String name = event.getPlayer().getName();
+    public void onPreLogin(AsyncPlayerPreLoginEvent event){
+        String name = event.getName();
 
         if (Config.WhiteList()) {
             PlumBot.getScheduler().runTaskAsynchronously(() -> {
                 long qq;
                 qq = (DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
                 if (qq == 0L) {
-                    PlumBot.getScheduler().runTaskLater(() -> {event.getPlayer().kickPlayer(Args.WhitelistKick());}, 2L);
+                    event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Args.WhitelistKick());
                     List<Long> groups = Config.getGroupQQs();
                     for (long groupID : groups) {
                         PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
                     }
                 }
+                for (long groupID : Config.getGroupQQs()) {
+                    if(!PlumBot.getBot().checkUserInGroup(qq, groupID)){
+                        event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Args.WhitelistKick());
+                        List<Long> groups = Config.getGroupQQs();
+                        for (long group : groups) {
+                            PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", group);
+                        }
+                    }
+                }
+                event.allow();
             });
         }
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onJoin(PlayerJoinEvent event){
+
+        String name = event.getPlayer().getName();
 
         if (!Config.JoinAndLeave()){
             return;

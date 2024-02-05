@@ -6,10 +6,7 @@ import me.regadpole.plumbot.event.qq.QQEvent;
 import sdk.client.ClientFactory;
 import sdk.client.impl.GroupClient;
 import sdk.client.impl.MessageClient;
-import sdk.client.response.CQFile;
-import sdk.client.response.ForwardMessage;
-import sdk.client.response.GroupInfo;
-import sdk.client.response.Message;
+import sdk.client.response.*;
 import sdk.config.CQConfig;
 import sdk.connection.Connection;
 import sdk.connection.ConnectionFactory;
@@ -204,5 +201,15 @@ public class QQBot implements Bot {
     @Override
     public String getGroupName(long groupId) {
         return getGroupInfo(groupId).getGroupName();
+    }
+
+    @Override
+    public boolean checkUserInGroup(long userId, long groupId) {
+        for (GroupMemberInfo member : client.getGroupMemberList(groupId)){
+            if(member.getUserId().equals(userId)){
+                return true;
+            }
+        }
+        return false;
     }
 }

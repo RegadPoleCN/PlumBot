@@ -1,6 +1,5 @@
 package me.regadpole.plumbot.bot;
 
-import com.alibaba.fastjson2.JSONObject;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.config.Config;
 import me.regadpole.plumbot.event.kook.KookEvent;
@@ -15,13 +14,13 @@ import snw.jkook.entity.channel.TextChannel;
 import snw.jkook.event.channel.ChannelMessageEvent;
 import snw.jkook.event.pm.PrivateMessageReceivedEvent;
 import snw.jkook.message.component.BaseComponent;
-import snw.jkook.message.component.FileComponent;
 import snw.jkook.message.component.card.CardBuilder;
 import snw.jkook.message.component.card.MultipleCardComponent;
 import snw.jkook.message.component.card.Size;
 import snw.jkook.message.component.card.Theme;
 import snw.jkook.message.component.card.element.ImageElement;
 import snw.jkook.message.component.card.module.ContainerModule;
+import snw.jkook.util.PageIterator;
 import snw.kookbc.impl.CoreImpl;
 import snw.kookbc.impl.KBCClient;
 
@@ -30,7 +29,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.Objects;
+import java.util.Set;
 
 import static me.regadpole.plumbot.PlumBot.INSTANCE;
 
@@ -169,6 +169,19 @@ public class KookBot implements Bot {
 
     public TextChannel getChannel(long groupId) {
         return (TextChannel) kookClient.getCore().getHttpAPI().getChannel(String.valueOf(groupId));
+    }
+
+    @Override
+    public boolean checkUserInGroup(long userId, long groupId){
+        PageIterator<Set<User>> iterator = getChannel(groupId).getGuild().getUsers();
+        while(iterator.hasNext()){
+            for (User user : iterator.next()) {
+                if (user.getId().equalsIgnoreCase(String.valueOf(userId))){
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public User getUser(long id) {
