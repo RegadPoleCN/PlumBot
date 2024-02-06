@@ -36,40 +36,51 @@ public class ServerManager {
             msgList.clear();
             Bukkit.dispatchCommand(commandSender, cmd);
         });
-        PlumBot.getScheduler().runTaskLaterAsynchronously(() -> {
-            StringBuilder stringBuilder = new StringBuilder();
-            if (msgList.size() == 0) {
-                msgList.add("无返回值");
-            }
-            for (String msg : msgList) {
-                if (msgList.get(msgList.size() - 1).equalsIgnoreCase(msg)) {
-                    stringBuilder.append(msg);
-                } else {
-                    stringBuilder.append(msg).append("\n");
-                }
-            }
-            if(!disp){
-                msgList.clear();
-                returnStr.set("无返回值");
-            }
-            if(stringBuilder.toString().length()<=5000){
-//                PlumBot.getBot().sendMsg(isGroup, stringBuilder.toString(), id);
-                switch (Config.getBotMode()) {
-                    case "go-cqhttp":
-                        returnStr.set(TextToImg.toImgCQCode(stringBuilder.toString()));
-                        break;
-                    case "kook":
-                        returnStr.set(stringBuilder.toString());
-                        break;
-                    default:
-                        break;
-                }
-            }else {
-                returnStr.set("返回值过长");
-            }
-            msgList.clear();
-        }, 10L);
-        return returnStr.get();
-    }
 
+        PlumBot.getScheduler().runTaskLaterAsynchronously(() -> {
+            synchronized (returnStr) {
+                returnStr.notify();
+                StringBuilder stringBuilder = new StringBuilder();
+                if (msgList.size() == 0) {
+                    msgList.add("无返回值");
+                }
+                for (String msg : msgList) {
+                    if (msgList.get(msgList.size() - 1).equalsIgnoreCase(msg)) {
+                        stringBuilder.append(msg);
+                    } else {
+                        stringBuilder.append(msg).append("\n");
+                    }
+                }
+                if (!disp) {
+                    msgList.clear();
+                    returnStr.set("无返回值");
+                }
+                if (stringBuilder.toString().length() <= 5000) {
+                    //                PlumBot.getBot().sendMsg(isGroup, stringBuilder.toString(), id);
+                    switch (Config.getBotMode()) {
+                        case "go-cqhttp":
+                            returnStr.set(TextToImg.toImgCQCode(stringBuilder.toString()));
+                            break;
+                        case "kook":
+                            returnStr.set(stringBuilder.toString());
+                            break;
+                        default:
+                            break;
+                    }
+                } else {
+                    returnStr.set("返回值过长");
+                }
+                msgList.clear();
+            }
+        }, 20L);
+
+        synchronized (returnStr){
+            try {
+                returnStr.wait();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            return returnStr.get();
+        }
+    }
 }

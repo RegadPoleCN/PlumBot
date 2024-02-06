@@ -101,13 +101,14 @@ public class TextToImg {
                             g.setColor(new Color(Integer.parseInt("FFFF55", 16)));
                             break;//黄色
                         case 'f':
-                            g.setColor(new Color(Integer.parseInt("FFFFFF", 16)));
+//                            g.setColor(new Color(Integer.parseInt("FFFFFF", 16)));
+                            g.setColor(Color.black);
                             break;//白色
                         case 'g':
                             g.setColor(new Color(Integer.parseInt("DDD605", 16)));
                             break;//硬币金
                         default:
-                            g.setColor(Color.WHITE);
+                            g.setColor(Color.black);
                     }
                     j++;
                     dex=dex+2;

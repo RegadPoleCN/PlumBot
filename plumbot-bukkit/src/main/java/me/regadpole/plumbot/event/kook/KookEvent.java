@@ -16,6 +16,7 @@ import snw.jkook.event.EventHandler;
 import snw.jkook.event.Listener;
 import snw.jkook.event.channel.ChannelMessageEvent;
 import snw.jkook.event.pm.PrivateMessageReceivedEvent;
+import snw.jkook.event.user.UserLeaveGuildEvent;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
@@ -346,5 +347,16 @@ public class KookEvent implements Listener {
             }
 
         }
+    }
+
+    @EventHandler
+    public void onGroupDecreaseNotice(UserLeaveGuildEvent e) {
+        String userId = e.getUser().getId();
+        String groupId = e.getGuildId();
+        String player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        if (player == null) {
+            return;
+        }
+        DatabaseManager.removeBindid(player, DataBase.type().toLowerCase(), PlumBot.getDatabase());
     }
 }
