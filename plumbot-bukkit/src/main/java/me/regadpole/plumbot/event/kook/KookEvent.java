@@ -83,9 +83,11 @@ public class KookEvent implements Listener {
                     return;
                 }
                 String cmd = matcher.group().replace(Prefix+"cmd ", "");
-                String img = ServerManager.sendCmd(cmd, true);
                 e.getMessage().reply("已发送指令至服务器");
-                KookBot.getKookBot().sendChannelFileReply(e, img);
+                PlumBot.getScheduler().runTaskAsynchronously(()->{
+                    String img = ServerManager.sendCmd(cmd, true);
+                    KookBot.getKookBot().sendChannelFileReply(e, img);
+                });
                 return;
             }
 
@@ -121,8 +123,10 @@ public class KookEvent implements Listener {
                 String scmd = matcher.group().replace(Prefix+"", "");
                 String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
                 if(gcmd!=null) {
-                    String img = ServerManager.sendCmd(gcmd, true);
-                    KookBot.getKookBot().sendChannelFileReply(e, img);
+                    PlumBot.getScheduler().runTaskAsynchronously(()->{
+                        String img = ServerManager.sendCmd(gcmd, true);
+                        KookBot.getKookBot().sendChannelFileReply(e, img);
+                    });
                     return;
                 }
             }
@@ -227,8 +231,10 @@ public class KookEvent implements Listener {
             String scmd = matcher.group().replace(Prefix+"", "");
             String gcmd = Config.getCommandsYaml().getString("User."+scmd);
             if(gcmd!=null) {
-                String img = ServerManager.sendCmd(gcmd, true);
-                KookBot.getKookBot().sendChannelFileReply(e, img);
+                PlumBot.getScheduler().runTaskAsynchronously(()->{
+                    String img = ServerManager.sendCmd(gcmd, true);
+                    KookBot.getKookBot().sendChannelFileReply(e, img);
+                });
                 return;
             }
         }
@@ -303,10 +309,6 @@ public class KookEvent implements Listener {
     @EventHandler
     public void onPrivateMessageReceive(PrivateMessageReceivedEvent e) {
 
-        for (long adminId:Config.getAdmins()) {
-            if (!e.getUser().getId().equalsIgnoreCase(kBot.getUser(adminId).getId())) return;
-        }
-
         ArrayList<String> admins = new ArrayList<>();
         for (long adminId:Config.getAdmins()) {
             admins.add(kBot.getUser(adminId).getId());
@@ -341,11 +343,12 @@ public class KookEvent implements Listener {
                     return;
                 }
                 String cmd = matcher.group().replace(Prefix+"cmd ", "");
-                String img = ServerManager.sendCmd(cmd, true);
                 e.getMessage().reply("已发送指令至服务器");
-                KookBot.getKookBot().sendPrivateFileReply(e, img);
+                PlumBot.getScheduler().runTaskAsynchronously(()->{
+                    String img = ServerManager.sendCmd(cmd, true);
+                    KookBot.getKookBot().sendPrivateFileReply(e, img);
+                });
             }
-
         }
     }
 

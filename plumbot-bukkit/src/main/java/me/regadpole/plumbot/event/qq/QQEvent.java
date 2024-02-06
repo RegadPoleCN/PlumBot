@@ -10,7 +10,6 @@ import me.regadpole.plumbot.event.server.ServerTps;
 import me.regadpole.plumbot.internal.FoliaSupport;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
 import me.regadpole.plumbot.tool.StringTool;
-import me.regadpole.plumbot.tool.TextToImg;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import sdk.event.message.GroupMessage;
@@ -60,11 +59,12 @@ public class QQEvent {
                     return;
                 }
                 String cmd = matcher.group().replace(Prefix+"cmd ", "");
-                String sendCqMsg = ServerManager.sendCmd(cmd, true);
                 bot.sendMsg(false, "已发送指令至服务器",e.getUserId());
-                bot.sendCQMsg(false, sendCqMsg, e.getUserId());
+                PlumBot.getScheduler().runTaskAsynchronously(()->{
+                    String sendCqMsg = ServerManager.sendCmd(cmd, true);
+                    bot.sendCQMsg(false, sendCqMsg, e.getUserId());
+                });
             }
-
         }
     }
 
@@ -112,9 +112,11 @@ public class QQEvent {
                     return;
                 }
                 String cmd = matcher.group().replace(Prefix+"cmd ", "");
-                String sendCqMsg = ServerManager.sendCmd(cmd, true);
                 bot.sendMsg(true, "已发送指令至服务器",groupID);
-                bot.sendCQMsg(true, sendCqMsg, groupID);
+                PlumBot.getScheduler().runTaskAsynchronously(()->{
+                    String sendCqMsg = ServerManager.sendCmd(cmd, true);
+                    bot.sendCQMsg(true, sendCqMsg, groupID);
+                });
                 return;
             }
 
@@ -150,8 +152,10 @@ public class QQEvent {
                 String scmd = matcher.group().replace(Prefix+"", "");
                 String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
                 if(gcmd!=null) {
-                    String sendCqMsg = ServerManager.sendCmd(gcmd, true);
-                    bot.sendCQMsg(true, sendCqMsg, groupID);
+                    PlumBot.getScheduler().runTaskAsynchronously(()->{
+                        String sendCqMsg = ServerManager.sendCmd(gcmd, true);
+                        bot.sendCQMsg(true, sendCqMsg, groupID);
+                    });
                     return;
                 }
             }
@@ -256,8 +260,10 @@ public class QQEvent {
             String scmd = matcher.group().replace(Prefix+"", "");
             String gcmd = Config.getCommandsYaml().getString("User."+scmd);
             if(gcmd!=null) {
-                String sendCqMsg = ServerManager.sendCmd(gcmd, true);
-                bot.sendCQMsg(true, sendCqMsg, groupID);
+                PlumBot.getScheduler().runTaskAsynchronously(()->{
+                    String sendCqMsg = ServerManager.sendCmd(gcmd, true);
+                    bot.sendCQMsg(true, sendCqMsg, groupID);
+                });
                 return;
             }
         }
