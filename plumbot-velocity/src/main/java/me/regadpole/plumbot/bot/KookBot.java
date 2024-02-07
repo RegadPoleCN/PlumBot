@@ -19,12 +19,14 @@ import snw.jkook.message.component.card.Size;
 import snw.jkook.message.component.card.Theme;
 import snw.jkook.message.component.card.element.ImageElement;
 import snw.jkook.message.component.card.module.ContainerModule;
+import snw.jkook.util.PageIterator;
 import snw.kookbc.impl.CoreImpl;
 import snw.kookbc.impl.KBCClient;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import static me.regadpole.plumbot.PlumBot.INSTANCE;
 
@@ -161,6 +163,19 @@ public class KookBot implements Bot {
 
     public User getUser(long id) {
         return kookClient.getCore().getHttpAPI().getUser(String.valueOf(id));
+    }
+
+    @Override
+    public boolean checkUserInGroup(long userId, long groupId){
+        PageIterator<Set<User>> iterator = getChannel(groupId).getGuild().getUsers();
+        while(iterator.hasNext()){
+            for (User user : iterator.next()) {
+                if (user.getId().equalsIgnoreCase(String.valueOf(userId))){
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     public static KBCClient getKookClient() {return kookClient;}

@@ -8,4 +8,5 @@ public interface Bot {
     void sendMsg(boolean isGroup, String message, long id);
     default void sendMsg(boolean isGroup, BaseComponent message, long id) {}
     String getGroupName(long groupId);
+    boolean checkUserInGroup(long userId, long groupId);
 }

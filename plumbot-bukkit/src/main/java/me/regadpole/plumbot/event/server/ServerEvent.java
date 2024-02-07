@@ -92,6 +92,7 @@ public class ServerEvent implements Listener{
                         for (long group : groups) {
                             PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", group);
                         }
+                        DatabaseManager.removeBind(String.valueOf(qq), DataBase.type().toLowerCase(), PlumBot.getDatabase());
                         return;
                     }
                 }
