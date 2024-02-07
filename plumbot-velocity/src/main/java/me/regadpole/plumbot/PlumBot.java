@@ -21,6 +21,7 @@ import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.Dependencies;
 import me.regadpole.plumbot.internal.database.Database;
+import me.regadpole.plumbot.internal.database.DatabaseManager;
 import me.regadpole.plumbot.internal.database.MySQL;
 import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
@@ -77,25 +78,7 @@ public class PlumBot {
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
 
-        try {
-            switch (DbConfig.type.toLowerCase()) {
-                case "sqlite":
-                default: {
-                    getLogger().info("Initializing SQLite database.");
-                    database = (new SQLite());
-                    break;
-                }
-                case "mysql": {
-                    getLogger().info("Initializing MySQL database.");
-                    database = (new MySQL());
-                    break;
-                }
-            }
-            database.initialize();
-        } catch (ClassNotFoundException e) {
-            getLogger().warn("Failed to initialize database, reason: " + e);
-        }
-
+        DatabaseManager.start();
         server.getEventManager().register(this, new ServerEvent());
         logger.info("服务器事件监听器注册成功");
         CommandManager manager = server.getCommandManager();
@@ -148,14 +131,7 @@ public class PlumBot {
                 getLogger().warn("无法正常关闭服务，将在服务器关闭后强制关闭");
                 break;
         }
-
-        getLogger().info("Closing database.");
-        try {
-            database.close();
-        } catch (SQLException e) {
-            getLogger().info("在关闭数据库时出现错误" + e);
-        }
-
+        DatabaseManager.close();
         getLogger().info("PlumBot已关闭");
     }
 
@@ -180,5 +156,8 @@ public class PlumBot {
 
     public static Database getDatabase() {
         return database;
+    }
+    public void setDatabase(Database database) {
+        PlumBot.database = database;
     }
 }

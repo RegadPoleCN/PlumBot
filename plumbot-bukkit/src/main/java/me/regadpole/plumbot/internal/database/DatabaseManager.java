@@ -1,5 +1,8 @@
 package me.regadpole.plumbot.internal.database;
 
+import me.regadpole.plumbot.PlumBot;
+import me.regadpole.plumbot.config.DataBase;
+
 import javax.annotation.Nullable;
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -7,6 +10,37 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class DatabaseManager {
+
+    public static void start(){
+        try {
+            switch (DataBase.type().toLowerCase()) {
+                case "sqlite":
+                default: {
+                    PlumBot.INSTANCE.getLogger().info("Initializing SQLite database.");
+                    PlumBot.INSTANCE.setDatabase(new SQLite());
+                    break;
+                }
+                case "mysql": {
+                    PlumBot.INSTANCE.getLogger().info("Initializing MySQL database.");
+                    PlumBot.INSTANCE.setDatabase(new MySQL());
+                    break;
+                }
+            }
+            PlumBot.getDatabase().initialize();
+        } catch (ClassNotFoundException e) {
+            PlumBot.INSTANCE.getLogger().warning("Failed to initialize database, reason: " + e);
+        }
+    }
+
+    public static void close(){
+        PlumBot.INSTANCE.getLogger().info("Closing database.");
+        try {
+            PlumBot.getDatabase().close();
+        } catch (SQLException e) {
+            PlumBot.INSTANCE.getLogger().warning("在关闭数据库时出现错误" + e);
+        }
+
+    }
 
     public static void addBind(String id, String qq, String mode, Database db) {
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";

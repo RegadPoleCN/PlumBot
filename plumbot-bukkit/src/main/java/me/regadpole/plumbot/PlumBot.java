@@ -16,6 +16,7 @@ import me.regadpole.plumbot.hook.ResidenceHook;
 import me.regadpole.plumbot.internal.Dependencies;
 import me.regadpole.plumbot.internal.FoliaSupport;
 import me.regadpole.plumbot.internal.database.Database;
+import me.regadpole.plumbot.internal.database.DatabaseManager;
 import me.regadpole.plumbot.internal.database.MySQL;
 import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
@@ -53,25 +54,7 @@ public final class PlumBot extends JavaPlugin implements Listener {
     @Override
     public void onEnable() {
 
-        try {
-            switch (DataBase.type().toLowerCase()) {
-                case "sqlite":
-                    default: {
-                        getLogger().info("Initializing SQLite database.");
-                        database = (new SQLite());
-                        break;
-                    }
-                    case "mysql": {
-                        getLogger().info("Initializing MySQL database.");
-                        database = (new MySQL());
-                        break;
-                    }
-                }
-                database.initialize();
-        } catch (ClassNotFoundException e) {
-            getLogger().warning("Failed to initialize database, reason: " + e);
-        }
-
+        DatabaseManager.start();
         scheduler = UniversalScheduler.getScheduler(this);
         Bukkit.getPluginManager().registerEvents(this, this);
         AuthMeHook.hookAuthme();
@@ -132,14 +115,7 @@ public final class PlumBot extends JavaPlugin implements Listener {
                 Bukkit.getPluginManager().disablePlugin(this);
                 break;
         }
-
-        getLogger().info("Closing database.");
-        try {
-            database.close();
-        } catch (SQLException e) {
-            getLogger().info("在关闭数据库时出现错误" + e);
-        }
-
+        DatabaseManager.close();
         getLogger().info("PlumBot已关闭");
     }
 
@@ -158,6 +134,9 @@ public final class PlumBot extends JavaPlugin implements Listener {
 
     public static Database getDatabase() {
         return database;
+    }
+    public void setDatabase(Database database) {
+        PlumBot.database =database;
     }
 
 }

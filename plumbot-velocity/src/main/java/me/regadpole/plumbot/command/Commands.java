@@ -3,11 +3,17 @@ package me.regadpole.plumbot.command;
 import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import me.regadpole.plumbot.PlumBot;
+import me.regadpole.plumbot.bot.KookBot;
+import me.regadpole.plumbot.internal.database.DatabaseManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import me.regadpole.plumbot.config.VelocityConfig;
+import snw.jkook.command.ConsoleCommandSender;
+import snw.jkook.plugin.Plugin;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class Commands implements SimpleCommand {
 
@@ -26,34 +32,57 @@ public class Commands implements SimpleCommand {
         if (args.length == 0) {
             source.sendMessage(Component.text("请使用/pb help查看帮助"));
             return;
-        } else if (args.length == 1) {
-            switch (args[0].toLowerCase()) {
-                case "reload": {
-                    if (source.hasPermission("plumbot.command")) {
-                        try {
-                            plugin.vconf = new VelocityConfig(plugin);
-                            plugin.vconf.loadConfig();
-                            source.sendMessage(Component.text("配置文件已重新加载"));
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                            source.sendMessage(Component.text("配置文件加载时出错").color(NamedTextColor.RED));
-                        }
-                    }else source.sendMessage(Component.text("你没有权限执行此命令"));
-                    break;
-                }
-                case "help": {
-                    source.sendMessage(Component.text("§6PlumBot 机器人帮助菜单"));
-                    source.sendMessage(Component.text("§6/pb reload :§f重载插件"));
-                    source.sendMessage(Component.text("§6/pb help :§f获取插件帮助"));
-                    break;
-                }
-                default: {
-                    source.sendMessage(Component.text("请使用/pb help查看帮助"));
-                }
-            }
-        }else {
-            source.sendMessage(Component.text("请使用/pb help查看帮助"));
         }
-
+        switch (args[0].toLowerCase()) {
+            case "reload": {
+                if (source.hasPermission("plumbot.command")) {
+                    try {
+                        DatabaseManager.close();
+                        PlumBot.getBot().shutdown();
+                        plugin.vconf = new VelocityConfig(plugin);
+                        plugin.vconf.loadConfig();
+                        DatabaseManager.start();
+                        PlumBot.getBot().start();
+                        source.sendMessage(Component.text("配置文件已重新加载"));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        source.sendMessage(Component.text("配置文件加载时出错").color(NamedTextColor.RED));
+                    }
+                }else source.sendMessage(Component.text("你没有权限执行此命令"));
+                break;
+            }
+            case "help": {
+                source.sendMessage(Component.text("§6PlumBot 机器人帮助菜单"));
+                source.sendMessage(Component.text("§6/pb reload :§f重载插件"));
+                source.sendMessage(Component.text("§6/pb help :§f获取插件帮助"));
+                break;
+            }
+            case "kook":
+                if (args.length == 1) {
+                    source.sendMessage(Component.text("命令错误，格式：/plumbot kook <value>"));
+                    source.sendMessage(Component.text("value可选值：plugins，help"));
+                    break;
+                }
+                if (args.length > 2) break;
+                if (args.length == 2) {
+                    if (KookBot.isKookEnabled()) {
+                        source.sendMessage(Component.text("kook客户端未启动"));
+                        break;
+                    }
+                    switch (args[1]) {
+                        case "plugins":
+                            Plugin[] plugins = KookBot.getKookClient().getCore().getPluginManager().getPlugins();
+                            String result = String.format("%s (%d): %s", source instanceof ConsoleCommandSender ? "Installed and running plugins" : "已安装并正在运行的插件", plugins.length, String.join(", ", (Iterable) Arrays.stream(plugins).map((plugin) -> {
+                                return plugin.getDescription().getName();
+                            }).collect(Collectors.toSet())));
+                            source.sendMessage(Component.text(result));
+                            break;
+                    }
+                }
+                break;
+            default: {
+                source.sendMessage(Component.text("错误的指令用法，请使用/pb help查看命令使用方法"));
+            }
+        }
     }
 }

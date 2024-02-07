@@ -1,8 +1,10 @@
 package me.regadpole.plumbot.command;
 
+import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.bot.KookBot;
 import me.regadpole.plumbot.config.Config;
 
+import me.regadpole.plumbot.internal.database.DatabaseManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -25,7 +27,11 @@ public class Commands implements CommandExecutor{
         switch (args[0]) {
             case "reload":
                 if (args.length != 1) return true;
+                DatabaseManager.close();
+                PlumBot.getBot().shutdown();
                 Config.loadConfig();
+                DatabaseManager.start();
+                PlumBot.getBot().start();
                 sender.sendMessage("PlumBot配置文件已重载");
                 break;
             case "help":
