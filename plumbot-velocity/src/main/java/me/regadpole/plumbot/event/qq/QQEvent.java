@@ -41,11 +41,6 @@ public class QQEvent {
             if(!Config.config.Online){
                 return;
             }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(e.getMessage());
-            if (matcher.find()){
-                return;
-            }
             List<String> pname = new ArrayList<>();
             for (Player player : plugin.getServer().getAllPlayers()) {
                 pname.add(player.getUsername());
@@ -92,11 +87,6 @@ public class QQEvent {
                 if (!Config.config.WhiteList.enable) {
                     return;
                 }
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
-                    return;
-                }
                 String name = matcher.group().replace("/删除白名单 ", "");
                 if (name.isEmpty()) {
                     PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
@@ -118,11 +108,6 @@ public class QQEvent {
             matcher = pattern.matcher(msg);
             if (matcher.find()) {
                 if (!Config.config.WhiteList.enable) {
-                    return;
-                }
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
                     return;
                 }
                 String qq = matcher.group().replace(Prefix + "删除User白名单 ", "");
@@ -168,11 +153,6 @@ public class QQEvent {
             if(!Config.config.Online){
                 return;
             }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
-                return;
-            }
             List<String> pname = new ArrayList<>();
             for (Player player : plugin.getServer().getAllPlayers()) {
                 pname.add(player.getUsername());
@@ -185,11 +165,6 @@ public class QQEvent {
         matcher = pattern.matcher(msg);
         if (matcher.find()) {
             if (!Config.config.WhiteList.enable) {
-                return;
-            }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
                 return;
             }
             String PlayerName = matcher.group().replace("/申请白名单 ", "");
@@ -214,11 +189,6 @@ public class QQEvent {
             if (!Config.config.WhiteList.enable) {
                 return;
             }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
-                return;
-            }
             PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
                 String idForName = DatabaseManager.getBind(String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 if (idForName == null || idForName.isEmpty()) {
@@ -235,11 +205,6 @@ public class QQEvent {
             if (plugin.vconf.getReturnsObj().get(msg) == null) return;
             String back = String.valueOf(plugin.vconf.getReturnsObj().get(msg));
             if(back!=null){
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
-                    return;
-                }
                 PlumBot.getBot().sendMsg(true, back,groupID);
                 return;
             }

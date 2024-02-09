@@ -36,22 +36,12 @@ public class QQEvent {
             if(!Config.Online()){
                 return;
             }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(e.getMessage());
-            if (matcher.find()){
-                return;
-            }
             bot.sendMsg(false, "当前在线：" + "("+Bukkit.getServer().getOnlinePlayers().size()+"人)"+ServerManager.listOnlinePlayer(), e.getUserId());
             return;
         }
 
         if(e.getMessage().equals(Prefix+"tps")) {
             if(!Config.TPS()){
-                return;
-            }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(e.getMessage());
-            if (matcher.find()){
                 return;
             }
             ServerTps st = new ServerTps();
@@ -64,11 +54,6 @@ public class QQEvent {
             matcher = pattern.matcher(e.getMessage());
             if (matcher.find()) {
                 if(!Config.CMD()){
-                    return;
-                }
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(matcher.group());
-                if (matcher.find()){
                     return;
                 }
                 String cmd = matcher.group().replace(Prefix+"cmd ", "");
@@ -124,11 +109,6 @@ public class QQEvent {
                 if(!Config.CMD()){
                     return;
                 }
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
-                    return;
-                }
                 String cmd = matcher.group().replace(Prefix+"cmd ", "");
                 bot.sendMsg(true, "已发送指令至服务器",groupID);
                 PlumBot.getScheduler().runTaskAsynchronously(()->{
@@ -142,11 +122,6 @@ public class QQEvent {
             matcher = pattern.matcher(msg);
             if (matcher.find()) {
                 if (!Config.WhiteList()) {
-                    return;
-                }
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
                     return;
                 }
                 String name = matcher.group().replace(Prefix + "删除白名单 ", "");
@@ -172,11 +147,6 @@ public class QQEvent {
                 if (!Config.WhiteList()) {
                     return;
                 }
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
-                    return;
-                }
                 String qq = matcher.group().replace(Prefix + "删除User白名单 ", "");
                 if (qq.isEmpty()) {
                     bot.sendMsg(true, "QQ不能为空", groupID);
@@ -198,11 +168,6 @@ public class QQEvent {
                 pattern = Pattern.compile(Prefix+".*");
                 matcher = pattern.matcher(msg);
                 if (!Config.SDC()){
-                    return;
-                }
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
                     return;
                 }
                 String scmd = matcher.group().replace(Prefix+"", "");
@@ -245,22 +210,12 @@ public class QQEvent {
             if(!Config.Online()){
                 return;
             }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
-                return;
-            }
             bot.sendMsg(true, "当前在线：" + "("+Bukkit.getServer().getOnlinePlayers().size()+"人)"+ServerManager.listOnlinePlayer(),groupID);
             return;
         }
 
         if(msg.equals(Prefix+"tps")) {
             if(!Config.TPS()){
-                return;
-            }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
                 return;
             }
             ServerTps st = new ServerTps();
@@ -272,11 +227,6 @@ public class QQEvent {
         matcher = pattern.matcher(msg);
         if (matcher.find()) {
             if (!Config.WhiteList()) {
-                return;
-            }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
                 return;
             }
             String PlayerName = matcher.group().replace(Prefix + "申请白名单 ", "");
@@ -301,11 +251,6 @@ public class QQEvent {
             if (!Config.WhiteList()) {
                 return;
             }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
-                return;
-            }
             PlumBot.getScheduler().runTaskAsynchronously(() -> {
                 String idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
                 if (idForName == null || idForName.isEmpty()) {
@@ -325,11 +270,6 @@ public class QQEvent {
             if (!Config.SDC()){
                 return;
             }
-            pattern = Pattern.compile("\\[CQ:.*].*");
-            matcher = pattern.matcher(msg);
-            if (matcher.find()){
-                return;
-            }
             String scmd = matcher.group().replace(Prefix+"", "");
             String gcmd = Config.getCommandsYaml().getString("User."+scmd);
             if(gcmd!=null) {
@@ -344,11 +284,6 @@ public class QQEvent {
         if (Config.SDR()){
             String back = Config.getReturnsYaml().getString(msg);
             if(back!=null){
-                pattern = Pattern.compile("\\[CQ:.*].*");
-                matcher = pattern.matcher(msg);
-                if (matcher.find()){
-                    return;
-                }
                 bot.sendMsg(true, back,groupID);
                 return;
             }
