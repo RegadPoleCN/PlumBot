@@ -30,6 +30,7 @@ public class QQBot implements Bot {
     private GroupClient client;
     private MessageClient messageClient;
     private static QQEvent qqEvent;
+    private Connection connection = null;
 
     @Override
     public void start() {
@@ -40,7 +41,6 @@ public class QQBot implements Bot {
             client =  new ClientFactory(http_config).createGroupClient();
             messageClient =  new ClientFactory(http_config).createMessageClient();
             LinkedBlockingQueue<String> blockingQueue = new LinkedBlockingQueue();//使用队列传输数据
-            Connection connection = null;
             try {
                 connection = ConnectionFactory.createHttpServer(Config.bot.Bot.gocqhttp.ListenPort,"/",blockingQueue);
             } catch (Exception e) {
@@ -91,6 +91,7 @@ public class QQBot implements Bot {
         for (long groupID : groups) {
             sendMsg(true, "PlumBot已关闭", groupID);
         }
+        connection.stop();
     }
 
     @Override

@@ -53,4 +53,13 @@ public class CQWebSocketServer extends WebSocketServer implements Connection {
     public void create() {
         super.start();
     }
+
+    @Override
+    public void stop() {
+        try {
+            super.stop();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }

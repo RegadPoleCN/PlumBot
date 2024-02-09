@@ -60,4 +60,10 @@ public class CustomHttpServer implements Connection {
             exchange.close();
         }
     }
+
+    @Override
+    public void stop() {
+        server.stop(0);
+        PlumBot.INSTANCE.getLogger().info("HTTP服务器已关闭");
+    }
 }
