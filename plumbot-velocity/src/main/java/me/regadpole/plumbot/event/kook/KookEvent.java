@@ -201,7 +201,7 @@ public class KookEvent implements Listener {
             if(!matcher.find()){
                 return;
             }
-            String fmsg = matcher.group().replace(Config.config.Forwarding.prefix, "");
+            String fmsg = msg.replace(Config.config.Forwarding.prefix, "");
             String name = StringTool.filterColor(senderName);
             String smsg = StringTool.filterColor(fmsg);
             String sendmsg = "§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg;
