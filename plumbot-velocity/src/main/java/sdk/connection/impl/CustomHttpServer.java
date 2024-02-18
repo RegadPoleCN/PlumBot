@@ -60,4 +60,11 @@ public class CustomHttpServer implements Connection {
             exchange.close();
         }
     }
+
+    @Override
+    public void stop() {
+        server.stop(0);
+//        log.info("HTTP服务器启动，正在监听端口：{}", port);
+        PlumBot.INSTANCE.getLogger().info("HTTP服务器已停止");
+    }
 }

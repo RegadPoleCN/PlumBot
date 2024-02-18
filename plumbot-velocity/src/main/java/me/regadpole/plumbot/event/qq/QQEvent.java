@@ -34,6 +34,9 @@ public class QQEvent {
 
     public void onFriendMessageReceive(PrivateMessage e){
 
+        Pattern pattern;
+        Matcher matcher;
+
         if(e.getMessage().equals("/在线人数")) {
             if(!Config.config.Online){
                 return;
@@ -97,7 +100,30 @@ public class QQEvent {
                     }
                     DatabaseManager.removeBindid(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                     PlumBot.getBot().sendMsg(true, "成功移出白名单", groupID);
-                });
+                }).schedule();
+                return;
+            }
+
+            pattern = Pattern.compile(Prefix + "删除User白名单 .*");
+            matcher = pattern.matcher(msg);
+            if (matcher.find()) {
+                if (!Config.config.WhiteList.enable) {
+                    return;
+                }
+                String qq = matcher.group().replace(Prefix + "删除User白名单 ", "");
+                if (qq.isEmpty()) {
+                    bot.sendMsg(true, "QQ不能为空", groupID);
+                    return;
+                }
+                PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
+                    String idForName = DatabaseManager.getBind(qq, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                    if (idForName == null) {
+                        bot.sendMsg(true, "尚未申请白名单", groupID);
+                        return;
+                    }
+                    DatabaseManager.removeBind(qq, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                    bot.sendMsg(true, "成功移出白名单", groupID);
+                }).schedule();
                 return;
             }
         }
@@ -108,9 +134,10 @@ public class QQEvent {
             messages.add("成员命令:");
             messages.add("/在线人数 查看服务器当前在线人数");
             messages.add("/申请白名单 <ID> 为自己申请白名单");
-            messages.add("/删除白名单 <ID> 删除自己的白名单");
+            messages.add("/删除白名单 删除自己的白名单");
             messages.add("管理命令:");
             messages.add("/删除白名单 <ID> 删除指定游戏id的白名单");
+            messages.add("/删除User白名单 <QQ号/kookID> 删除指定群成员的白名单");
             for (String message : messages) {
                 if (messages.get(messages.size() - 1).equalsIgnoreCase(message)) {
                     stringBuilder.append(message.replaceAll("§\\S", ""));
@@ -156,28 +183,19 @@ public class QQEvent {
             return;
         }
 
-        pattern = Pattern.compile("/删除白名单 .*");
+        pattern = Pattern.compile("/删除白名单");
         matcher = pattern.matcher(msg);
         if (matcher.find()) {
             if (!Config.config.WhiteList.enable) {
                 return;
             }
-            String name = matcher.group().replace("/删除白名单 ", "");
             PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
                 String idForName = DatabaseManager.getBind(String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 if (idForName == null || idForName.isEmpty()) {
                     PlumBot.getBot().sendMsg(true, "您尚未申请白名单", groupID);
                     return;
                 }
-                if (name.isEmpty()) {
-                    PlumBot.getBot().sendMsg(true, "id不能为空", groupID);
-                    return;
-                }
-                if (!idForName.equals(name)) {
-                    PlumBot.getBot().sendMsg(true, "你无权这样做", groupID);
-                    return;
-                }
-                DatabaseManager.removeBindid(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                DatabaseManager.removeBind(String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 PlumBot.getBot().sendMsg(true, "成功移出白名单", groupID);
             }).schedule();
             return;

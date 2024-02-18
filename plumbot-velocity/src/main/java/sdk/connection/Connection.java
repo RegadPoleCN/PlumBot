@@ -9,4 +9,5 @@ public interface Connection {
      * 启动方法
      */
     void create();
+    void stop();
 }

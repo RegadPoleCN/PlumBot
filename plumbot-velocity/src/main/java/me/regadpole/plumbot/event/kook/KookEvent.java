@@ -3,6 +3,7 @@ package me.regadpole.plumbot.event.kook;
 import com.velocitypowered.api.proxy.Player;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.bot.KookBot;
+import me.regadpole.plumbot.bot.QQBot;
 import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
@@ -35,6 +36,8 @@ public class KookEvent implements Listener {
 
     @EventHandler
     public void onChannelMessageReceive(ChannelMessageEvent e) {
+
+        KookBot bot = (KookBot) PlumBot.getBot();
 
         for (long groupId:Config.bot.Groups) {
             if (!e.getChannel().getId().equalsIgnoreCase(kBot.getChannel(groupId).getId())) return;
@@ -99,17 +102,41 @@ public class KookEvent implements Listener {
                 return;
             }
 
+            pattern = Pattern.compile(Prefix + "删除User白名单 .*");
+            matcher = pattern.matcher(msg);
+            if (matcher.find()) {
+                if (!Config.config.WhiteList.enable) {
+                    return;
+                }
+                String qq = matcher.group().replace(Prefix + "删除User白名单 ", "");
+                if (qq.isEmpty()) {
+                    e.getMessage().reply("QQ不能为空");
+                    return;
+                }
+                PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
+                    String idForName = DatabaseManager.getBind(qq, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                    if (idForName == null) {
+                        e.getMessage().reply("尚未申请白名单");
+                        return;
+                    }
+                    DatabaseManager.removeBind(qq, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                    e.getMessage().reply("成功移出白名单");
+                }).schedule();
+                return;
+            }
+
         }
 
         if(msg.equals(Prefix+"帮助")) {
             List<String> messages = new LinkedList<>();
             StringBuilder stringBuilder = new StringBuilder();
             messages.add("成员命令:");
-            messages.add(Prefix+"在线人数 查看服务器当前在线人数");
-            messages.add(Prefix+"申请白名单 <ID> 为自己申请白名单");
-            messages.add(Prefix+"删除白名单 <ID> 删除自己的白名单");
+            messages.add("/在线人数 查看服务器当前在线人数");
+            messages.add("/申请白名单 <ID> 为自己申请白名单");
+            messages.add("/删除白名单 删除自己的白名单");
             messages.add("管理命令:");
-            messages.add(Prefix+"删除白名单 <ID> 删除指定游戏id的白名单");
+            messages.add("/删除白名单 <ID> 删除指定游戏id的白名单");
+            messages.add("/删除User白名单 <QQ号/kookID> 删除指定群成员的白名单");
             for (String message : messages) {
                 if (messages.get(messages.size() - 1).equalsIgnoreCase(message)) {
                     stringBuilder.append(message.replaceAll("§\\S", ""));
@@ -155,28 +182,19 @@ public class KookEvent implements Listener {
             return;
         }
 
-        pattern = Pattern.compile(Prefix + "删除白名单 .*");
+        pattern = Pattern.compile("/删除白名单");
         matcher = pattern.matcher(msg);
         if (matcher.find()) {
             if (!Config.config.WhiteList.enable) {
                 return;
             }
-            String name = matcher.group().replace(Prefix + "删除白名单 ", "");
-            plugin.getServer().getScheduler().buildTask(plugin, () -> {
-                String idForName = DatabaseManager.getBind(senderID, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+            PlumBot.INSTANCE.getServer().getScheduler().buildTask(PlumBot.INSTANCE, () -> {
+                String idForName = DatabaseManager.getBind(String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 if (idForName == null || idForName.isEmpty()) {
                     e.getMessage().reply("您尚未申请白名单");
                     return;
                 }
-                if (name.isEmpty()) {
-                    e.getMessage().reply("id不能为空");
-                    return;
-                }
-                if (!idForName.equals(name)) {
-                    e.getMessage().reply("你无权这样做");
-                    return;
-                }
-                DatabaseManager.removeBindid(name, DbConfig.type.toLowerCase(), PlumBot.getDatabase());
+                DatabaseManager.removeBind(String.valueOf(senderID), DbConfig.type.toLowerCase(), PlumBot.getDatabase());
                 e.getMessage().reply("成功移出白名单");
             }).schedule();
             return;

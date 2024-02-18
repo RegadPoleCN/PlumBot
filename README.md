@@ -8,11 +8,9 @@
 [![Java CI with Maven](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven.yml)
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/RegadPoleCN/PlumBot)
 
-本插件适用于[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)中的http通信模式
+本插件适用于[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)中的http通信模式 和 [kook](kookapp.cn)的websocket模式
 
-测试性功能：[kook](kookapp.cn)的websocket模式（beta版，目前bukkit可用,velocity未进行测试）
-
-测试环境：[go-cqhttp1.1.0](https://github.com/Mrs4s/go-cqhttp/releases/tag/v1.1.0)+[paper1.20](https://papermc.io/downloads/paper)+[zulujdk17](https://www.azul.com/downloads)
+测试环境：[go-cqhttp1.1.0](https://github.com/Mrs4s/go-cqhttp/releases/tag/v1.1.0) / [kook机器人](https://developer.kookapp.cn/app/index)+[paper1.20](https://papermc.io/downloads/paper)+[zulujdk17](https://www.azul.com/downloads)
 
 适用Minecraft Java版本：1.16+（需v1.2及以上插件)
 

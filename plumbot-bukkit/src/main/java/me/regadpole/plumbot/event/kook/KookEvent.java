@@ -114,9 +114,32 @@ public class KookEvent implements Listener {
                 return;
             }
 
-            pattern = Pattern.compile(Prefix+".*");
+            pattern = Pattern.compile(Prefix + "删除User白名单 .*");
             matcher = pattern.matcher(msg);
+            if (matcher.find()) {
+                if (!Config.WhiteList()) {
+                    return;
+                }
+                String qq = matcher.group().replace(Prefix + "删除User白名单 ", "");
+                if (qq.isEmpty()) {
+                    e.getMessage().reply("QQ不能为空");
+                    return;
+                }
+                PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                    String idForName = DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    if (idForName == null) {
+                        e.getMessage().reply("尚未申请白名单");
+                        return;
+                    }
+                    DatabaseManager.removeBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    e.getMessage().reply("成功移出白名单");
+                });
+                return;
+            }
+
             if(matcher.find()){
+                pattern = Pattern.compile(Prefix+".*");
+                matcher = pattern.matcher(msg);
                 if (!Config.SDC()){
                     return;
                 }
@@ -140,10 +163,11 @@ public class KookEvent implements Listener {
             messages.add(Prefix+"在线人数 查看服务器当前在线人数");
             messages.add(Prefix+"tps 查看服务器当前tps");
             messages.add(Prefix+"申请白名单 <ID> 为自己申请白名单");
-            messages.add(Prefix+"删除白名单 <ID> 删除自己的白名单");
+            messages.add(Prefix+"删除白名单 删除自己的白名单");
             messages.add("管理命令:");
             messages.add(Prefix+"cmd 向服务器发送命令");
             messages.add(Prefix+"删除白名单 <ID> 删除指定游戏id的白名单");
+            messages.add(Prefix+"删除User白名单 <QQ号/kookID> 删除指定群成员的白名单");
             for (String message : messages) {
                 if (messages.get(messages.size() - 1).equalsIgnoreCase(message)) {
                     stringBuilder.append(message.replaceAll("§\\S", ""));
@@ -194,36 +218,28 @@ public class KookEvent implements Listener {
             return;
         }
 
-        pattern = Pattern.compile(Prefix + "删除白名单 .*");
+        pattern = Pattern.compile(Prefix + "删除白名单");
         matcher = pattern.matcher(msg);
         if (matcher.find()) {
             if (!Config.WhiteList()) {
                 return;
             }
-            String name = matcher.group().replace(Prefix + "删除白名单 ", "");
             PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                String idForName = DatabaseManager.getBind(senderID, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                String idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
                 if (idForName == null || idForName.isEmpty()) {
                     e.getMessage().reply("您尚未申请白名单");
                     return;
                 }
-                if (name.isEmpty()) {
-                    e.getMessage().reply("id不能为空");
-                    return;
-                }
-                if (!idForName.equals(name)) {
-                    e.getMessage().reply("你无权这样做");
-                    return;
-                }
-                DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                DatabaseManager.removeBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
                 e.getMessage().reply("成功移出白名单");
             });
             return;
         }
 
-        pattern = Pattern.compile(Prefix+".*");
-        matcher = pattern.matcher(msg);
+
         if(matcher.find()){
+            pattern = Pattern.compile(Prefix+".*");
+            matcher = pattern.matcher(msg);
             if (!Config.SDC()){
                 return;
             }
@@ -256,14 +272,25 @@ public class KookEvent implements Listener {
             if(!matcher.find()){
                 return;
             }
-            String fmsg = msg.replace(Args.ForwardingPrefix(), "");
+            String fmsg = matcher.group().replace(Args.ForwardingPrefix(), "");
             String name = StringTool.filterColor(senderName);
             String smsg = StringTool.filterColor(fmsg);
+            pattern = Pattern.compile("\\[CQ:.*].*");
+            matcher = pattern.matcher(smsg);
+            if (matcher.find()){
+                String useMsg = matcher.group().replaceAll("\\[CQ:.*]", "");
+                if (FoliaSupport.isFolia) {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
+                    }
+                }
+                Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
+                return;
+            }
             if (FoliaSupport.isFolia) {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
                 }
-                return;
             }
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
             return;
@@ -272,11 +299,22 @@ public class KookEvent implements Listener {
         if(groups.contains(groupID)) {
             String name = StringTool.filterColor(senderName);
             String smsg = StringTool.filterColor(msg);
+            pattern = Pattern.compile("\\[CQ:.*].*");
+            matcher = pattern.matcher(smsg);
+            if (matcher.find()){
+                String useMsg = matcher.group().replaceAll("\\[CQ:.*]", "");
+                if (FoliaSupport.isFolia) {
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
+                    }
+                }
+                Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
+                return;
+            }
             if (FoliaSupport.isFolia) {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
                 }
-                return;
             }
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
         }

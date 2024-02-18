@@ -63,4 +63,9 @@ public class CQWebSocketClient extends WebSocketClient implements Connection {
     public void create() {
         super.connect();
     }
+
+    @Override
+    public void stop() {
+        super.close();
+    }
 }
