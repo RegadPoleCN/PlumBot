@@ -164,9 +164,9 @@ public class QQEvent {
                 return;
             }
 
+            pattern = Pattern.compile(Prefix+".*");
+            matcher = pattern.matcher(msg);
             if(matcher.find()){
-                pattern = Pattern.compile(Prefix+".*");
-                matcher = pattern.matcher(msg);
                 if (!Config.SDC()){
                     return;
                 }
@@ -263,10 +263,9 @@ public class QQEvent {
             return;
         }
 
-
+        pattern = Pattern.compile(Prefix+".*");
+        matcher = pattern.matcher(msg);
         if(matcher.find()){
-            pattern = Pattern.compile(Prefix+".*");
-            matcher = pattern.matcher(msg);
             if (!Config.SDC()){
                 return;
             }
@@ -299,17 +298,18 @@ public class QQEvent {
             if(!matcher.find()){
                 return;
             }
-            String fmsg = matcher.group().replace(Args.ForwardingPrefix(), "");
+            String fmsg = msg.replace(Args.ForwardingPrefix(), "");
             String name = StringTool.filterColor(senderName);
             String smsg = StringTool.filterColor(fmsg);
             pattern = Pattern.compile("\\[CQ:.*].*");
             matcher = pattern.matcher(smsg);
             if (matcher.find()){
-                String useMsg = matcher.group().replaceAll("\\[CQ:.*]", "");
+                String useMsg = smsg.replaceAll("\\[CQ:.*]", "");
                 if (FoliaSupport.isFolia) {
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
                     }
+                    return;
                 }
                 Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
                 return;
@@ -318,6 +318,7 @@ public class QQEvent {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
                 }
+                return;
             }
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
             return;
@@ -329,11 +330,12 @@ public class QQEvent {
             pattern = Pattern.compile("\\[CQ:.*].*");
             matcher = pattern.matcher(smsg);
             if (matcher.find()){
-                String useMsg = matcher.group().replaceAll("\\[CQ:.*]", "");
+                String useMsg = smsg.replaceAll("\\[CQ:.*]", "");
                 if (FoliaSupport.isFolia) {
                     for (Player player : Bukkit.getOnlinePlayers()) {
                         player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
                     }
+                    return;
                 }
                 Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg);
                 return;
@@ -342,6 +344,7 @@ public class QQEvent {
                 for (Player player : Bukkit.getOnlinePlayers()) {
                     player.sendMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
                 }
+                return;
             }
             Bukkit.broadcastMessage("§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + smsg);
         }

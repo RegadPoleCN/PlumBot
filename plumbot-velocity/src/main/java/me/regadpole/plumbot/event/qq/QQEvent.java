@@ -242,7 +242,7 @@ public class QQEvent {
             pattern = Pattern.compile("\\[CQ:.*].*");
             matcher = pattern.matcher(smsg);
             if (matcher.find()){
-                String useMsg = matcher.group().replaceAll("\\[CQ:.*]", "");
+                String useMsg = smsg.replaceAll("\\[CQ:.*]", "");
                 String sendMsg = "§6" + "[" + groupName + "]" + "§a" + name + "§f" + ":" + useMsg;
                 plugin.getServer().getAllServers().forEach(server -> {server.sendMessage(SERIALIZER.deserialize(sendMsg));});
                 return;
