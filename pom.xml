@@ -43,7 +43,7 @@
                         </goals>
                         <configuration>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
-                            <relocations>
+<!--                            <relocations>-->
 <!--                                <relocation>-->
 <!--                                    <pattern>com.google.gson</pattern>-->
 <!--                                    <shadedPattern>me.regadpole.plumbot.com.google.gson</shadedPattern>-->
@@ -52,11 +52,15 @@
 <!--                                    <pattern>org.yaml.snakeyaml</pattern>-->
 <!--                                    <shadedPattern>me.regadpole.plumbot.org.yaml.snakeyaml</shadedPattern>-->
 <!--                                </relocation>-->
-                                <relocation>
-                                    <pattern>net.kyori.event</pattern>
-                                    <shadedPattern>me.regadpole.plumbot.net.kyori.event</shadedPattern>
-                                </relocation>
-                            </relocations>
+<!--                                <relocation>-->
+<!--                                    <pattern>net.kyori.event</pattern>-->
+<!--                                    <shadedPattern>me.regadpole.plumbot.net.kyori.event</shadedPattern>-->
+<!--                                </relocation>-->
+<!--                                <relocation>-->
+<!--                                    <pattern>org.apache.logging.log4j</pattern>-->
+<!--                                    <shadedPattern>me.regadpole.plumbot.org.apache.logging.log4j</shadedPattern>-->
+<!--                                </relocation>-->
+<!--                            </relocations>-->
                         </configuration>
                     </execution>
                 </executions>
@@ -88,6 +92,12 @@
             <version>3.0.0</version>
             <scope>compile</scope>
         </dependency>-->
+        <dependency>
+            <groupId>com.github.SNWCreations</groupId>
+            <artifactId>KookBC</artifactId>
+            <version>0.27.4</version>
+            <scope>compile</scope>
+        </dependency>
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>event-api</artifactId>
@@ -148,12 +158,6 @@
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.42.0.0</version>
             <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.github.SNWCreations</groupId>
-            <artifactId>KookBC</artifactId>
-            <version>0.27.4</version>
-            <scope>compile</scope>
         </dependency>
     </dependencies>
 

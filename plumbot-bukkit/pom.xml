@@ -56,6 +56,24 @@
 
     <dependencies>
         <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>21.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.10.1</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>org.purpurmc.purpur</groupId>
             <artifactId>purpur-api</artifactId>
             <version>1.16.5-R0.1-SNAPSHOT</version>
@@ -132,20 +150,35 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
-<!--                        <configuration>-->
-<!--                            <artifactSet>-->
-<!--                                <includes>-->
-<!--                                    <include>com.github.Anon8281:UniversalScheduler</include>-->
-<!--                                </includes>-->
-<!--                            </artifactSet>-->
-<!--                            <relocations>-->
-<!--                                <relocation>-->
-<!--                                    <pattern>com.github.Anon8281.universalScheduler</pattern>-->
-<!--                                    &lt;!&ndash; Don't forget to replace &ndash;&gt;-->
-<!--                                    <shadedPattern>me.regadpole.plumbot.universalScheduler</shadedPattern>-->
-<!--                                </relocation>-->
-<!--                            </relocations>-->
-<!--                        </configuration>-->
+                        <configuration>
+                            <relocations>
+                                <relocation>
+                                    <pattern>com.github.Anon8281.universalScheduler</pattern>
+                                    <!-- Don't forget to replace -->
+                                    <shadedPattern>me.regadpole.plumbot.universalScheduler</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>me.regadpole.plumbot.com.google.gson</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.yaml.snakeyaml</pattern>
+                                    <shadedPattern>me.regadpole.plumbot.org.yaml.snakeyaml</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>net.kyori.event</pattern>
+                                    <shadedPattern>me.regadpole.plumbot.net.kyori.event</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.apache.logging.log4j</pattern>
+                                    <shadedPattern>me.regadpole.plumbot.org.apache.logging.log4j</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.common</pattern>
+                                    <shadedPattern>me.regadpole.plumbot.com.google.common</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

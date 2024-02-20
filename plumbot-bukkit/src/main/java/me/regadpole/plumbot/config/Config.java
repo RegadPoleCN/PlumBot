@@ -41,7 +41,7 @@ public class Config {
         if (!Config.getBotYamlVersion().equals("1.3.0")){
             INSTANCE.saveResource(botFile.getName(), true);
         }
-        if (!Config.getConfigYamlVersion().equals("1.2.2")){
+        if (!Config.getConfigYamlVersion().equals("1.3.1")){
             INSTANCE.saveResource(configFile.getName(), true);
         }
         if (!Config.getCommandsYamlVersion().equals("1.2.2")){

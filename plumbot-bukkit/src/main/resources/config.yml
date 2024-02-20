@@ -1,5 +1,5 @@
 #机器人功能设置
-Ver: "1.2.2"
+Ver: "1.3.1"
 
 #QQ群聊命令前缀
 Prefix: "/"
@@ -59,3 +59,9 @@ database:
       maximumPoolSize: 15
       keepaliveTime: 0
       minimumIdle: 5
+      #当服务端出现类似
+      #“Receiver class org.sqlite.Conn does not define or
+      # inherit an implementation of the resolved method 'abstract boolean isValid(int)'
+      # of interface java.sql.Connection.”
+      #报错时，将下面配置取消注释
+      #connectionTestQuery: "SELECT 1"

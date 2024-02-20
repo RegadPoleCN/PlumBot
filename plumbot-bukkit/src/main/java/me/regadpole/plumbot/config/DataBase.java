@@ -18,5 +18,6 @@ public class DataBase {
     public static int pool_maximumPoolSize() {return Config.getConfigYaml().getInt("database.settings.pool.maximumPoolSize");}
     public static long pool_keepaliveTime() {return Config.getConfigYaml().getLong("database.settings.pool.keepaliveTime");}
     public static int pool_minimumIdle() {return Config.getConfigYaml().getInt("database.settings.pool.minimumIdle");}
+    public static String pool_connectionTestQuery() {return Config.getConfigYaml().getString("database.settings.pool.connectionTestQuery", "");}
 
 }

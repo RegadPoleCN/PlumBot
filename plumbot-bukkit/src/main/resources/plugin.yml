@@ -1,7 +1,7 @@
 name: PlumBot
 version: '${project.version}'
 main: me.regadpole.plumbot.PlumBot
-api-version: 1.16
+api-version: 1.13
 prefix: PlumBot
 authors: [ Linear,RegadPole ]
 folia-supported: true

@@ -28,6 +28,9 @@ public class SQLite implements Database{
         config.setDriverClassName(driver);
         config.setPoolName("PlumBot-SQLite");
         config.setJdbcUrl("jdbc:sqlite:" + new File(DataBase.sqlite_path()).getPath());
+        if (!DataBase.pool_connectionTestQuery().isEmpty()){
+            config.setConnectionTestQuery(DataBase.pool_connectionTestQuery());
+        }
         config.setConnectionTimeout(DataBase.pool_connectionTimeout());
         config.setIdleTimeout(DataBase.pool_idleTimeout());
         config.setMaxLifetime(DataBase.pool_maxLifetime());

@@ -32,6 +32,9 @@ public class MySQL implements Database{
         config.setJdbcUrl("jdbc:mysql://" + DataBase.mysql_host() +":"+ DataBase.mysql_port() + "/" + DataBase.mysql_database() + DataBase.mysql_parameters());
         config.setUsername(DataBase.mysql_username());
         config.setPassword(DataBase.mysql_password());
+        if (!DataBase.pool_connectionTestQuery().isEmpty()){
+            config.setConnectionTestQuery(DataBase.pool_connectionTestQuery());
+        }
         config.setConnectionTimeout(DataBase.pool_connectionTimeout());
         config.setIdleTimeout(DataBase.pool_idleTimeout());
         config.setMaxLifetime(DataBase.pool_maxLifetime());
