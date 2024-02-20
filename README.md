@@ -12,7 +12,8 @@
 
 测试环境：[go-cqhttp1.1.0](https://github.com/Mrs4s/go-cqhttp/releases/tag/v1.1.0) / [kook机器人](https://developer.kookapp.cn/app/index)+[paper1.20](https://papermc.io/downloads/paper)+[zulujdk17](https://www.azul.com/downloads)
 
-适用Minecraft Java版本：1.16+（需v1.2及以上插件)
+适用Minecraft Java版本：全版本
+（低版本如果出现数据库报错请先检查config.yml）
 
 
 ## bStats
