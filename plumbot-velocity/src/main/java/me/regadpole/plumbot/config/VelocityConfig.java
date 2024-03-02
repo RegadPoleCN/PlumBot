@@ -51,7 +51,7 @@ public class VelocityConfig {
             kookPlu.mkdirs();
         }
         if (!kookConf.exists()) {
-            try (InputStream is = plugin.getClass().getResourceAsStream("/" + kookConf.getParentFile().getName() + File.separator + kookConf.getName())) {
+            try (InputStream is = plugin.getClass().getResourceAsStream("/" + kookConf.getParentFile().getName() + "/" + kookConf.getName())) {
                 assert is != null;
                 Files.copy(is, kookConf.toPath());
             }
@@ -78,8 +78,6 @@ public class VelocityConfig {
         Config.bot.Bot.gocqhttp.ListenPort = !Objects.isNull(cqMap.get("ListenPort")) ? Integer.parseInt(String.valueOf(cqMap.get("ListenPort"))) : 5701;
         Map<String, Object> kookMap = !Objects.isNull(botMap.get("Kook")) ? (Map<String, Object>) botMap.get("Kook") : new HashMap<>();
         Config.bot.Bot.kook.Token = !Objects.isNull(kookMap.get("Token")) ? String.valueOf(kookMap.get("Token")) : "";
-        Config.bot.Groups = !Objects.isNull(botObj.get("Groups")) ? JSONArray.parseArray(botObj.get("Groups").toString(), Long.class) : new ArrayList<>();
-        Config.bot.Admins = !Objects.isNull(botObj.get("Admins")) ? JSONArray.parseArray(botObj.get("Admins").toString(), Long.class) : new ArrayList<>();
 
         Config.config.Ver = !Objects.isNull(configObj.get("Ver")) ? String.valueOf(configObj.get("Ver")) : "1.0";
         Map<String, Object> forwardingMap = !Objects.isNull(configObj.get("Forwarding")) ? (Map<String, Object>) configObj.get("Forwarding") : new HashMap<>();

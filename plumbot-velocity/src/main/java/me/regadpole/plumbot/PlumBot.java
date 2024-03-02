@@ -1,5 +1,6 @@
 package me.regadpole.plumbot;
 
+import com.alibaba.fastjson.JSONArray;
 import com.google.inject.Inject;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
@@ -27,10 +28,14 @@ import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.slf4j.Logger;
+import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
+import java.io.*;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Objects;
 
 @Plugin(id = "plumbot", name = "PlumBot", version = "1.3.0-beta1",
         url = "https://github.com/RegadPoleCN/PlumBot", description = "A plugin for Minecraft!", authors = {"Linear,RegadPole"})
@@ -78,6 +83,20 @@ public class PlumBot {
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
 
+        getServer().getScheduler().buildTask(this, () -> {
+            try {
+                File botFile = new File(getDataFolder(), "bot.yml");
+                InputStream botIs = new FileInputStream(botFile);
+                Yaml yaml = new Yaml();
+                Map<String, Object> botObj = yaml.load(botIs);
+                Config.bot.Groups = !Objects.isNull(botObj.get("Groups")) ? JSONArray.parseArray(botObj.get("Groups").toString(), Long.class) : new ArrayList<>();
+                Config.bot.Admins = !Objects.isNull(botObj.get("Admins")) ? JSONArray.parseArray(botObj.get("Admins").toString(), Long.class) : new ArrayList<>();
+                botIs.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).schedule();
+
         DatabaseManager.start();
         server.getEventManager().register(this, new ServerEvent());
         logger.info("服务器事件监听器注册成功");
@@ -103,7 +122,7 @@ public class PlumBot {
                     getLogger().warn("无法启动服务，请检查配置文件");
                     break;
             }
-        });
+        }).schedule();
 
         // All you have to do is adding the following two lines in your onProxyInitialization method.
         // You can find the plugin ids of your plugins on the page https://bstats.org/what-is-my-plugin-id
