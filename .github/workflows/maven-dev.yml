@@ -1,0 +1,51 @@
+
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-java-with-maven
+
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Java CI dev
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up JDK 18
+      uses: actions/setup-java@v3
+      with:
+        java-version: '18'
+        distribution: 'zulu'
+        cache: maven
+    - name: Build with Maven
+      run: mvn -B package --file pom.xml
+
+    - name: Upload a Build Artifact - PlumBot-bukkit
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: "PlumBot-bukkit.jar"
+        path: plumbot-bukkit/target/plumbot-bukkit*.jar
+
+    - name: Upload a Build Artifact - PlumBot-velocity
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: "PlumBot-velocity.jar"
+        path: plumbot-velocity/target/plumbot-velocity*.jar
+
+    - name: Upload a Build Artifact - PlumBot-bungee
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: "PlumBot-bungee.jar"
+        path: plumbot-bungee/target/plumbot-bungee*.jar

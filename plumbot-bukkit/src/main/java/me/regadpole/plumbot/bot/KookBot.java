@@ -29,7 +29,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 
 import static me.regadpole.plumbot.PlumBot.INSTANCE;
@@ -48,7 +47,7 @@ public class KookBot implements Bot {
         File kookPlugins;
         KBCClient kook;
         kookcore = new CoreImpl();
-        JKook.setCore(kookcore);
+        if (JKook.getCore() == null) JKook.setCore(kookcore);
         config = YamlConfiguration.loadConfiguration(new File(kookFolder, "kbc.yml"));
         kookPlugins = new File(kookFolder, "plugins");
         kook = new KookClient(kookcore, config, kookPlugins, Config.getKookBotToken(), "websocket");
@@ -85,7 +84,6 @@ public class KookBot implements Bot {
         });
     }
 
-    @Override
     public void sendMsg(boolean isGroup, BaseComponent message, long id) {
         if (id == 0L) {return;}
         if (message.toString().isEmpty()) {return;}

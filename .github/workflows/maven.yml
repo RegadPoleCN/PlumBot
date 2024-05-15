@@ -11,9 +11,9 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: [ "main", "dev" ]
+    branches: [ "main" ]
   pull_request:
-    branches: [ "main", "dev" ]
+    branches: [ "main" ]
   workflow_dispatch:
 
 jobs:
@@ -43,3 +43,9 @@ jobs:
       with:
         name: "PlumBot-velocity.jar"
         path: plumbot-velocity/target/plumbot-velocity*.jar
+
+    - name: Upload a Build Artifact - PlumBot-bungee
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: "PlumBot-bungee.jar"
+        path: plumbot-bungee/target/plumbot-bungee*.jar

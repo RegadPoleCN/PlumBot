@@ -14,6 +14,7 @@ import me.regadpole.plumbot.hook.GriefDefenderHook;
 import me.regadpole.plumbot.hook.QuickShopHook;
 import me.regadpole.plumbot.hook.ResidenceHook;
 import me.regadpole.plumbot.internal.Dependencies;
+import me.regadpole.plumbot.internal.Environment;
 import me.regadpole.plumbot.internal.FoliaSupport;
 import me.regadpole.plumbot.internal.database.Database;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
@@ -38,6 +39,7 @@ public final class PlumBot extends JavaPlugin implements Listener {
 
     private static Database database;
     private static Bot bot;
+    private static Environment environment;
 
     @Override
     public void onLoad() {
@@ -66,7 +68,7 @@ public final class PlumBot extends JavaPlugin implements Listener {
         if (QuickShopHook.hasQs) Bukkit.getPluginManager().registerEvents(new QsChatEvent(),this);
         if (QuickShopHook.hasQsHikari) Bukkit.getPluginManager().registerEvents(new QsHikariChatEvent(),this);
         getLogger().info("服务器事件监听器注册完毕");
-        Bukkit.getServer().getPluginCommand("plumbot").setExecutor(new Commands());
+        Bukkit.getServer().getPluginCommand("plumbot").setExecutor(new Commands(this));
         getLogger().info("命令注册完毕");
 
         getScheduler().runTaskAsynchronously(() -> {
@@ -94,6 +96,7 @@ public final class PlumBot extends JavaPlugin implements Listener {
         int pluginId = 19427; // <-- Replace with the id of your plugin!
         Metrics metrics = new Metrics(this, pluginId);
 
+        environment = new Environment();
         getLogger().info( "PlumBot已启动");
 
     }
@@ -138,7 +141,7 @@ public final class PlumBot extends JavaPlugin implements Listener {
     public void setDatabase(Database database) {
         PlumBot.database =database;
     }
-
+    public Environment getEnvironment() {return environment;}
 }
 
 

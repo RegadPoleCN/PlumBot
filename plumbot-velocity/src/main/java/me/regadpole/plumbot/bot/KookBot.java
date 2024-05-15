@@ -84,7 +84,6 @@ public class KookBot implements Bot {
         }).schedule();
     }
 
-    @Override
     public void sendMsg(boolean isGroup, BaseComponent message, long id) {
         if (id == 0L) {return;}
         if (message.toString().isEmpty()) {return;}
