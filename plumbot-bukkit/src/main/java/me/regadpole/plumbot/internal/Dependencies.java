@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.internal;
 
+import com.ghostchu.quickshop.util.config.UpdateScript;
 import me.regadpole.plumbot.internal.maven.MavenLibraries;
 import me.regadpole.plumbot.internal.maven.MavenLibrary;
 
@@ -14,7 +15,8 @@ import static me.regadpole.plumbot.internal.Dependencies.*;
         @MavenLibrary(groupId = lombok.groupId, artifactId = lombok.artifactId, version = lombok.version),
         @MavenLibrary(groupId = HikariCP.groupId, artifactId = HikariCP.artifactId, version = HikariCP.version),
         @MavenLibrary(groupId = MySQL.groupId, artifactId = MySQL.artifactId, version = MySQL.version),
-        @MavenLibrary(groupId = sqlite.groupId, artifactId = sqlite.artifactId, version = sqlite.version)})
+        @MavenLibrary(groupId = sqlite.groupId, artifactId = sqlite.artifactId, version = sqlite.version),
+        @MavenLibrary(groupId = kookbc.groupId, artifactId = kookbc.artifactId, version = kookbc.version)})
 public class Dependencies {
     public static class hutool{
         public static final String groupId = "cn.hutool";
@@ -62,5 +64,9 @@ public class Dependencies {
         public static final String artifactId = "sqlite-jdbc";
         public static final String version = "3.42.0.0";
     }
-
+    public static class kookbc{
+        public static final String groupId = "com.github.SNWCreations";
+        public static final String artifactId = "KookBC";
+        public static final String version = "0.27.4";
+    }
 }

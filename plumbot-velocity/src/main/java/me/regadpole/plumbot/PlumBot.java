@@ -21,6 +21,7 @@ import me.regadpole.plumbot.event.server.ServerEvent;
 import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.Dependencies;
+import me.regadpole.plumbot.internal.Environment;
 import me.regadpole.plumbot.internal.database.Database;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
 import me.regadpole.plumbot.internal.database.MySQL;
@@ -37,8 +38,8 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 
-@Plugin(id = "plumbot", name = "PlumBot", version = "1.3.0-beta1",
-        url = "https://github.com/RegadPoleCN/PlumBot", description = "A plugin for Minecraft!", authors = {"Linear,RegadPole"})
+@Plugin(id = "plumbot", name = "PlumBot", version = "1.3.2",
+        url = "https://github.com/RegadPoleCN/PlumBot", description = "A bot plugin for QQ or Kook.", authors = {"Linear,RegadPole"})
 public class PlumBot {
 
     private final ProxyServer server;
@@ -48,6 +49,7 @@ public class PlumBot {
     private final Metrics.Factory metricsFactory;
     public VelocityConfig vconf;
     private static Bot bot;
+    private static Environment environment;
 
     public static PlumBot INSTANCE;
     private static Database database;
@@ -129,6 +131,8 @@ public class PlumBot {
         int pluginId = 19428;
         Metrics metrics = metricsFactory.make(this, pluginId);
         metrics.addCustomChart(new Metrics.SimplePie("chart_id", () -> "value"));
+
+        environment = new Environment();
         logger.info("PlumBot 已启动");
 
 
@@ -179,4 +183,5 @@ public class PlumBot {
     public void setDatabase(Database database) {
         PlumBot.database = database;
     }
+    public Environment getEnvironment() {return environment;}
 }

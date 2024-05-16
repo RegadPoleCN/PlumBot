@@ -43,3 +43,9 @@ jobs:
       with:
         name: "PlumBot-velocity.jar"
         path: plumbot-velocity/target/plumbot-velocity*.jar
+
+    - name: Upload a Build Artifact - PlumBot-bungee
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: "PlumBot-bungee.jar"
+        path: plumbot-bungee/target/plumbot-bungee*.jar

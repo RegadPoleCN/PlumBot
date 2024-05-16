@@ -4,6 +4,8 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.bot.KookBot;
+import me.regadpole.plumbot.internal.Config;
+import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -34,6 +36,16 @@ public class Commands implements SimpleCommand {
             return;
         }
         switch (args[0].toLowerCase()) {
+            case "info":
+                StringBuilder stringbuilder = new StringBuilder();
+                stringbuilder.append("§1---PlumBot 信息---").append("\n");
+                stringbuilder.append("§a作者: ").append("§f").append(plugin.getEnvironment().author).append("\n");
+                stringbuilder.append("§a版本: ").append("§f").append(plugin.getEnvironment().version).append("\n");
+                stringbuilder.append("§a机器人平台: ").append("§f").append(Config.bot.Bot.Mode).append("\n");
+                stringbuilder.append("§a数据库模式: ").append("§f").append(DbConfig.type).append("\n");
+                stringbuilder.append("§a服务端版本: ").append("§f").append(plugin.getServer().getVersion().toString()).append("\n");
+                source.sendMessage(Component.text(stringbuilder.toString()));
+                break;
             case "reload": {
                 if (source.hasPermission("plumbot.command")) {
                     try {
@@ -54,6 +66,7 @@ public class Commands implements SimpleCommand {
             case "help": {
                 source.sendMessage(Component.text("§6PlumBot 机器人帮助菜单"));
                 source.sendMessage(Component.text("§6/pb reload :§f重载插件"));
+                source.sendMessage(Component.text("§6/pb info :§f插件基本信息"));
                 source.sendMessage(Component.text("§6/pb help :§f获取插件帮助"));
                 break;
             }
