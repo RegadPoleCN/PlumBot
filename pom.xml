@@ -97,7 +97,7 @@
             <groupId>com.github.SNWCreations</groupId>
             <artifactId>KookBC</artifactId>
             <version>0.27.4</version>
-            <scope>provided</scope>
+            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>net.kyori</groupId>
@@ -158,12 +158,6 @@
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.42.0.0</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.mikuac</groupId>
-            <artifactId>shiro</artifactId>
-            <version>2.2.2</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
