@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.internal;
 
+import com.ghostchu.quickshop.util.config.UpdateScript;
 import me.regadpole.plumbot.internal.maven.MavenLibraries;
 import me.regadpole.plumbot.internal.maven.MavenLibrary;
 
