@@ -15,7 +15,6 @@ import static me.regadpole.plumbot.internal.Dependencies.*;
         @MavenLibrary(groupId = HikariCP.groupId, artifactId = HikariCP.artifactId, version = HikariCP.version),
         @MavenLibrary(groupId = MySQL.groupId, artifactId = MySQL.artifactId, version = MySQL.version),
         @MavenLibrary(groupId = sqlite.groupId, artifactId = sqlite.artifactId, version = sqlite.version),
-        @MavenLibrary(groupId = kookbc.groupId, artifactId = kookbc.artifactId, version = kookbc.version),
         @MavenLibrary(groupId = jsr305.groupId, artifactId = jsr305.artifactId, version = jsr305.version)})
 public class Dependencies {
     public static class hutool{
@@ -63,11 +62,6 @@ public class Dependencies {
         public static final String groupId = "org.xerial";
         public static final String artifactId = "sqlite-jdbc";
         public static final String version = "3.42.0.0";
-    }
-    public static class kookbc{
-        public static final String groupId = "com.github.SNWCreations";
-        public static final String artifactId = "KookBC";
-        public static final String version = "0.27.4";
     }
     public static class jsr305{
         public static final String groupId = "com.google.code.findbugs";

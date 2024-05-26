@@ -3,7 +3,6 @@ package me.regadpole.plumbot.event.kook;
 import com.velocitypowered.api.proxy.Player;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.bot.KookBot;
-import me.regadpole.plumbot.bot.QQBot;
 import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.database.DatabaseManager;

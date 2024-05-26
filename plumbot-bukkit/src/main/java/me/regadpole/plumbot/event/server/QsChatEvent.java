@@ -1,6 +1,5 @@
 package me.regadpole.plumbot.event.server;
 
-import com.griefdefender.api.event.ClaimEvent;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;

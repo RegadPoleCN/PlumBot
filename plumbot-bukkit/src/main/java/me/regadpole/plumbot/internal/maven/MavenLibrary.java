@@ -25,8 +25,6 @@
 
 package me.regadpole.plumbot.internal.maven;
 
-import me.regadpole.plumbot.config.Args;
-
 import javax.annotation.Nonnull;
 import java.lang.annotation.*;
 

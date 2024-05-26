@@ -19,7 +19,7 @@ import sdk.listener.SimpleListener;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import static me.regadpole.plumbot.PlumBot.*;
+import static me.regadpole.plumbot.PlumBot.getScheduler;
 
 public class QQBot implements Bot {
 

@@ -1,6 +1,5 @@
 package me.regadpole.plumbot;
 
-import com.alibaba.fastjson.JSONArray;
 import com.google.inject.Inject;
 import com.velocitypowered.api.command.CommandManager;
 import com.velocitypowered.api.command.CommandMeta;
@@ -19,24 +18,16 @@ import me.regadpole.plumbot.command.Commands;
 import me.regadpole.plumbot.config.VelocityConfig;
 import me.regadpole.plumbot.event.server.ServerEvent;
 import me.regadpole.plumbot.internal.Config;
-import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.Dependencies;
 import me.regadpole.plumbot.internal.Environment;
 import me.regadpole.plumbot.internal.database.Database;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
-import me.regadpole.plumbot.internal.database.MySQL;
-import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.slf4j.Logger;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.*;
+import java.io.File;
 import java.nio.file.Path;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Objects;
 
 @Plugin(id = "plumbot", name = "PlumBot", version = "1.3.2",
         url = "https://github.com/RegadPoleCN/PlumBot", description = "A bot plugin for QQ or Kook.", authors = {"Linear,RegadPole"})
@@ -84,21 +75,6 @@ public class PlumBot {
 
     @Subscribe
     public void onProxyInitialization(ProxyInitializeEvent event) {
-
-        getServer().getScheduler().buildTask(this, () -> {
-            try {
-                File botFile = new File(getDataFolder(), "bot.yml");
-                InputStream botIs = new FileInputStream(botFile);
-                Yaml yaml = new Yaml();
-                Map<String, Object> botObj = yaml.load(botIs);
-                Config.bot.Groups = !Objects.isNull(botObj.get("Groups")) ? JSONArray.parseArray(botObj.get("Groups").toString(), Long.class) : new ArrayList<>();
-                Config.bot.Admins = !Objects.isNull(botObj.get("Admins")) ? JSONArray.parseArray(botObj.get("Admins").toString(), Long.class) : new ArrayList<>();
-                botIs.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }).schedule();
-
         DatabaseManager.start();
         server.getEventManager().register(this, new ServerEvent());
         logger.info("服务器事件监听器注册成功");
@@ -106,6 +82,9 @@ public class PlumBot {
         CommandMeta linearbot = manager.metaBuilder("plumbot").aliases("pb", "PlumBot").build();
         manager.register(linearbot, new Commands(this));
         logger.info("插件命令监听器注册成功");
+
+        pluginContainer = server.getPluginManager().fromInstance(this).orElseThrow(
+                () -> new IllegalArgumentException("The provided instance is not a plugin"));
 
         getServer().getScheduler().buildTask(this, () -> {
             switch (Config.bot.Bot.Mode) {

@@ -1,6 +1,5 @@
 package me.regadpole.plumbot.config;
 
-import com.alibaba.fastjson.JSONArray;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
@@ -78,6 +77,8 @@ public class VelocityConfig {
         Config.bot.Bot.gocqhttp.ListenPort = !Objects.isNull(cqMap.get("ListenPort")) ? Integer.parseInt(String.valueOf(cqMap.get("ListenPort"))) : 5701;
         Map<String, Object> kookMap = !Objects.isNull(botMap.get("Kook")) ? (Map<String, Object>) botMap.get("Kook") : new HashMap<>();
         Config.bot.Bot.kook.Token = !Objects.isNull(kookMap.get("Token")) ? String.valueOf(kookMap.get("Token")) : "";
+        Config.bot.Groups = !Objects.isNull(botObj.get("Groups")) ? (List<Long>) botObj.get("Groups") : new ArrayList<>();
+        Config.bot.Admins = !Objects.isNull(botObj.get("Admins")) ? (List<Long>) botObj.get("Admins") : new ArrayList<>();
 
         Config.config.Ver = !Objects.isNull(configObj.get("Ver")) ? String.valueOf(configObj.get("Ver")) : "1.0";
         Map<String, Object> forwardingMap = !Objects.isNull(configObj.get("Forwarding")) ? (Map<String, Object>) configObj.get("Forwarding") : new HashMap<>();
