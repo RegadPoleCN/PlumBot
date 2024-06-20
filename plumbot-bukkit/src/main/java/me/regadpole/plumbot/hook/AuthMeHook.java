@@ -1,9 +1,9 @@
 package me.regadpole.plumbot.hook;
 
 import fr.xephi.authme.api.v3.AuthMeApi;
+import me.regadpole.plumbot.PlumBot;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
-import me.regadpole.plumbot.PlumBot;
 
 public class AuthMeHook {
 

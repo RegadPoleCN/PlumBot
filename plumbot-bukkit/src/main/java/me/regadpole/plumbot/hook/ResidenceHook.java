@@ -2,9 +2,9 @@ package me.regadpole.plumbot.hook;
 
 import com.bekvon.bukkit.residence.Residence;
 import com.bekvon.bukkit.residence.chat.ChatManager;
+import me.regadpole.plumbot.PlumBot;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
-import me.regadpole.plumbot.PlumBot;
 
 public class ResidenceHook {
 

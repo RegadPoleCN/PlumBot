@@ -4,8 +4,9 @@ import com.github.Anon8281.universalScheduler.UniversalScheduler;
 import com.github.Anon8281.universalScheduler.scheduling.schedulers.TaskScheduler;
 import me.regadpole.plumbot.bot.Bot;
 import me.regadpole.plumbot.bot.KookBot;
+import me.regadpole.plumbot.bot.QQBot;
 import me.regadpole.plumbot.command.Commands;
-import me.regadpole.plumbot.config.DataBase;
+import me.regadpole.plumbot.config.Config;
 import me.regadpole.plumbot.event.server.QsChatEvent;
 import me.regadpole.plumbot.event.server.QsHikariChatEvent;
 import me.regadpole.plumbot.event.server.ServerEvent;
@@ -18,18 +19,12 @@ import me.regadpole.plumbot.internal.Environment;
 import me.regadpole.plumbot.internal.FoliaSupport;
 import me.regadpole.plumbot.internal.database.Database;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
-import me.regadpole.plumbot.internal.database.MySQL;
-import me.regadpole.plumbot.internal.database.SQLite;
 import me.regadpole.plumbot.internal.maven.LibraryLoader;
 import me.regadpole.plumbot.metrics.Metrics;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
-import me.regadpole.plumbot.bot.QQBot;
-import me.regadpole.plumbot.config.Config;
-
-import java.sql.SQLException;
 
 public final class PlumBot extends JavaPlugin implements Listener {
 

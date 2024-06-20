@@ -4,12 +4,12 @@ import com.velocitypowered.api.command.CommandSource;
 import com.velocitypowered.api.command.SimpleCommand;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.bot.KookBot;
+import me.regadpole.plumbot.config.VelocityConfig;
 import me.regadpole.plumbot.internal.Config;
 import me.regadpole.plumbot.internal.DbConfig;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import me.regadpole.plumbot.config.VelocityConfig;
 import snw.jkook.command.ConsoleCommandSender;
 import snw.jkook.plugin.Plugin;
 

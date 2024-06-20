@@ -3,7 +3,6 @@ package me.regadpole.plumbot.command;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.bot.KookBot;
 import me.regadpole.plumbot.config.Config;
-
 import me.regadpole.plumbot.config.DataBase;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
 import org.bukkit.Bukkit;

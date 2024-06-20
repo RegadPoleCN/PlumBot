@@ -7,10 +7,6 @@ triggers:
     branches:
       include:
         - .*
-  pr:
-    branches:
-      include:
-        - .*
 stages:
   - name: stage-5e497231
     displayName: 开源检测
