@@ -1,5 +1,5 @@
 #机器人功能设置
-Ver: "1.3.1"
+Ver: "1.3.2"
 
 #QQ群聊命令前缀
 Prefix: "/"
@@ -17,6 +17,7 @@ DieReport: false
 WhiteList:
   enable: false
   kickMsg: "请加入qq群:xxx申请白名单"
+  maxCount: 1
 
 #执行命令功能
 CMD: true
