@@ -126,8 +126,8 @@ public class KookEvent implements Listener {
                     return;
                 }
                 PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                    String idForName = DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    if (idForName == null) {
+                    List<String> idForName = DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    if (idForName.isEmpty()) {
                         e.getMessage().reply("尚未申请白名单");
                         return;
                     }
@@ -225,8 +225,8 @@ public class KookEvent implements Listener {
                 return;
             }
             PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                String idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                if (idForName == null || idForName.isEmpty()) {
+                List<String> idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                if (idForName.isEmpty()) {
                     e.getMessage().reply("您尚未申请白名单");
                     return;
                 }
@@ -348,10 +348,10 @@ public class KookEvent implements Listener {
     public void onGroupDecreaseNotice(UserLeaveGuildEvent e) {
         String userId = e.getUser().getId();
         String groupId = e.getGuildId();
-        String player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-        if (player == null) {
+        List<String> player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        if (player.isEmpty()) {
             return;
         }
-        DatabaseManager.removeBindid(player, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        DatabaseManager.removeBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
     }
 }

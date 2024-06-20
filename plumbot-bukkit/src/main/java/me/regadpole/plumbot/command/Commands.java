@@ -4,6 +4,7 @@ import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.bot.KookBot;
 import me.regadpole.plumbot.config.Config;
 import me.regadpole.plumbot.config.DataBase;
+import me.regadpole.plumbot.internal.WhitelistHelper;
 import me.regadpole.plumbot.internal.database.DatabaseManager;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
@@ -13,6 +14,7 @@ import snw.jkook.command.ConsoleCommandSender;
 import snw.jkook.plugin.Plugin;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class Commands implements CommandExecutor{
@@ -65,6 +67,69 @@ public class Commands implements CommandExecutor{
                 sender.sendMessage("§6/pb info :§f插件基本信息");
                 sender.sendMessage("§6/pb kook help :§f获取kook帮助");
                 sender.sendMessage("§6/pb kook plugins :§f获取kook插件列表");
+                sender.sendMessage("§6/pb queryBind <id:ID或qq:qq> :§f查询id或qq绑定数据");
+                sender.sendMessage("§6/pb addBind <qq> <id> :§f为qq添加ID白名单");
+                break;
+            case "queryBind":
+                if (args.length == 1) {
+                    sender.sendMessage("命令错误，格式：/plumbot queryBind <id:ID或qq:QQ>");
+                    return true;
+                }
+                if (args.length > 2) {
+                    sender.sendMessage("命令错误，格式：/plumbot queryBind <id:ID或qq:QQ>");
+                    return true;
+                }
+                if (args.length == 2) {
+                    if (args[1].startsWith("id:")) {
+                        String name = args[1].substring(3);
+                        if (name.isEmpty()) {
+                            sender.sendMessage("id不能为空");
+                            return true;
+                        }
+                        PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                            long qq = DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                            if (qq==0L) {
+                                sender.sendMessage("ID尚未申请白名单");
+                                return;
+                            }
+                            sender.sendMessage(name+"的申请用户为"+qq);
+                        });
+                        return true;
+                    } else if (args[1].startsWith("qq:")) {
+                        String qq = args[1].substring(3);
+                        if (qq.isEmpty()) {
+                            sender.sendMessage("QQ不能为空");
+                            return true;
+                        }
+                        PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                            List<String> id = DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                            if (id.isEmpty()) {
+                                sender.sendMessage(qq+"尚未申请白名单");
+                                return;
+                            }
+                            sender.sendMessage(qq+"拥有白名单ID："+id);
+                        });
+                        return true;
+                    }
+                    break;
+                }
+            case "addBind":
+                if (args.length == 1) {
+                    sender.sendMessage("命令错误，格式：/plumbot queryBind <id:ID或qq:QQ>");
+                    return true;
+                }
+                if (args.length > 2) {
+                    sender.sendMessage("命令错误，格式：/plumbot queryBind <id:ID或qq:QQ>");
+                    return true;
+                }
+                if (args.length == 2) {
+                    if (!WhitelistHelper.checkIDNotExist(args[1])) {
+                        sender.sendMessage("绑定失败，此ID已绑定用户" + DatabaseManager.getBindId(args[1], DataBase.type().toLowerCase(), PlumBot.getDatabase()));
+                        return true;
+                    }
+                    List<String> id = WhitelistHelper.addAndGet(args[1], args[0], DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    sender.sendMessage("成功申请白名单，" + args[0] + "目前的白名单为" + id);
+                }
                 break;
             case "kook":
                 if (args.length == 1) {
