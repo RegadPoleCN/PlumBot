@@ -144,6 +144,7 @@ public class QQEvent {
                         DatabaseManager.removeBindid(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
                         bot.sendMsg(true, "成功移出白名单", groupID);
                     });
+                    return;
                 } else if (para.startsWith("qq:")) {
                     String qq = para.substring(3);
                     if (qq.isEmpty()) {
@@ -158,9 +159,10 @@ public class QQEvent {
                             return;
                         }
                         int num = Integer.parseInt(p[1]);
-                        DatabaseManager.removeBind(p[0], num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        bot.sendMsg(true, "成功移出白名单，"+p[0]+"目前拥有的白名单为"+DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
+                        List<String> id = WhitelistHelper.removeAndGet(p[0], num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        bot.sendMsg(true, "成功移出白名单，"+p[0]+"目前拥有的白名单为"+id, groupID);
                     });
+                    return;
                 } else {
                     int num = Integer.parseInt(matcher.group().replace(Prefix + "删除白名单 ", ""));
                     PlumBot.getScheduler().runTaskAsynchronously(() -> {
@@ -169,11 +171,11 @@ public class QQEvent {
                             bot.sendMsg(true, "您尚未申请白名单", groupID);
                             return;
                         }
-                        DatabaseManager.removeBind(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        bot.sendMsg(true, "成功移出白名单，您目前拥有的白名单为"+DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
+                        List<String> id = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        bot.sendMsg(true, "成功移出白名单，您目前拥有的白名单为"+id, groupID);
                     });
+                    return;
                 }
-                return;
             }
 
             pattern = Pattern.compile(Prefix+".*");
@@ -191,6 +193,51 @@ public class QQEvent {
                     });
                     return;
                 }
+            }
+
+            pattern = Pattern.compile(Prefix + "查询白名单 .*");
+            matcher = pattern.matcher(msg);
+            if (matcher.find()) {
+                if (!Config.WhiteList()) {
+                    return;
+                }
+                String para = matcher.group().replace(Prefix + "查询白名单 ", "");
+                if (para.isEmpty()) {
+                    bot.sendMsg(true, "参数不能为空", groupID);
+                    return;
+                }
+                if (para.startsWith("id:")) {
+                    String name = para.substring(3);
+                    if (name.isEmpty()) {
+                        bot.sendMsg(true, "id不能为空", groupID);
+                        return;
+                    }
+                    PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                        long qq = DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        if (qq==0L) {
+                            bot.sendMsg(true, "ID尚未申请白名单", groupID);
+                            return;
+                        }
+                        bot.sendMsg(true, name+"的申请用户为"+qq, groupID);
+                    });
+                    return;
+                } else if (para.startsWith("qq:")) {
+                    String qq = para.substring(3);
+                    if (qq.isEmpty()) {
+                        bot.sendMsg(true, "QQ不能为空", groupID);
+                        return;
+                    }
+                    PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                        List<String> id = DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        if (id.isEmpty()) {
+                            bot.sendMsg(true, qq+"尚未申请白名单", groupID);
+                            return;
+                        }
+                        bot.sendMsg(true, qq+"拥有白名单ID："+id, groupID);
+                    });
+                    return;
+                }
+                return;
             }
 
         }
@@ -237,56 +284,11 @@ public class QQEvent {
             return;
         }
 
-        pattern = Pattern.compile(Prefix + "查询白名单 .*");
+        pattern = Pattern.compile(Prefix + "查询白名单");
         matcher = pattern.matcher(msg);
         if (matcher.find()) {
             if (!Config.WhiteList()) {
                 return;
-            }
-            if(Config.getAdmins().contains(senderID)) {
-                String para = matcher.group().replace(Prefix + "查询白名单 ", "");
-                if (para.isEmpty()) {
-                    bot.sendMsg(true, "参数不能为空", groupID);
-                    return;
-                }
-                if (para.startsWith("id:")) {
-                    String name = para.substring(3);
-                    if (name.isEmpty()) {
-                        bot.sendMsg(true, "id不能为空", groupID);
-                        return;
-                    }
-                    PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                        long qq = DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        if (qq==0L) {
-                            bot.sendMsg(true, "ID尚未申请白名单", groupID);
-                            return;
-                        }
-                        bot.sendMsg(true, name+"的申请用户为"+qq, groupID);
-                    });
-                } else if (para.startsWith("qq:")) {
-                    String qq = para.substring(3);
-                    if (qq.isEmpty()) {
-                        bot.sendMsg(true, "QQ不能为空", groupID);
-                        return;
-                    }
-                    PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                        List<String> id = DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        if (id.isEmpty()) {
-                            bot.sendMsg(true, qq+"尚未申请白名单", groupID);
-                            return;
-                        }
-                        bot.sendMsg(true, qq+"拥有白名单ID："+id, groupID);
-                    });
-                } else {
-                    PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                        List<String> id = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        if (id.isEmpty()) {
-                            bot.sendMsg(true, "您尚未申请白名单", groupID);
-                            return;
-                        }
-                        bot.sendMsg(true, senderID+"拥有白名单ID："+id, groupID);
-                    });
-                }
             }
             PlumBot.getScheduler().runTaskAsynchronously(() -> {
                 List<String> idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
@@ -319,9 +321,10 @@ public class QQEvent {
                     }
                     List<String> id = WhitelistHelper.addAndGet(PlayerName, String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
                     bot.sendMsg(true, "成功申请白名单，您目前的白名单为"+id, groupID);
+                    return;
                 }
                 PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                    if (WhitelistHelper.checkCount(String.valueOf(senderID))) {
+                    if (!WhitelistHelper.checkCount(String.valueOf(senderID))) {
                         bot.sendMsg(true, "绑定失败，该用户已绑定："+DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
                         return;
                     }
@@ -332,6 +335,7 @@ public class QQEvent {
                     List<String> id = WhitelistHelper.addAndGet(PlayerName, String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
                     bot.sendMsg(true, "成功申请白名单，您目前的白名单为"+id, groupID);
                 });
+                return;
             } else if (para.length==2) {
                 if(Config.getAdmins().contains(senderID)) {
                     if (!WhitelistHelper.checkIDNotExist(para[1])) {
@@ -340,6 +344,7 @@ public class QQEvent {
                     }
                     List<String> id = WhitelistHelper.addAndGet(para[1], para[0], DataBase.type().toLowerCase(), PlumBot.getDatabase());
                     bot.sendMsg(true, "成功申请白名单，"+para[0]+"目前的白名单为"+id, groupID);
+                    return;
                 }
             }
             return;
@@ -358,8 +363,8 @@ public class QQEvent {
                     bot.sendMsg(true, "您尚未申请白名单", groupID);
                     return;
                 }
-                DatabaseManager.removeBind(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                bot.sendMsg(true, "成功移出白名单，您目前的白名单为"+DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
+                List<String> result = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                bot.sendMsg(true, "成功移出白名单，您目前的白名单为"+result, groupID);
             });
             return;
         }

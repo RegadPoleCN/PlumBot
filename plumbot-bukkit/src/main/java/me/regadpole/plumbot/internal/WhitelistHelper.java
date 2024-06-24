@@ -13,7 +13,7 @@ public class WhitelistHelper {
     public static boolean checkCount(String qq){
         List<String> idList = DatabaseManager.getBind(qq, DataBase.type().toLowerCase(), PlumBot.getDatabase());
         int maxCount = Config.WhiteListMaxCount();
-        if (idList == null) return true;
+        if (idList.isEmpty()) return true;
         return idList.size() < maxCount;
     }
 
@@ -23,6 +23,11 @@ public class WhitelistHelper {
 
     public static List<String> addAndGet(String id, String qq, String mode, Database db){
         DatabaseManager.addBind(id, qq, mode, db);
+        return DatabaseManager.getBind(qq, mode, db);
+    }
+
+    public static List<String> removeAndGet(String qq, int num, String mode, Database db){
+        DatabaseManager.removeBind(qq, num, mode, db);
         return DatabaseManager.getBind(qq, mode, db);
     }
 }

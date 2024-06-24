@@ -202,7 +202,7 @@ public class DatabaseManager {
     public static void removeBind(String qq, String mode, Database db) {
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";
         String select = "SELECT * FROM whitelist WHERE qq=" + qq + ";";
-        String delete = "DELETE FROM whitelist WHERE qq=" + qq+";";
+        String delete = "DELETE FROM whitelist WHERE qq=" + qq + ";";
 
         try {
             Connection connection = db.getConnection();
@@ -293,7 +293,7 @@ public class DatabaseManager {
         List<String> id = new ArrayList<>();
 
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";
-        String select = "SELECT * FROM whitelist WHERE qq=" + qq + " LIMIT 1;";
+        String select = "SELECT * FROM whitelist WHERE qq=" + qq + " ;";
 
         try {
             Connection connection = db.getConnection();
