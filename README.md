@@ -7,7 +7,10 @@
 ![GitHub](https://img.shields.io/github/license/RegadPoleCN/PlumBot)
 [![Java CI with Maven](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven.yml)
 [![Java CI dev](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven-dev.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven-dev.yml)
-![GitHub release (with filter)](https://img.shields.io/github/v/release/RegadPoleCN/PlumBot)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/RegadPoleCN/PlumBot/total?logo=github)](https://github.com/RegadPoleCN/PlumBot/releases)
+[![GitHub release (with filter)](https://img.shields.io/github/v/release/RegadPoleCN/PlumBot)](https://github.com/RegadPoleCN/PlumBot/releases)
+[![Modrinth Downloads](https://img.shields.io/modrinth/dt/plumbot?logo=modrinth)](https://modrinth.com/plugin/plumbot)
+
 
 本插件适用于[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)中的http通信模式 和 [kook](kookapp.cn)的websocket模式
 
