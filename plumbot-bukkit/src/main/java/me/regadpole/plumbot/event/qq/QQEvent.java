@@ -256,6 +256,7 @@ public class QQEvent {
             messages.add(Prefix+"申请白名单 <qq> <id> 为指定用户申请白名单");
             messages.add(Prefix+"删除白名单 <id:ID 或 qq:QQ 序号> 删除指定游戏id或qq的白名单");
             messages.add(Prefix+"查询白名单 <id:ID 或 qq:QQ> 查询指定游戏id或qq的白名单");
+            messages.add("ps:请通过查询白名单获得序号");
             for (String message : messages) {
                 if (messages.get(messages.size() - 1).equalsIgnoreCase(message)) {
                     stringBuilder.append(message.replaceAll("§\\S", ""));
