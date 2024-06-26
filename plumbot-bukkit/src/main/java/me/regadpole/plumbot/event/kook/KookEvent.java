@@ -289,7 +289,7 @@ public class KookEvent implements Listener {
                     e.getMessage().reply("id不能为空");
                     return;
                 }
-                if(Config.getAdmins().contains(senderID)) {
+                if(admins.contains(senderID)) {
                     if (!WhitelistHelper.checkIDNotExist(PlayerName)) {
                         e.getMessage().reply("绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
                         return;
@@ -312,7 +312,7 @@ public class KookEvent implements Listener {
                 });
                 return;
             } else if (para.length==2) {
-                if(Config.getAdmins().contains(senderID)) {
+                if(admins.contains(senderID)) {
                     if (!WhitelistHelper.checkIDNotExist(para[1])) {
                         e.getMessage().reply("绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(para[1], DataBase.type().toLowerCase(), PlumBot.getDatabase()));
                         return;
