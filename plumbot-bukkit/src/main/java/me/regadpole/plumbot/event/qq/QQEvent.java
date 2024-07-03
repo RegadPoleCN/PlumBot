@@ -316,12 +316,14 @@ public class QQEvent {
                     return;
                 }
                 if(Config.getAdmins().contains(senderID)) {
-                    if (!WhitelistHelper.checkIDNotExist(PlayerName)) {
-                        bot.sendMsg(true, "绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
-                        return;
-                    }
-                    List<String> id = WhitelistHelper.addAndGet(PlayerName, String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    bot.sendMsg(true, "成功申请白名单，您目前的白名单为"+id, groupID);
+                    PlumBot.getScheduler().runTaskAsynchronously(()->{
+                        if (!WhitelistHelper.checkIDNotExist(PlayerName)) {
+                            bot.sendMsg(true, "绑定失败，此ID已绑定用户" + DatabaseManager.getBindId(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
+                            return;
+                        }
+                        List<String> id = WhitelistHelper.addAndGet(PlayerName, String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        bot.sendMsg(true, "成功申请白名单，您目前的白名单为"+id, groupID);
+                    });
                     return;
                 }
                 PlumBot.getScheduler().runTaskAsynchronously(() -> {
@@ -339,12 +341,14 @@ public class QQEvent {
                 return;
             } else if (para.length==2) {
                 if(Config.getAdmins().contains(senderID)) {
-                    if (!WhitelistHelper.checkIDNotExist(para[1])) {
-                        bot.sendMsg(true, "绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(para[1], DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
-                        return;
-                    }
-                    List<String> id = WhitelistHelper.addAndGet(para[1], para[0], DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    bot.sendMsg(true, "成功申请白名单，"+para[0]+"目前的白名单为"+id, groupID);
+                    PlumBot.getScheduler().runTaskAsynchronously(()->{
+                        if (!WhitelistHelper.checkIDNotExist(para[1])) {
+                            bot.sendMsg(true, "绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(para[1], DataBase.type().toLowerCase(), PlumBot.getDatabase()), groupID);
+                            return;
+                        }
+                        List<String> id = WhitelistHelper.addAndGet(para[1], para[0], DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        bot.sendMsg(true, "成功申请白名单，"+para[0]+"目前的白名单为"+id, groupID);
+                    });
                     return;
                 }
             }
@@ -461,11 +465,13 @@ public class QQEvent {
     public void onGroupDecreaseNotice(GroupDecreaseNotice e) {
         long userId = e.getUserId();
         long groupId = e.getGroupId();
-        List<String> player = DatabaseManager.getBind(String.valueOf(userId), DataBase.type().toLowerCase(), PlumBot.getDatabase());
-        if (player.isEmpty()) {
-            return;
-        }
-        DatabaseManager.removeBind(String.valueOf(userId), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        PlumBot.getScheduler().runTaskAsynchronously(() -> {
+            List<String> player = DatabaseManager.getBind(String.valueOf(userId), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+            if (player.isEmpty()) {
+                return;
+            }
+            DatabaseManager.removeBind(String.valueOf(userId), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        });
     }
 
 

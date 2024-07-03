@@ -290,12 +290,14 @@ public class KookEvent implements Listener {
                     return;
                 }
                 if(admins.contains(senderID)) {
-                    if (!WhitelistHelper.checkIDNotExist(PlayerName)) {
-                        e.getMessage().reply("绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
-                        return;
-                    }
-                    List<String> id = WhitelistHelper.addAndGet(PlayerName, String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    e.getMessage().reply("成功申请白名单，您目前的白名单为"+id);
+                    PlumBot.getScheduler().runTaskAsynchronously(()->{
+                        if (!WhitelistHelper.checkIDNotExist(PlayerName)) {
+                            e.getMessage().reply("绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(PlayerName, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
+                            return;
+                        }
+                        List<String> id = WhitelistHelper.addAndGet(PlayerName, String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        e.getMessage().reply("成功申请白名单，您目前的白名单为"+id);
+                    });
                     return;
                 }
                 PlumBot.getScheduler().runTaskAsynchronously(() -> {
@@ -313,12 +315,14 @@ public class KookEvent implements Listener {
                 return;
             } else if (para.length==2) {
                 if(admins.contains(senderID)) {
-                    if (!WhitelistHelper.checkIDNotExist(para[1])) {
-                        e.getMessage().reply("绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(para[1], DataBase.type().toLowerCase(), PlumBot.getDatabase()));
-                        return;
-                    }
-                    List<String> id = WhitelistHelper.addAndGet(para[1], para[0], DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    e.getMessage().reply("成功申请白名单，"+para[0]+"目前的白名单为"+id);
+                    PlumBot.getScheduler().runTaskAsynchronously(()->{
+                        if (!WhitelistHelper.checkIDNotExist(para[1])) {
+                            e.getMessage().reply("绑定失败，此ID已绑定用户"+DatabaseManager.getBindId(para[1], DataBase.type().toLowerCase(), PlumBot.getDatabase()));
+                            return;
+                        }
+                        List<String> id = WhitelistHelper.addAndGet(para[1], para[0], DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        e.getMessage().reply("成功申请白名单，"+para[0]+"目前的白名单为"+id);
+                    });
                     return;
                 }
             }
@@ -456,10 +460,12 @@ public class KookEvent implements Listener {
     public void onGroupDecreaseNotice(UserLeaveGuildEvent e) {
         String userId = e.getUser().getId();
         String groupId = e.getGuildId();
-        List<String> player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-        if (player.isEmpty()) {
-            return;
-        }
-        DatabaseManager.removeBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        PlumBot.getScheduler().runTaskAsynchronously(()->{
+            List<String> player = DatabaseManager.getBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+            if (player.isEmpty()) {
+                return;
+            }
+            DatabaseManager.removeBind(userId, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+        });
     }
 }

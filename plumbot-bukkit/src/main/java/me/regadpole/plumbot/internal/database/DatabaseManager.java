@@ -3,7 +3,6 @@ package me.regadpole.plumbot.internal.database;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.config.DataBase;
 
-import javax.annotation.Nullable;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -164,8 +163,15 @@ public class DatabaseManager {
                         return;
                     }
                     String id = resultSet.getString("id");
-                    String delete = "DELETE FROM whitelist WHERE qq=" + qq+" AND id='" + id + "';";
-                    statement.executeUpdate(delete);
+                    if (id == null) {
+                        resultSet.close();
+                        statement.close();
+                        connection.close();
+                        break;
+                    }else {
+                        String delete = "DELETE FROM whitelist WHERE id='" + id + "';";
+                        statement.executeUpdate(delete);
+                    }
                     resultSet.close();
                     statement.close();
                     connection.close();
@@ -187,8 +193,14 @@ public class DatabaseManager {
                         return;
                     }
                     String id = resultSet.getString("id");
-                    String delete = "DELETE FROM whitelist WHERE qq=" + qq+" AND id='" + id + "';";
-                    connection.prepareStatement(delete).executeUpdate();
+                    if (id == null) {
+                        resultSet.close();
+                        connection.close();
+                        break;
+                    }else {
+                        String delete = "DELETE FROM whitelist WHERE id='" + id + "';";
+                        connection.prepareStatement(delete).executeUpdate();
+                    }
                     resultSet.close();
                     connection.close();
                     break;
@@ -307,7 +319,14 @@ public class DatabaseManager {
                         resultSet.next();
                     }
                     do {
-                        id.add(resultSet.getString("id"));
+                        String tempId = resultSet.getString("id");
+                        if (tempId == null){
+                            resultSet.close();
+                            connection.close();
+                            break;
+                        } else {
+                            id.add(tempId);
+                        }
                         resultSet.next();
                     }while(!resultSet.isAfterLast());
                     resultSet.close();
@@ -325,7 +344,15 @@ public class DatabaseManager {
                         resultSet.next();
                     }
                     do {
-                        id.add(resultSet.getString("id"));
+                        String tempId = resultSet.getString("id");
+                        if (tempId == null){
+                            resultSet.close();
+                            statement.close();
+                            connection.close();
+                            break;
+                        } else {
+                            id.add(tempId);
+                        }
                         resultSet.next();
                     }while(!resultSet.isAfterLast());
                     resultSet.close();
