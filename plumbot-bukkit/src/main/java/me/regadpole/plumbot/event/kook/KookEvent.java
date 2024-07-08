@@ -131,22 +131,34 @@ public class KookEvent implements Listener {
                             e.getMessage().reply(p[0]+"尚未申请白名单");
                             return;
                         }
-                        int num = Integer.parseInt(p[1]);
-                        List<String> id = WhitelistHelper.removeAndGet(p[0], num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        e.getMessage().reply("成功移出白名单，"+p[0]+"目前拥有的白名单为"+id);
+                        try {
+                            int num = Integer.parseInt(p[1]);
+                            List<String> id = WhitelistHelper.removeAndGet(p[0], num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                            e.getMessage().reply("成功移出白名单，" + p[0] + "目前拥有的白名单为" + id);
+                        } catch (NumberFormatException | IndexOutOfBoundsException exception) {
+                            e.getMessage().reply("请正确输入序号");
+                        } catch (Exception exception) {
+                            exception.printStackTrace();
+                        }
                     });
                     return;
                 } else {
-                    int num = Integer.parseInt(matcher.group().replace(Prefix + "删除白名单 ", ""));
-                    PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                        List<String> idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        if (idForName.isEmpty()) {
-                            e.getMessage().reply("您尚未申请白名单");
-                            return;
-                        }
-                        List<String> id = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                        e.getMessage().reply("成功移出白名单，您目前拥有的白名单为"+id);
-                    });
+                    try {
+                        int num = Integer.parseInt(matcher.group().replace(Prefix + "删除白名单 ", ""));
+                        PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                            List<String> idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                            if (idForName.isEmpty()) {
+                                e.getMessage().reply("您尚未申请白名单");
+                                return;
+                            }
+                            List<String> id = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                            e.getMessage().reply("成功移出白名单，您目前拥有的白名单为" + id);
+                        });
+                    } catch (NumberFormatException | IndexOutOfBoundsException exception) {
+                        e.getMessage().reply("请正确输入序号");
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
+                    }
                     return;
                 }
             }
@@ -335,16 +347,22 @@ public class KookEvent implements Listener {
             if (!Config.WhiteList()) {
                 return;
             }
-            int num = Integer.parseInt(matcher.group().replace(Prefix + "删除白名单 ", ""));
-            PlumBot.getScheduler().runTaskAsynchronously(() -> {
-                List<String> idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                if (idForName.isEmpty()) {
-                    e.getMessage().reply("您尚未申请白名单");
-                    return;
-                }
-                List<String> result = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                e.getMessage().reply("成功移出白名单，您目前的白名单为"+result);
-            });
+            try {
+                int num = Integer.parseInt(matcher.group().replace(Prefix + "删除白名单 ", ""));
+                PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                    List<String> idForName = DatabaseManager.getBind(String.valueOf(senderID), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    if (idForName.isEmpty()) {
+                        e.getMessage().reply("您尚未申请白名单");
+                        return;
+                    }
+                    List<String> result = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                    e.getMessage().reply("成功移出白名单，您目前的白名单为" + result);
+                });
+            } catch (NumberFormatException | IndexOutOfBoundsException exception) {
+                e.getMessage().reply("请正确输入序号");
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
             return;
         }
 

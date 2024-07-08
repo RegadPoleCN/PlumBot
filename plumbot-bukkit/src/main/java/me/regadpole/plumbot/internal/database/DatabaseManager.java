@@ -138,7 +138,7 @@ public class DatabaseManager {
         }
     }
     
-    public static void removeBind(String qq, int num, String mode, Database db) {
+    public static void removeBind(String qq, int num, String mode, Database db) throws IndexOutOfBoundsException {
         String createTable = "CREATE TABLE IF NOT EXISTS whitelist (id TINYTEXT NOT NULL, qq long NOT NULL);";
         String select = "SELECT * FROM whitelist WHERE qq=" + qq + ";";
 
@@ -160,7 +160,7 @@ public class DatabaseManager {
                         resultSet.next();
                     }
                     if (resultSet.isAfterLast()){
-                        return;
+                        throw new IndexOutOfBoundsException("Error index");
                     }
                     String id = resultSet.getString("id");
                     if (id == null) {
@@ -190,7 +190,7 @@ public class DatabaseManager {
                         resultSet.next();
                     }
                     if (resultSet.isAfterLast()){
-                        return;
+                        throw new IndexOutOfBoundsException("Error index");
                     }
                     String id = resultSet.getString("id");
                     if (id == null) {
