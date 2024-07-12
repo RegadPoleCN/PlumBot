@@ -151,10 +151,14 @@ public class KookEvent implements Listener {
                                 e.getMessage().reply("您尚未申请白名单");
                                 return;
                             }
-                            List<String> id = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                            e.getMessage().reply("成功移出白名单，您目前拥有的白名单为" + id);
+                            try {
+                                List<String> id = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                                e.getMessage().reply("成功移出白名单，您目前拥有的白名单为" + id);
+                            } catch (IndexOutOfBoundsException exception) {
+                                e.getMessage().reply("请正确输入序号");
+                            }
                         });
-                    } catch (NumberFormatException | IndexOutOfBoundsException exception) {
+                    } catch (NumberFormatException exception) {
                         e.getMessage().reply("请正确输入序号");
                     } catch (Exception exception) {
                         exception.printStackTrace();
@@ -355,10 +359,14 @@ public class KookEvent implements Listener {
                         e.getMessage().reply("您尚未申请白名单");
                         return;
                     }
-                    List<String> result = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    e.getMessage().reply("成功移出白名单，您目前的白名单为" + result);
+                    try {
+                        List<String> result = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        e.getMessage().reply("成功移出白名单，您目前的白名单为" + result);
+                    } catch (IndexOutOfBoundsException exception) {
+                        e.getMessage().reply("请正确输入序号");
+                    }
                 });
-            } catch (NumberFormatException | IndexOutOfBoundsException exception) {
+            } catch (NumberFormatException exception) {
                 e.getMessage().reply("请正确输入序号");
             } catch (Exception exception) {
                 exception.printStackTrace();

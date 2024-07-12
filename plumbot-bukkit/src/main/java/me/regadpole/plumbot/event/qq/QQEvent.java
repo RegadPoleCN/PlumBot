@@ -178,10 +178,14 @@ public class QQEvent {
                                 bot.sendMsg(true, "您尚未申请白名单", groupID);
                                 return;
                             }
-                            List<String> id = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                            bot.sendMsg(true, "成功移出白名单，您目前拥有的白名单为" + id, groupID);
+                            try {
+                                List<String> id = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                                bot.sendMsg(true, "成功移出白名单，您目前拥有的白名单为" + id, groupID);
+                            } catch (IndexOutOfBoundsException exception) {
+                                bot.sendMsg(true, "请正确输入序号", groupID);
+                            }
                         });
-                    } catch (NumberFormatException | IndexOutOfBoundsException exception) {
+                    } catch (NumberFormatException exception) {
                         bot.sendMsg(true, "请正确输入序号", groupID);
                     } catch (Exception exception) {
                         exception.printStackTrace();
@@ -381,10 +385,14 @@ public class QQEvent {
                         bot.sendMsg(true, "您尚未申请白名单", groupID);
                         return;
                     }
-                    List<String> result = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    bot.sendMsg(true, "成功移出白名单，您目前的白名单为" + result, groupID);
+                    try {
+                        List<String> result = WhitelistHelper.removeAndGet(String.valueOf(senderID), num, DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        bot.sendMsg(true, "成功移出白名单，您目前的白名单为" + result, groupID);
+                    } catch (IndexOutOfBoundsException exception) {
+                        bot.sendMsg(true, "请正确输入序号", groupID);
+                    }
                 });
-            } catch (NumberFormatException | IndexOutOfBoundsException exception) {
+            } catch (NumberFormatException exception) {
                 bot.sendMsg(true, "请正确输入序号", groupID);
             } catch (Exception exception) {
                 exception.printStackTrace();

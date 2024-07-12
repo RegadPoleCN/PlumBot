@@ -12,7 +12,7 @@
 [![Modrinth Downloads](https://img.shields.io/modrinth/dt/plumbot?logo=modrinth)](https://modrinth.com/plugin/plumbot)
 
 
-本插件适用于[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)中的http通信模式 和 [kook](kookapp.cn)的websocket模式
+本插件适用于[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)中的http通信模式 和 [kook](https://kookapp.cn)的websocket模式
 
 测试环境：[go-cqhttp1.1.0](https://github.com/Mrs4s/go-cqhttp/releases/tag/v1.1.0) / [kook机器人](https://developer.kookapp.cn/app/index)+[paper1.20](https://papermc.io/downloads/paper)+[zulujdk17](https://www.azul.com/downloads)
 
@@ -27,7 +27,7 @@
 ## 安全状态
 
 [![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FRegadPoleCN%2FPlumBot.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FRegadPoleCN%2FPlumBot?ref=badge_large)
-[![Security Status](https://www.murphysec.com/platform3/v31/badge/1744894945006768128.svg)](https://www.murphysec.com/console/report/1688753239833206784/1744894945006768128)
+[![Security Status](https://www.murphysec.com/platform3/v31/badge/1811686602642419712.svg)](https://www.murphysec.com/console/report/1688753239833206784/1811686602642419712)
 
 ## 开源声明
 
