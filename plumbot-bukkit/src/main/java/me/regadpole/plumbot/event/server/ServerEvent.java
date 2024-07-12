@@ -104,14 +104,48 @@ public class ServerEvent implements Listener{
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event){
 
-        String name = event.getPlayer().getName();
+        Player player = event.getPlayer();
+        String name = player.getName();
 
-        if (!Config.JoinAndLeave()){
-            return;
-        }
-        List<Long> groups = Config.getGroupQQs();
-        for (long groupID : groups){
-            PlumBot.getBot().sendMsg(true, "玩家"+name+"加入游戏",groupID);
+        if (Config.WhiteList()) {
+            PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                long qq;
+                qq = (DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
+                if (qq == 0L) {
+                    player.kickPlayer(Args.WhitelistKick());
+                    List<Long> groups = Config.getGroupQQs();
+                    for (long groupID : groups) {
+                        PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
+                    }
+                    return;
+                }
+                for (long groupID : Config.getGroupQQs()) {
+                    if(!PlumBot.getBot().checkUserInGroup(qq, groupID)){
+                        player.kickPlayer(Args.WhitelistKick());
+                        List<Long> groups = Config.getGroupQQs();
+                        for (long group : groups) {
+                            PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", group);
+                        }
+                        DatabaseManager.removeBind(String.valueOf(qq), DataBase.type().toLowerCase(), PlumBot.getDatabase());
+                        return;
+                    }
+                }
+                if (!Config.JoinAndLeave()){
+                    return;
+                }
+                List<Long> groups = Config.getGroupQQs();
+                for (long groupID : groups){
+                    PlumBot.getBot().sendMsg(true, "玩家"+name+"加入游戏",groupID);
+                }
+            });
+        } else {
+            if (!Config.JoinAndLeave()){
+                return;
+            }
+            List<Long> groups = Config.getGroupQQs();
+            for (long groupID : groups){
+                PlumBot.getBot().sendMsg(true, "玩家"+name+"加入游戏",groupID);
+            }
         }
     }
 
