@@ -41,7 +41,7 @@ public class Config {
         if (!Config.getBotYamlVersion().equals("1.3.0")){
             INSTANCE.saveResource(botFile.getName(), true);
         }
-        if (!Config.getConfigYamlVersion().equals("1.3.1")){
+        if (!Config.getConfigYamlVersion().equals("1.3.3")){
             INSTANCE.saveResource(configFile.getName(), true);
         }
         if (!Config.getCommandsYamlVersion().equals("1.2.2")){
@@ -124,6 +124,10 @@ public class Config {
 
     public static boolean WhiteList(){
         return  getConfigYaml().getBoolean("WhiteList.enable");
+    }
+
+    public static int WhiteListMaxCount(){
+        return  getConfigYaml().getInt("WhiteList.maxCount");
     }
 
     public static boolean JoinAndLeave(){

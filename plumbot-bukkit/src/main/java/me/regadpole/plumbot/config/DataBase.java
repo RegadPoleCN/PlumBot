@@ -9,7 +9,7 @@ public class DataBase {
     public static String mysql_host() {return Config.getConfigYaml().getString("database.settings.mysql.host");}
     public static String mysql_port() {return Config.getConfigYaml().getString("database.settings.mysql.port");}
     public static String mysql_database() {return Config.getConfigYaml().getString("database.settings.mysql.database");}
-    public static String mysql_username() {return Config.getConfigYaml().getString("database.settings.mysql.username");}
+    public static String mysql_user() {return Config.getConfigYaml().getString("database.settings.mysql.user");}
     public static String mysql_password() {return Config.getConfigYaml().getString("database.settings.mysql.password");}
     public static String mysql_parameters() {return Config.getConfigYaml().getString("database.settings.mysql.parameters");}
     public static long pool_connectionTimeout() {return Config.getConfigYaml().getLong("database.settings.pool.connectionTimeout");}

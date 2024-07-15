@@ -30,7 +30,7 @@ public class MySQL implements Database{
         config.setDriverClassName(driver);
         config.setPoolName("PlumBot-MySQL");
         config.setJdbcUrl("jdbc:mysql://" + DataBase.mysql_host() +":"+ DataBase.mysql_port() + "/" + DataBase.mysql_database() + DataBase.mysql_parameters());
-        config.setUsername(DataBase.mysql_username());
+        config.setUsername(DataBase.mysql_user());
         config.setPassword(DataBase.mysql_password());
         if (!DataBase.pool_connectionTestQuery().isEmpty()){
             config.setConnectionTestQuery(DataBase.pool_connectionTestQuery());

@@ -18,6 +18,7 @@ public final class Environment {
     public final String quickshop = getPluginHooked(QuickShopHook.hasQs);
     public final String quickshophikari = getPluginHooked(QuickShopHook.hasQsHikari);
     public final String residence = getPluginHooked(ResidenceHook.hasRes);
+    public final String prefix = "§b§l[PlumBot]§r ";
 
     private String getPluginHooked(boolean hooked){
         if (hooked){
