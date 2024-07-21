@@ -78,7 +78,7 @@ public class ServerEvent implements Listener{
                 long qq;
                 qq = (DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
                 if (qq == 0L) {
-                    event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Args.WhitelistKick());
+                    PlumBot.getScheduler().runTask(() -> event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Args.WhitelistKick()));
                     List<Long> groups = Config.getGroupQQs();
                     for (long groupID : groups) {
                         PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
@@ -87,7 +87,7 @@ public class ServerEvent implements Listener{
                 }
                 for (long groupID : Config.getGroupQQs()) {
                     if(!PlumBot.getBot().checkUserInGroup(qq, groupID)){
-                        event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Args.WhitelistKick());
+                        PlumBot.getScheduler().runTask(() -> event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST, Args.WhitelistKick()));
                         List<Long> groups = Config.getGroupQQs();
                         for (long group : groups) {
                             PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", group);
@@ -96,7 +96,8 @@ public class ServerEvent implements Listener{
                         return;
                     }
                 }
-                event.allow();
+                PlumBot.getScheduler().runTask(event::allow);
+
             });
         }
     }
@@ -112,7 +113,7 @@ public class ServerEvent implements Listener{
                 long qq;
                 qq = (DatabaseManager.getBindId(name, DataBase.type().toLowerCase(), PlumBot.getDatabase()));
                 if (qq == 0L) {
-                    player.kickPlayer(Args.WhitelistKick());
+                    PlumBot.getScheduler().runTask(() -> player.kickPlayer(Args.WhitelistKick()));
                     List<Long> groups = Config.getGroupQQs();
                     for (long groupID : groups) {
                         PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", groupID);
@@ -121,7 +122,7 @@ public class ServerEvent implements Listener{
                 }
                 for (long groupID : Config.getGroupQQs()) {
                     if(!PlumBot.getBot().checkUserInGroup(qq, groupID)){
-                        player.kickPlayer(Args.WhitelistKick());
+                        PlumBot.getScheduler().runTask(() -> player.kickPlayer(Args.WhitelistKick()));
                         List<Long> groups = Config.getGroupQQs();
                         for (long group : groups) {
                             PlumBot.getBot().sendMsg(true, "玩家" + name + "因为未在白名单中被踢出", group);
