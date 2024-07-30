@@ -123,12 +123,12 @@ public class Commands implements CommandExecutor{
                     return true;
                 }
                 if (args.length == 3) {
-                    if (!WhitelistHelper.checkIDNotExist(args[1])) {
-                        sender.sendMessage(plugin.getEnvironment().prefix+"§c绑定失败，此ID已绑定用户" + DatabaseManager.getBindId(args[1], DataBase.type().toLowerCase(), PlumBot.getDatabase()));
+                    if (!WhitelistHelper.checkIDNotExist(args[2])) {
+                        sender.sendMessage(plugin.getEnvironment().prefix+"§c绑定失败，此ID已绑定用户" + DatabaseManager.getBindId(args[2], DataBase.type().toLowerCase(), PlumBot.getDatabase()));
                         return true;
                     }
                     List<String> id = WhitelistHelper.addAndGet(args[2], args[1], DataBase.type().toLowerCase(), PlumBot.getDatabase());
-                    sender.sendMessage(plugin.getEnvironment().prefix+"§a成功申请白名单，" + args[0] + "目前的白名单为" + id);
+                    sender.sendMessage(plugin.getEnvironment().prefix+"§a成功申请白名单，" + args[1] + "目前的白名单为" + id);
                 }
                 break;
             case "kook":

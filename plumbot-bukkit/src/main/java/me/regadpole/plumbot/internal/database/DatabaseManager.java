@@ -242,9 +242,6 @@ public class DatabaseManager {
 
                     ResultSet resultSet = connection.prepareStatement(select).executeQuery();
 
-                    if (resultSet.isBeforeFirst()) {
-                        resultSet.next();
-                    }
                     connection.prepareStatement(delete).executeUpdate();
                     resultSet.close();
                     connection.close();
@@ -270,10 +267,9 @@ public class DatabaseManager {
 
                     ResultSet resultSet = connection.prepareStatement(select).executeQuery();
 
-                    if (resultSet.isBeforeFirst()) {
-                        resultSet.next();
+                    if (resultSet.next()) {
+                        qq = resultSet.getLong("qq");
                     }
-                    qq = resultSet.getLong("qq");
                     resultSet.close();
                     connection.close();
                     break;
@@ -315,8 +311,10 @@ public class DatabaseManager {
 
                     ResultSet resultSet = connection.prepareStatement(select).executeQuery();
 
-                    if (resultSet.isBeforeFirst()) {
-                        resultSet.next();
+                    if (!resultSet.next()) {
+                        resultSet.close();
+                        connection.close();
+                        break;
                     }
                     do {
                         String tempId = resultSet.getString("id");
