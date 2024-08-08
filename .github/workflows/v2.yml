@@ -7,13 +7,13 @@
 # separate terms of service, privacy policy, and support
 # documentation.
 
-name: Java CI dev
+name: Refactor code v2
 
 on:
   push:
-    branches: [ "dev" ]
+    branches: [ "v2" ]
   pull_request:
-    branches: [ "dev" ]
+    branches: [ "v2" ]
   workflow_dispatch:
 
 jobs:
