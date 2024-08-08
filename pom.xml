@@ -14,6 +14,7 @@
         <module>plumbot-bukkit</module>
         <module>plumbot-bungee</module>
         <module>plumbot-velocity</module>
+        <module>plumbot-base</module>
     </modules>
 
     <properties>
