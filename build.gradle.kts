@@ -28,8 +28,10 @@ repositories {
 }
 
 dependencies {
-    compileOnly("cn.evole.onebot:OneBot-Client:0.4.1")
-    compileOnly("com.github.SNWCreations:KookBC:0.27.4")
+    taboo("cn.evole.onebot:OneBot-Client:0.4.1")
+    taboo("com.github.SNWCreations:KookBC:0.27.4")
+//    compileOnly("cn.evole.onebot:OneBot-Client:0.4.1")
+//    compileOnly("com.github.SNWCreations:KookBC:0.27.4")
     compileOnly("ink.ptms.core:v12004:12004:mapped")
     compileOnly("ink.ptms.core:v12004:12004:universal")
     compileOnly(kotlin("stdlib"))
