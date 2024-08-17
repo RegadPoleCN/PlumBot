@@ -21,19 +21,17 @@ import snw.jkook.message.component.card.module.ContainerModule
 import snw.jkook.util.PageIterator
 import snw.kookbc.impl.CoreImpl
 import snw.kookbc.impl.KBCClient
+import taboolib.common.platform.function.submitAsync
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
 
-object KookBot: Bot {
+class KookBot: Bot {
 
-    @JvmStatic
-    lateinit var kookClient: KBCClient
-    @JvmStatic
-    lateinit var kookBot: KookBot
-    @JvmStatic
-    var kookEnabled: Boolean = false
+    private lateinit var kookClient: KBCClient
+    private lateinit var kookBot: KookBot
+    private var kookEnabled: Boolean = false
 
     /**
      * Start a bot
@@ -108,7 +106,9 @@ object KookBot: Bot {
      * @param message Message to send
      */
     override fun sendGroupMsg(targetId: String, message: String) {
-        sendChannelMessage(message, getChannel(targetId))
+        submitAsync(now = true) {
+            sendChannelMessage(message, getChannel(targetId))
+        }
     }
 
     /**
@@ -117,7 +117,9 @@ object KookBot: Bot {
      * @param message Message to send
      */
     override fun sendUserMsg(targetId: String, message: String) {
-        sendPrivateMessage(message, getUser(targetId))
+        submitAsync(now = true) {
+            sendPrivateMessage(message, getUser(targetId))
+        }
     }
 
 
@@ -131,7 +133,7 @@ object KookBot: Bot {
         if (message == null || "" == message) {
             return
         }
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             if (isGroup) {
                 sendChannelMessage(message, getChannel(targetId))
             } else {
@@ -193,7 +195,7 @@ object KookBot: Bot {
             .setSize(Size.LG)
             .addModule(ContainerModule(list))
             .build()
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             e.message.reply(card)
         }
     }
@@ -206,7 +208,7 @@ object KookBot: Bot {
             .setSize(Size.LG)
             .addModule(ContainerModule(list))
             .build()
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             e.message.reply(card)
         }
     }
@@ -223,7 +225,7 @@ object KookBot: Bot {
         if (message.toString().isEmpty()) {
             return
         }
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             if (isGroup) {
                 sendChannelMessage(message, getChannel(id))
             } else {
@@ -233,14 +235,15 @@ object KookBot: Bot {
     }
 
     fun sendChannelReply(e: ChannelMessageEvent, s: String) {
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             e.message.reply(s)
         }
     }
 
     fun sendPrivateReply(e: PrivateMessageReceivedEvent, s: String) {
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             e.message.reply(s)
         }
     }
+
 }

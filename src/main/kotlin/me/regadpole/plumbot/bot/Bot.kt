@@ -52,4 +52,5 @@ interface Bot {
      * @param message Message to send
      */
     fun sendUserMsg(targetId: String, message: String)
+
 }

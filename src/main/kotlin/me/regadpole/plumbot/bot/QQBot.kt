@@ -3,14 +3,13 @@ package me.regadpole.plumbot.bot
 import cn.evole.onebot.client.OneBotClient
 import cn.evole.onebot.client.core.BotConfig
 import cn.evole.onebot.sdk.util.MsgUtils
-import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.listener.qq.QQListener
+import taboolib.common.platform.function.submitAsync
 
 
-object QQBot: Bot {
+class QQBot: Bot {
 
-    @JvmStatic
-    lateinit var onebot: OneBotClient
+    private lateinit var onebot: OneBotClient
 
     /**
      * Start a bot
@@ -95,11 +94,11 @@ object QQBot: Bot {
         if (message == null || "" == message) {
             return
         }
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             if (isGroup) {
-                this.sendGroupMsg(targetId, message)
+                sendGroupMsg(targetId, message)
             } else {
-                this.sendUserMsg(targetId, message)
+                sendUserMsg(targetId, message)
             }
         }
     }
@@ -108,11 +107,11 @@ object QQBot: Bot {
         if (msg == null || "" == msg) {
             return
         }
-        PlumBot.getScheduler().runTaskAsynchronously {
+        submitAsync(now = true) {
             if (isGroup) {
-                this.sendGroupCQMsg(targetId, msg)
+                sendGroupCQMsg(targetId, msg)
             } else {
-                this.sendUserCQMsg(targetId, msg)
+                sendUserCQMsg(targetId, msg)
             }
         }
     }
@@ -120,7 +119,7 @@ object QQBot: Bot {
     /**
      * 发送私聊消息
      */
-    fun sendUserCQMsg(targetId: String, msg: String) {
+    private fun sendUserCQMsg(targetId: String, msg: String) {
         if (targetId.toLongOrNull() == null) return
         val target = targetId.toLong()
         onebot.bot.sendPrivateMsg(target, msg, false)
@@ -129,7 +128,7 @@ object QQBot: Bot {
     /**
      * 发送群聊消息
      */
-    fun sendGroupCQMsg(targetId: String, msg: String) {
+    private fun sendGroupCQMsg(targetId: String, msg: String) {
         if (targetId.toLongOrNull() == null) return
         val target = targetId.toLong()
         onebot.bot.sendGroupMsg(target, msg, false)
