@@ -18,9 +18,18 @@ taboolib {
 
 repositories {
     mavenCentral()
+    maven {
+        url = uri("https://maven.nova-committee.cn/releases")
+    }
+    maven {
+        url = uri("https://jitpack.io")
+    }
+
 }
 
 dependencies {
+    compileOnly("cn.evole.onebot:OneBot-Client:0.4.1")
+    compileOnly("com.github.SNWCreations:KookBC:0.27.4")
     compileOnly("ink.ptms.core:v12004:12004:mapped")
     compileOnly("ink.ptms.core:v12004:12004:universal")
     compileOnly(kotlin("stdlib"))
