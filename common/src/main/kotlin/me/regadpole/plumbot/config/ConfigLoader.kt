@@ -1,15 +1,15 @@
 package me.regadpole.plumbot.config
 
 import taboolib.common.io.newFile
-import taboolib.module.configuration.ConfigFile
+import taboolib.module.configuration.Configuration
 import taboolib.module.database.getHost
 
-class ConfigLoader(config: ConfigFile, commandsConfig: ConfigFile, returnsConfig: ConfigFile) {
+class ConfigLoader(config: Configuration, commandsConfig: Configuration, returnsConfig: Configuration) {
     private val config = Config(config)
-    private val commands = commandsConfig
-    private val returns = returnsConfig
+    private val commands = Commands(commandsConfig)
+    private val returns = Returns(returnsConfig)
 
-    class Config(config: ConfigFile){
+    class Config(config: Configuration){
         val ver = config.getString("Ver")
         val prefix = config.getString("commandPrefix")
         val forwarding = Forwarding(config)
@@ -25,30 +25,30 @@ class ConfigLoader(config: ConfigFile, commandsConfig: ConfigFile, returnsConfig
         val enableGroups = config.getStringList("enableGroups")
         val botAdmins = config.getStringList("botAdmins")
         val bot = Bot(config)
-        class Bot(config: ConfigFile){
+        class Bot(config: Configuration){
             val mode = config.getString("bot.mode")
             val gocqhttp = Gocqhttp(config)
             val kook = Kook(config)
-            class Gocqhttp(config: ConfigFile){
+            class Gocqhttp(config: Configuration){
                 val ws = config.getString("bot.go-cqhttp.ws")
                 val token = config.getString("bot.go-cqhttp.token")
                 val hasAccessToken = config.getBoolean("bot.go-cqhttp.hasAccessToken")
             }
-            class Kook(config: ConfigFile) {
+            class Kook(config: Configuration) {
                 val token = config.getString("bot.kook.token")
             }
         }
-        class Forwarding(config: ConfigFile) {
+        class Forwarding(config: Configuration) {
             val enable = config.getBoolean("forwarding.enable")
             val mode = config.getInt("forwarding.mode")
             val prefix = config.getString("forwarding.prefix")
         }
-        class WhiteList(config: ConfigFile) {
+        class WhiteList(config: Configuration) {
             val enable = config.getBoolean("whiteList.enable")
             val kickMsg = config.getString("whiteList.kickMsg")
             val maxCount = config.getInt("whitelist.maxCount")
         }
-        class DataBase(config: ConfigFile) {
+        class DataBase(config: Configuration) {
             val type = config.getString("database.type")
             private val sqlitePath = config.getString("database.setting.sqlite.path")
             val sqliteHost = newFile(sqlitePath!!, create = false, folder = false).getHost()
@@ -56,13 +56,21 @@ class ConfigLoader(config: ConfigFile, commandsConfig: ConfigFile, returnsConfig
         }
     }
 
+    class Commands(config: Configuration) {
+        val ver = config.getString("ver")
+    }
+
+    class Returns(config: Configuration) {
+        val ver = config.getString("ver")
+    }
+
     fun getConfig(): Config {
         return config
     }
-    fun getCommands(): ConfigFile {
+    fun getCommands(): Commands {
         return commands
     }
-    fun getReturns(): ConfigFile {
+    fun getReturns(): Returns {
         return returns
     }
 }

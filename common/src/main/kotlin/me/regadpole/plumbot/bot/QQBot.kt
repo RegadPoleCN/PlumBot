@@ -5,6 +5,7 @@ import cn.evole.onebot.client.core.BotConfig
 import cn.evole.onebot.sdk.util.MsgUtils
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.listener.qq.QQListener
+import taboolib.common.platform.function.info
 import taboolib.common.platform.function.submitAsync
 
 
@@ -29,6 +30,7 @@ class QQBot(private val plugin: PlumBot): Bot {
         for (groupID in groups) {
             sendMsg(true, groupID, "PlumBot已启动")
         }
+        info("已启动go-cqhttp服务")
         return this
     }
 
@@ -41,6 +43,7 @@ class QQBot(private val plugin: PlumBot): Bot {
             sendMsg(true, groupID, "PlumBot已关闭")
         }
         onebot.close()
+        info("已关闭go-cqhttp服务")
     }
 
     /**

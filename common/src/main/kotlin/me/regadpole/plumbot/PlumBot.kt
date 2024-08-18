@@ -4,6 +4,7 @@ import me.regadpole.plumbot.bot.Bot
 import me.regadpole.plumbot.bot.KookBot
 import me.regadpole.plumbot.bot.QQBot
 import me.regadpole.plumbot.config.ConfigLoader
+import me.regadpole.plumbot.config.ConfigResolver
 import taboolib.common.env.RuntimeDependencies
 import taboolib.common.env.RuntimeDependency
 import taboolib.common.platform.Plugin
@@ -46,7 +47,7 @@ object PlumBot : Plugin() {
 
     override fun onLoad() {
         INSTANCE = this
-        config = ConfigLoader()
+        config = ConfigResolver.loadConfig().getConfigLoader()
     }
 
     // 项目使用TabooLib Start Jar 创建!
@@ -60,13 +61,11 @@ object PlumBot : Plugin() {
                 "go-cqhttp" -> {
                     bot = QQBot(this@PlumBot)
                     bot.start()
-                    info("已启动go-cqhttp服务")
                 }
                 "kook" -> {
                     bot = KookBot(this@PlumBot)
                     bot.start()
                     (bot as KookBot).setKookEnabled(true)
-                    info("已启动kook服务")
                 }
                 else -> {
                     warning("无法启动服务，请检查配置文件，插件已关闭")
@@ -78,13 +77,8 @@ object PlumBot : Plugin() {
 
     override fun onDisable() {
         when (config.getConfig().bot.mode) {
-            "go-cqhttp" -> {
+            "go-cqhttp", "kook" -> {
                 bot.shutdown()
-                info("已关闭go-cqhttp服务")
-            }
-            "kook" -> {
-                bot.shutdown()
-                info("已关闭kook服务")
             }
             else -> {
                 warning("无法正常关闭服务，将在服务器关闭后强制关闭")
@@ -94,7 +88,7 @@ object PlumBot : Plugin() {
     }
 
     fun reloadConfig() {
-        config
+        ConfigResolver.reloadConfig()
     }
 
     fun getBot(): Bot {

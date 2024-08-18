@@ -21,6 +21,7 @@ import snw.jkook.message.component.card.module.ContainerModule
 import snw.jkook.util.PageIterator
 import snw.kookbc.impl.CoreImpl
 import snw.kookbc.impl.KBCClient
+import taboolib.common.platform.function.info
 import taboolib.common.platform.function.severe
 import taboolib.common.platform.function.submitAsync
 import java.io.File
@@ -59,6 +60,7 @@ class KookBot(private val plugin: PlumBot): Bot {
         for (groupID in groups) {
             PlumBot.getBot().sendMsg(true, "PlumBot已启动", groupID)
         }
+        info("已启动kook服务")
         return this
     }
 
@@ -71,6 +73,7 @@ class KookBot(private val plugin: PlumBot): Bot {
             sendMsg(true, "PlumBot已关闭", groupID)
         }
         kookClient.shutdown()
+        info("已关闭kook服务")
     }
 
     /**
