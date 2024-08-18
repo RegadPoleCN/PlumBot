@@ -2,6 +2,7 @@ package me.regadpole.plumbot.config
 
 import taboolib.common.io.newFile
 import taboolib.module.configuration.Configuration
+import taboolib.module.configuration.util.getMap
 import taboolib.module.database.getHost
 
 class ConfigLoader(config: Configuration, commandsConfig: Configuration, returnsConfig: Configuration) {
@@ -58,10 +59,14 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
 
     class Commands(config: Configuration) {
         val ver = config.getString("ver")
+        val adminCommand = config.getMap<String, String>("admin")
+        val userCommand = config.getMap<String, String>("user")
     }
 
     class Returns(config: Configuration) {
         val ver = config.getString("ver")
+        val adminReturn = config.getMap<String, String>("admin")
+        val userReturn = config.getMap<String, String>("user")
     }
 
     fun getConfig(): Config {
