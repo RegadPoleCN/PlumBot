@@ -1,6 +1,7 @@
 package me.regadpole.plumbot.tool
 
 import me.regadpole.plumbot.PlumBot
+import taboolib.common.platform.function.severe
 import java.awt.*
 import java.awt.image.BufferedImage
 import java.io.*
@@ -41,7 +42,7 @@ class TextToImg {
                 if (minX < result) minX = result
             }
             val Y = strings.size * 34 + (strings.size - 1) * 8 + 15
-            minX = minX + 32
+            minX += 32
             val image = BufferedImage(
                 minX, Y,
                 BufferedImage.TYPE_INT_BGR
@@ -83,7 +84,7 @@ class TextToImg {
                             else -> g.color = Color.black
                         }
                         j++
-                        dex = dex + 2
+                        dex += 2
                     } else {
                         g.drawString(nowLine[dex].toString(), nowX, if (i > 0) 34 + (i) * 34 + (i) * 8 else 34)
                         nowX += fm!!.charWidth(nowLine[dex])
@@ -124,21 +125,19 @@ class TextToImg {
             try {
                 val swapStream = ByteArrayOutputStream()
                 val buff = ByteArray(100)
-                var rc = 0
+                var rc: Int
                 while ((inputStream.read(buff, 0, 100).also { rc = it }) > 0) {
                     swapStream.write(buff, 0, rc)
                 }
                 data = swapStream.toByteArray()
                 return Base64.getEncoder().encodeToString(data)
             } catch (e: IOException) {
-                PlumBot.getSLF4JLogger().error(e.toString())
+                severe(e.toString())
             } finally {
-                if (inputStream != null) {
-                    try {
-                        inputStream.close()
-                    } catch (e: IOException) {
-                        throw Exception("输入流关闭异常")
-                    }
+                try {
+                    inputStream.close()
+                } catch (e: IOException) {
+                    throw Exception("输入流关闭异常")
                 }
             }
 
@@ -170,7 +169,7 @@ class TextToImg {
             try {
                 base64 = getBase64FromInputStream(toImg(string))
             } catch (e: Exception) {
-                PlumBot.getSLF4JLogger().error(e.toString())
+                severe(e.toString())
             }
             return "[CQ:image,file=base64://$base64]"
         }
@@ -180,7 +179,7 @@ class TextToImg {
             try {
                 bytes = bytes2String(toImg(string))
             } catch (e: IOException) {
-                PlumBot.getSLF4JLogger().error(e.toString())
+                severe(e.toString())
             }
             return bytes
         }

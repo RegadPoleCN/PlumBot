@@ -3,11 +3,12 @@ package me.regadpole.plumbot.bot
 import cn.evole.onebot.client.OneBotClient
 import cn.evole.onebot.client.core.BotConfig
 import cn.evole.onebot.sdk.util.MsgUtils
+import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.listener.qq.QQListener
 import taboolib.common.platform.function.submitAsync
 
 
-class QQBot: Bot {
+class QQBot(private val plugin: PlumBot): Bot {
 
     private lateinit var onebot: OneBotClient
 
@@ -15,10 +16,16 @@ class QQBot: Bot {
      * Start a bot
      */
     override fun start(): Bot {
-        onebot = OneBotClient.create(BotConfig("ws://127.0.0.1:8080")) //创建websocket客户端
-            .open() //连接onebot服务端
-            .registerEvents(QQListener()) //注册事件监听器
-        val groups: List<String> = Config.getGroupQQs()
+        onebot = if (plugin.getConfig().getConfig().bot.gocqhttp.hasAccessToken) {
+            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.gocqhttp.ws, plugin.getConfig().getConfig().bot.gocqhttp.token)) //创建websocket客户端
+                .open() //连接onebot服务端
+                .registerEvents(QQListener()) //注册事件监听器
+        } else {
+            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.gocqhttp.ws)) //创建websocket客户端
+                .open() //连接onebot服务端
+                .registerEvents(QQListener()) //注册事件监听器
+        }
+        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
         for (groupID in groups) {
             sendMsg(true, groupID, "PlumBot已启动")
         }
@@ -29,7 +36,7 @@ class QQBot: Bot {
      * Stop a bot
      */
     override fun shutdown() {
-        val groups: List<String> = Config.getGroupQQs()
+        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
         for (groupID in groups) {
             sendMsg(true, groupID, "PlumBot已关闭")
         }

@@ -21,13 +21,14 @@ import snw.jkook.message.component.card.module.ContainerModule
 import snw.jkook.util.PageIterator
 import snw.kookbc.impl.CoreImpl
 import snw.kookbc.impl.KBCClient
+import taboolib.common.platform.function.severe
 import taboolib.common.platform.function.submitAsync
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
 
-class KookBot: Bot {
+class KookBot(private val plugin: PlumBot): Bot {
 
     private lateinit var kookClient: KBCClient
     private lateinit var kookBot: KookBot
@@ -47,14 +48,14 @@ class KookBot: Bot {
             kookCore,
             config,
             kookPlugins,
-            Config.getKookBotToken(),
+            plugin.getConfig().getConfig().bot.kook.token!!,
             "websocket"
         )
         kook.start()
         kookClient = kook
         kookBot = this
         kook.core.eventManager.registerHandlers(kook.internalPlugin, KookListener())
-        val groups: List<String> = Config.getGroupQQs()
+        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
         for (groupID in groups) {
             PlumBot.getBot().sendMsg(true, "PlumBot已启动", groupID)
         }
@@ -65,7 +66,7 @@ class KookBot: Bot {
      * Stop a bot
      */
     override fun shutdown() {
-        val groups: List<String> = Config.getGroupQQs()
+        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
         for (groupID in groups) {
             sendMsg(true, "PlumBot已关闭", groupID)
         }
@@ -182,7 +183,7 @@ class KookBot: Bot {
             fos.close()
             return kookClient.core.httpAPI.uploadFile(file)
         } catch (e: IOException) {
-            PlumBot.INSTANCE.getSLF4JLogger().error(e.message)
+            severe(e.message)
         }
         return null
     }

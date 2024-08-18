@@ -3,6 +3,7 @@ package me.regadpole.plumbot
 import me.regadpole.plumbot.bot.Bot
 import me.regadpole.plumbot.bot.KookBot
 import me.regadpole.plumbot.bot.QQBot
+import me.regadpole.plumbot.config.ConfigLoader
 import taboolib.common.env.RuntimeDependencies
 import taboolib.common.env.RuntimeDependency
 import taboolib.common.platform.Plugin
@@ -38,10 +39,14 @@ object PlumBot : Plugin() {
     lateinit var INSTANCE: PlumBot
 
     @JvmStatic
-    lateinit var bot:Bot
+    private lateinit var bot:Bot
+
+    @JvmStatic
+    private lateinit var config: ConfigLoader
 
     override fun onLoad() {
         INSTANCE = this
+        config = ConfigLoader()
     }
 
     // 项目使用TabooLib Start Jar 创建!
@@ -51,14 +56,14 @@ object PlumBot : Plugin() {
 
     override fun onActive() {
         submitAsync(now = true) {
-            when (Config.getBotMode()) {
+            when (config.getConfig().bot.mode) {
                 "go-cqhttp" -> {
-                    bot = QQBot()
+                    bot = QQBot(this@PlumBot)
                     bot.start()
                     info("已启动go-cqhttp服务")
                 }
                 "kook" -> {
-                    bot = KookBot()
+                    bot = KookBot(this@PlumBot)
                     bot.start()
                     (bot as KookBot).setKookEnabled(true)
                     info("已启动kook服务")
@@ -72,7 +77,7 @@ object PlumBot : Plugin() {
     }
 
     override fun onDisable() {
-        when (Config.getBotMode()) {
+        when (config.getConfig().bot.mode) {
             "go-cqhttp" -> {
                 bot.shutdown()
                 info("已关闭go-cqhttp服务")
@@ -88,10 +93,17 @@ object PlumBot : Plugin() {
         }
     }
 
+    fun reloadConfig() {
+        config
+    }
+
     fun getBot(): Bot {
         return bot
     }
 
+    fun getConfig(): ConfigLoader {
+        return config
+    }
     fun getDataFolder(): File {
         return getDataFolder()
     }
