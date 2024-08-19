@@ -28,7 +28,7 @@ subprojects {
     }
 
     dependencies {
-        taboo(files("libs/OneBot-Client-0.4.1.jar"))
+        taboo(files("/libs/OneBot-Client-0.4.1.jar"))
         taboo("com.github.SNWCreations:KookBC:0.27.4")
         compileOnly("ink.ptms.core:v12004:12004:mapped")
         compileOnly("ink.ptms.core:v12004:12004:universal")
