@@ -14,6 +14,7 @@ object ConfigResolver {
 
     private val plugin: PlumBot = PlumBot.INSTANCE
     private lateinit var config: ConfigLoader
+    private lateinit var lang: LangConfig
 
     @Throws(IOException::class)
     fun loadConfig(): ConfigResolver {
@@ -23,12 +24,13 @@ object ConfigResolver {
         val kook = File(plugin.getDataFolder(), "kook")
         val kookConf = File(kook, "kbc.yml")
         val kookPlu = File(kook, "plugins")
+        val langDir = File(plugin.getDataFolder(),"lang")
 
         if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) throw RuntimeException("Failed to create data folder!")
         val allFile = arrayOf(configFile, commandsFile, returnsFile)
         for (file in allFile) {
             if (!file.exists()) {
-                plugin.javaClass.getResourceAsStream("/" + file.getName()).use { inputStream ->
+                plugin.javaClass.getResourceAsStream("/" + file.name).use { inputStream ->
                     checkNotNull(inputStream)
                     Files.copy(inputStream, file.toPath())
                 }
@@ -43,11 +45,20 @@ object ConfigResolver {
         }
         if (!kookConf.exists()) {
             plugin.javaClass.getResourceAsStream(
-                ("/" + kookConf.getParentFile().getName()) + "/" + kookConf.getName()
+                ("/" + kookConf.parentFile.name) + "/" + kookConf.name
             ).use { inputStream ->
                 checkNotNull(inputStream)
                 Files.copy(inputStream, kookConf.toPath())
             }
+        }
+        if (!langDir.exists()) {
+            langDir.mkdirs()
+        }
+        plugin.javaClass.getResourceAsStream(
+            ("/" + langDir.name)
+        ).use { inputStream ->
+            checkNotNull(inputStream)
+            Files.copy(inputStream, langDir.toPath())
         }
 
         config = ConfigLoader(Configuration.loadFromFile(configFile, Type.YAML), Configuration.loadFromFile(commandsFile, Type.YAML), Configuration.loadFromFile(returnsFile, Type.YAML))
@@ -57,6 +68,7 @@ object ConfigResolver {
                 checkNotNull(inputStream)
                 Files.copy(inputStream, configFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
                 loadConfig()
+                return this
             }
         }
         if ("2.0.0" != plugin.getConfig().getCommands().ver) {
@@ -64,6 +76,7 @@ object ConfigResolver {
                 checkNotNull(inputStream)
                 Files.copy(inputStream, commandsFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
                 loadConfig()
+                return this
             }
         }
         if ("2.0.0" != plugin.getConfig().getReturns().ver) {
@@ -71,6 +84,18 @@ object ConfigResolver {
                 checkNotNull(inputStream)
                 Files.copy(inputStream, returnsFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
                 loadConfig()
+                return this
+            }
+        }
+
+        val langFile = File(langDir, plugin.getConfig().getConfig().lang+".yml")
+        lang = LangConfig(Configuration.loadFromFile(langFile, Type.YAML))
+        if ("2.0.0" != plugin.getLangConfig().getLangConf().ver) {
+            plugin.javaClass.getResourceAsStream("/lang/" + langFile.getName()).use { inputStream ->
+                checkNotNull(inputStream)
+                Files.copy(inputStream, langFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
+                loadConfig()
+                return this
             }
         }
         return this
@@ -83,5 +108,8 @@ object ConfigResolver {
 
     fun getConfigLoader(): ConfigLoader {
         return config
+    }
+    fun getLangConf():LangConfig {
+        return lang
     }
 }

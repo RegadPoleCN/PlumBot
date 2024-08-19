@@ -1,6 +1,8 @@
 #机器人功能设置
 Ver: "2.0.0"
 
+#语言文件在lang文件夹里
+lang: "zh_CN"
 #群聊命令前缀
 commandPrefix: "/"
 #消息转发
@@ -13,7 +15,6 @@ dieReport: false
 #白名单
 whiteList:
   enable: false
-  kickMsg: "请加入qq群:xxx申请白名单"
   maxCount: 1
 #执行命令功能
 cmd: true

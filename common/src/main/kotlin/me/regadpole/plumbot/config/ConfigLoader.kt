@@ -10,8 +10,10 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
     private val commands = Commands(commandsConfig)
     private val returns = Returns(returnsConfig)
 
+
     class Config(config: Configuration){
         val ver = config.getString("Ver")
+        val lang = config.getString("lang")
         val prefix = config.getString("commandPrefix")
         val forwarding = Forwarding(config)
         val dieReport = config.getBoolean("dieReport")
@@ -46,7 +48,6 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
         }
         class WhiteList(config: Configuration) {
             val enable = config.getBoolean("whiteList.enable")
-            val kickMsg = config.getString("whiteList.kickMsg")
             val maxCount = config.getInt("whitelist.maxCount")
         }
         class DataBase(config: Configuration) {
@@ -69,6 +70,8 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
         val userReturn = config.getMap<String, String>("user")
     }
 
+
+
     fun getConfig(): Config {
         return config
     }
@@ -78,4 +81,5 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
     fun getReturns(): Returns {
         return returns
     }
+
 }
