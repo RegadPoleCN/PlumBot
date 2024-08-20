@@ -1,6 +1,7 @@
 package me.regadpole.plumbot.config
 
 import taboolib.common.io.newFile
+import taboolib.common.platform.function.getDataFolder
 import taboolib.module.configuration.Configuration
 import taboolib.module.configuration.util.getMap
 import taboolib.module.database.getHost
@@ -52,8 +53,9 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
         }
         class DataBase(config: Configuration) {
             val type = config.getString("database.type")
-            private val sqlitePath = config.getString("database.setting.sqlite.path")
-            val sqliteHost = newFile(sqlitePath!!, create = false, folder = false).getHost()
+            private val sqlitePath =
+                config.getString("database.setting.sqlite.path")?.replace("%plugin_folder%", getDataFolder().path)
+            val sqliteHost = newFile(sqlitePath!!, create = true, folder = false).getHost()
             val host = config.getHost("database.settings.mysql")
         }
     }

@@ -65,7 +65,7 @@ object ConfigResolver {
 
         config = ConfigLoader(Configuration.loadFromFile(configFile, Type.YAML), Configuration.loadFromFile(commandsFile, Type.YAML), Configuration.loadFromFile(returnsFile, Type.YAML))
 
-        if ("2.0.0" != plugin.getConfig().getConfig().ver) {
+        if ("2.0.0" != config.getConfig().ver) {
             plugin.javaClass.getResourceAsStream("/" + configFile.getName()).use { inputStream ->
                 checkNotNull(inputStream)
                 Files.copy(inputStream, configFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -73,7 +73,7 @@ object ConfigResolver {
                 return this
             }
         }
-        if ("2.0.0" != plugin.getConfig().getCommands().ver) {
+        if ("2.0.0" != config.getCommands().ver) {
             plugin.javaClass.getResourceAsStream("/" + commandsFile.getName()).use { inputStream ->
                 checkNotNull(inputStream)
                 Files.copy(inputStream, commandsFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -81,7 +81,7 @@ object ConfigResolver {
                 return this
             }
         }
-        if ("2.0.0" != plugin.getConfig().getReturns().ver) {
+        if ("2.0.0" != config.getReturns().ver) {
             plugin.javaClass.getResourceAsStream("/" + returnsFile.getName()).use { inputStream ->
                 checkNotNull(inputStream)
                 Files.copy(inputStream, returnsFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -90,7 +90,7 @@ object ConfigResolver {
             }
         }
 
-        val langFile = File(langDir, plugin.getConfig().getConfig().lang+".yml")
+        val langFile = File(langDir, config.getConfig().lang+".yml")
         lang = LangConfig(Configuration.loadFromFile(langFile, Type.YAML))
         if ("2.0.0" != plugin.getLangConfig().getLangConf().ver) {
             plugin.javaClass.getResourceAsStream("/lang/" + langFile.getName()).use { inputStream ->

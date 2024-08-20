@@ -24,4 +24,12 @@ interface Database {
     @Throws(SQLException::class)
     fun getConnection(): DataSource
 
+    fun addBind(user: String, name: String)
+
+    fun removeBind(user: String, name: String)
+    fun removeBind(user: String)
+    fun removeBindByName(name: String)
+
+    fun getBind(user: String): List<String>
+    fun getBindByName(name: String): String?
 }

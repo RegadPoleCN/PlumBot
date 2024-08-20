@@ -15,7 +15,7 @@ subprojects {
     taboolib {
         env {
             // 安装模块
-            install(UNIVERSAL, DATABASE, METRICS)
+            install(UNIVERSAL, DATABASE, METRICS, LANG)
             install(BUKKIT_ALL)
             install(VELOCITY)
         }
