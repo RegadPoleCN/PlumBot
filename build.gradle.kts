@@ -28,16 +28,18 @@ subprojects {
     }
 
     dependencies {
-        taboo(files("/libs/OneBot-Client-0.4.1.jar"))
+        taboo("love.forte.simbot:simbot-core:4.6.0")
+        taboo("love.forte.simbot.component:simbot-component-onebot-v11-core:1.3.0")
         taboo("com.github.SNWCreations:KookBC:0.27.4")
         compileOnly("ink.ptms.core:v12004:12004:mapped")
         compileOnly("ink.ptms.core:v12004:12004:universal")
         compileOnly(kotlin("stdlib"))
+        runtimeOnly("io.ktor:ktor-client-java:2.3.12")
     }
 
     java {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     tasks.withType<JavaCompile> {
@@ -46,7 +48,7 @@ subprojects {
 
     tasks.withType<KotlinCompile> {
         kotlinOptions {
-            jvmTarget = "1.8"
+            jvmTarget = "11"
             freeCompilerArgs = listOf("-Xjvm-default=all")
         }
     }

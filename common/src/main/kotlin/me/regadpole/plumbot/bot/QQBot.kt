@@ -3,6 +3,14 @@ package me.regadpole.plumbot.bot
 import cn.evole.onebot.client.OneBotClient
 import cn.evole.onebot.client.core.BotConfig
 import cn.evole.onebot.sdk.util.MsgUtils
+import io.ktor.http.*
+import love.forte.simbot.application.Application
+import love.forte.simbot.application.launchApplication
+import love.forte.simbot.component.onebot.v11.core.bot.OneBotBotConfiguration
+import love.forte.simbot.component.onebot.v11.core.bot.firstOneBotBotManager
+import love.forte.simbot.component.onebot.v11.core.useOneBot11
+import love.forte.simbot.core.application.Simple
+import love.forte.simbot.core.application.launchSimpleApplication
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.listener.qq.QQListener
 import taboolib.common.platform.function.info
@@ -32,6 +40,29 @@ class QQBot(private val plugin: PlumBot): Bot {
         }
         info("已启动go-cqhttp服务")
         return this
+    }
+
+    private suspend fun startOnebot() {
+        val app = launchApplication(Simple) {
+            useOneBot11()
+        }
+
+        app.configure()
+        app.join()
+    }
+
+    private suspend fun Application.configure() {
+        val botManager = botManagers.firstOneBotBotManager()
+        val bot = botManager.register(
+            OneBotBotConfiguration().apply {
+                botUniqueId = "11112222"
+                apiServerHost = Url("http://127.0.0.1:3000")
+                eventServerHost = Url("ws://127.0.0.1:3001")
+                accessToken = null
+                /// ...
+            }
+        )
+        bot.start()
     }
 
     /**
