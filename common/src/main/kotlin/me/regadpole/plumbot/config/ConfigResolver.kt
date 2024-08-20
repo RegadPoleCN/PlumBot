@@ -54,12 +54,14 @@ object ConfigResolver {
         if (!langDir.exists()) {
             langDir.mkdirs()
         }
-        plugin.javaClass.getResourceAsStream(
-            ("/" + langDir.name)
-        ).use { inputStream ->
-            checkNotNull(inputStream)
-            Files.copy(inputStream, langDir.toPath())
-        }
+        langDir.listFiles()?.forEach {
+            plugin.javaClass.getResourceAsStream(
+                ("/" + langDir.name + "/" + it.name)
+            ).use { inputStream ->
+                checkNotNull(inputStream)
+                Files.copy(inputStream, it.toPath())
+            } }
+
 
         config = ConfigLoader(Configuration.loadFromFile(configFile, Type.YAML), Configuration.loadFromFile(commandsFile, Type.YAML), Configuration.loadFromFile(returnsFile, Type.YAML))
 
