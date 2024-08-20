@@ -4,13 +4,23 @@ import cn.evole.onebot.client.OneBotClient
 import cn.evole.onebot.client.core.BotConfig
 import cn.evole.onebot.sdk.util.MsgUtils
 import io.ktor.http.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import love.forte.simbot.application.Application
 import love.forte.simbot.application.launchApplication
+import love.forte.simbot.application.listeners
 import love.forte.simbot.component.onebot.v11.core.bot.OneBotBotConfiguration
 import love.forte.simbot.component.onebot.v11.core.bot.firstOneBotBotManager
+import love.forte.simbot.component.onebot.v11.core.event.message.OneBotGroupMessageEvent
+import love.forte.simbot.component.onebot.v11.core.event.message.OneBotPrivateMessageEvent
+import love.forte.simbot.component.onebot.v11.core.event.notice.OneBotGroupMemberDecreaseEvent
 import love.forte.simbot.component.onebot.v11.core.useOneBot11
 import love.forte.simbot.core.application.Simple
 import love.forte.simbot.core.application.launchSimpleApplication
+import love.forte.simbot.event.ChatGroupMessageEvent
+import love.forte.simbot.event.EventResult
+import love.forte.simbot.event.listen
+import love.forte.simbot.event.process
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.listener.qq.QQListener
 import taboolib.common.platform.function.info
@@ -19,20 +29,21 @@ import taboolib.common.platform.function.submitAsync
 
 class QQBot(private val plugin: PlumBot): Bot {
 
-    private lateinit var onebot: OneBotClient
+    private lateinit var onebot: Application
 
     /**
      * Start a bot
      */
     override fun start(): Bot {
-        onebot = if (plugin.getConfig().getConfig().bot.gocqhttp.hasAccessToken) {
-            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.gocqhttp.ws, plugin.getConfig().getConfig().bot.gocqhttp.token)) //创建websocket客户端
-                .open() //连接onebot服务端
-                .registerEvents(QQListener()) //注册事件监听器
-        } else {
-            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.gocqhttp.ws)) //创建websocket客户端
-                .open() //连接onebot服务端
-                .registerEvents(QQListener()) //注册事件监听器
+        runBlocking {
+            launch {
+                onebot = launchApplication(Simple) {
+                    useOneBot11()
+                }
+
+                onebot.configure()
+                onebot.join()
+            }
         }
         val groups: List<String> = plugin.getConfig().getConfig().enableGroups
         for (groupID in groups) {
@@ -40,15 +51,6 @@ class QQBot(private val plugin: PlumBot): Bot {
         }
         info("已启动go-cqhttp服务")
         return this
-    }
-
-    private suspend fun startOnebot() {
-        val app = launchApplication(Simple) {
-            useOneBot11()
-        }
-
-        app.configure()
-        app.join()
     }
 
     private suspend fun Application.configure() {
@@ -62,6 +64,20 @@ class QQBot(private val plugin: PlumBot): Bot {
                 /// ...
             }
         )
+        listeners {
+            process<OneBotPrivateMessageEvent> { event ->
+                QQListener.onPrivateMessage(event)
+                EventResult.empty()
+            }
+            process<OneBotGroupMessageEvent> { event ->
+                QQListener.onGroupMessage(event)
+                EventResult.empty()
+            }
+            process<OneBotGroupMemberDecreaseEvent> { event ->
+                QQListener.onGroupMemberDecreased(event)
+                EventResult.empty()
+            }
+        }
         bot.start()
     }
 
