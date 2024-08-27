@@ -34,4 +34,4 @@ jobs:
         with:
           name: PlumBot Artifacts
           path: |
-            build/libs/
+            apply/build/libs/
