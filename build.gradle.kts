@@ -15,7 +15,7 @@ subprojects {
     taboolib {
         env {
             // 安装模块
-            install(UNIVERSAL, DATABASE, METRICS, LANG)
+            install(UNIVERSAL, DATABASE, METRICS)
             install(BUKKIT_ALL)
             install(VELOCITY)
         }
@@ -28,7 +28,7 @@ subprojects {
     }
 
     dependencies {
-        taboo("com.github.RegadPoleCN:onebot-client:f73b158fc4")
+        compileOnly("com.github.RegadPoleCN:onebot-client:f73b158fc4")
         taboo("com.github.SNWCreations:KookBC:0.27.4")
         compileOnly("ink.ptms.core:v12004:12004:mapped")
         compileOnly("ink.ptms.core:v12004:12004:universal")
@@ -50,4 +50,7 @@ subprojects {
             freeCompilerArgs = listOf("-Xjvm-default=all")
         }
     }
+}
+gradle.buildFinished {
+    buildDir.deleteRecursively()
 }

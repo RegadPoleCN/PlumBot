@@ -1,14 +1,15 @@
 taboolib {
     description {
         name(rootProject.name)
-        desc("A qq bot plugin")
+        desc("A bot plugin for QQ/Kook")
         links {
             name("homepage").url("https://github.com/RegadPoleCN/PlumBot")
         }
         contributors {
-            name("alazeprt")
             name("RegadPole")
+            name("alazeprt")
         }
+        prefix("PlumBot")
     }
 }
 
