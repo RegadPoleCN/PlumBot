@@ -21,6 +21,7 @@ import snw.jkook.message.component.card.module.ContainerModule
 import snw.jkook.util.PageIterator
 import snw.kookbc.impl.CoreImpl
 import snw.kookbc.impl.KBCClient
+import taboolib.common.platform.function.getDataFolder
 import taboolib.common.platform.function.info
 import taboolib.common.platform.function.severe
 import taboolib.common.platform.function.submitAsync
@@ -39,7 +40,7 @@ class KookBot(private val plugin: PlumBot): Bot {
      * Start a bot
      */
     override fun start(): Bot {
-        val kookFolder: File = File(PlumBot.INSTANCE.getDataFolder(), "kook")
+        val kookFolder = File(getDataFolder(), "kook")
         val kook: KBCClient
         val kookCore = CoreImpl()
         if (JKook.getCore() == null) JKook.setCore(kookCore)

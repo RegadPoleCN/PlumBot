@@ -1,6 +1,6 @@
 package me.regadpole.plumbot.tool
 
-import me.regadpole.plumbot.PlumBot
+import taboolib.common.platform.function.getDataFolder
 import taboolib.common.platform.function.severe
 import java.awt.*
 import java.awt.image.BufferedImage
@@ -15,7 +15,7 @@ class TextToImg {
     companion object {
         private var font: Font? = null
         private var fm: FontMetrics? = null
-        private val ttfFile: File = File(PlumBot.getDataFolder(), "MiSans-Normal.ttf")
+        private val ttfFile: File = File(getDataFolder(), "MiSans-Normal.ttf")
 
         @Throws(IOException::class)
         private fun toImg(text: String): ByteArray {

@@ -16,7 +16,6 @@ import taboolib.common.platform.function.submitAsync
 import taboolib.common.platform.function.warning
 import taboolib.module.lang.event.PlayerSelectLocaleEvent
 import taboolib.module.lang.event.SystemSelectLocaleEvent
-import java.io.File
 
 
 @RuntimeDependencies(
@@ -30,8 +29,8 @@ import java.io.File
         value = "net.kyori:event-api:3.0.0",
     ),
     RuntimeDependency(
-        value = "cn.evole.onebot:OneBot-Client:0.4.1",
-        repository = "https://maven.nova-committee.cn/releases"
+        value = "com.github.RegadPoleCN:onebot-client:f73b158fc4",
+        repository = "https://jitpack.io"
     ),
     RuntimeDependency(
         value = "com.github.SNWCreations:KookBC:0.27.4",
@@ -40,17 +39,15 @@ import java.io.File
 )
 object PlumBot : Plugin() {
 
-    lateinit var INSTANCE: PlumBot
-
-    private lateinit var bot:Bot
+    private lateinit var bot: Bot
 
     private lateinit var config: ConfigLoader
 
     private lateinit var lang: LangConfig
 
     override fun onLoad() {
-        INSTANCE = this
-        config = ConfigResolver.loadConfig().getConfigLoader()
+        ConfigResolver.loadConfig()
+        config = ConfigResolver.getConfigLoader()
         lang =ConfigResolver.getLangConf()
     }
 
@@ -92,7 +89,9 @@ object PlumBot : Plugin() {
     }
 
     fun reloadConfig() {
-        config = ConfigResolver.reloadConfig().getConfigLoader()
+        ConfigResolver.reloadConfig()
+        config = ConfigResolver.getConfigLoader()
+        lang = ConfigResolver.getLangConf()
     }
 
     fun getBot(): Bot {
@@ -101,9 +100,6 @@ object PlumBot : Plugin() {
 
     fun getConfig(): ConfigLoader {
         return config
-    }
-    fun getDataFolder(): File {
-        return getDataFolder()
     }
     fun getLangConfig(): LangConfig {
         return lang

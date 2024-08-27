@@ -1,6 +1,7 @@
 package me.regadpole.plumbot.config
 
 import me.regadpole.plumbot.PlumBot
+import taboolib.common.platform.function.getDataFolder
 import taboolib.module.configuration.Configuration
 import taboolib.module.configuration.Type
 import java.io.File
@@ -12,21 +13,21 @@ import java.util.*
 
 object ConfigResolver {
 
-    private val plugin: PlumBot = PlumBot.INSTANCE
+    private val plugin: PlumBot = PlumBot
     private lateinit var config: ConfigLoader
     private lateinit var lang: LangConfig
 
     @Throws(IOException::class)
     fun loadConfig(): ConfigResolver {
-        val commandsFile = File(plugin.getDataFolder(), "commands.yml")
-        val configFile = File(plugin.getDataFolder(), "config.yml")
-        val returnsFile = File(plugin.getDataFolder(), "returns.yml")
-        val kook = File(plugin.getDataFolder(), "kook")
+        val commandsFile = File(getDataFolder(), "commands.yml")
+        val configFile = File(getDataFolder(), "config.yml")
+        val returnsFile = File(getDataFolder(), "returns.yml")
+        val kook = File(getDataFolder(), "kook")
         val kookConf = File(kook, "kbc.yml")
         val kookPlu = File(kook, "plugins")
-        val langDir = File(plugin.getDataFolder(),"lang")
+        val langDir = File(getDataFolder(),"lang")
 
-        if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) throw RuntimeException("Failed to create data folder!")
+        if (!getDataFolder().exists() && !getDataFolder().mkdirs()) throw RuntimeException("Failed to create data folder!")
         val allFile = arrayOf(configFile, commandsFile, returnsFile)
         for (file in allFile) {
             if (!file.exists()) {
