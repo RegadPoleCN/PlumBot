@@ -6,6 +6,7 @@ import cn.evole.onebot.sdk.event.message.GroupMessageEvent
 import cn.evole.onebot.sdk.event.message.PrivateMessageEvent
 import cn.evole.onebot.sdk.event.notice.group.GroupDecreaseNoticeEvent
 
+
 class QQListener: Listener {
     @SubscribeEvent
     fun onGroupMessage(event: GroupMessageEvent) {
@@ -13,12 +14,12 @@ class QQListener: Listener {
 
     @SubscribeEvent
     fun onPrivateMessage(e: PrivateMessageEvent) {
+
     }
 
     /**
      * unstable
      */
     @SubscribeEvent
-    fun onGroupMemberDecreased(e: GroupDecreaseNoticeEvent) {
-    }
+    fun onGroupMemberDecreased(e: GroupDecreaseNoticeEvent) {}
 }

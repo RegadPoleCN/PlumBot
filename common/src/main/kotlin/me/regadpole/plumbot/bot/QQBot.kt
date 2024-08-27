@@ -11,7 +11,6 @@ import taboolib.common.platform.function.submitAsync
 
 class QQBot(private val plugin: PlumBot): Bot {
 
-
     private lateinit var onebot: OneBotClient
 
     /**
@@ -126,7 +125,6 @@ class QQBot(private val plugin: PlumBot): Bot {
             }
         }
     }
-
 
     /**
      * 发送私聊消息
