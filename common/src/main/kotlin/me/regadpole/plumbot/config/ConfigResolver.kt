@@ -22,13 +22,14 @@ object ConfigResolver {
         val commandsFile = File(getDataFolder(), "commands.yml")
         val configFile = File(getDataFolder(), "config.yml")
         val returnsFile = File(getDataFolder(), "returns.yml")
+        val fontFile = File(getDataFolder(), "MiSans-Normal.ttf")
         val kook = File(getDataFolder(), "kook")
         val kookConf = File(kook, "kbc.yml")
         val kookPlu = File(kook, "plugins")
         val langDir = File(getDataFolder(),"lang")
 
         if (!getDataFolder().exists() && !getDataFolder().mkdirs()) throw RuntimeException("Failed to create data folder!")
-        val allFile = arrayOf(configFile, commandsFile, returnsFile)
+        val allFile = arrayOf(configFile, commandsFile, returnsFile, fontFile)
         for (file in allFile) {
             if (!file.exists()) {
                 plugin.javaClass.getResourceAsStream("/" + file.name).use { inputStream ->
@@ -56,6 +57,7 @@ object ConfigResolver {
             langDir.mkdirs()
         }
         langDir.listFiles()?.forEach {
+            if (it.exists()) return@forEach
             plugin.javaClass.getResourceAsStream(
                 ("/" + langDir.name + "/" + it.name)
             ).use { inputStream ->

@@ -1,41 +1,46 @@
 ver: "2.0.0"
 
 ################################
-#占位符中%world_name%只可用于bukkit平台
+# 占位符中%world_name%只可用于bukkit平台
 ################################
 
 prefix: "[PlumBot]"
 
-#可选占位符：%server_name%, %bot_name%
+# 可选占位符：%server_name%, %bot_name%
 onEnable: "PlumBot已开启"
 onDisable: "PlumBot已关闭"
-#消息转发
+
+# 消息转发
 forwarding:
-  #可选占位符：%server_name%, %world_name%, %message%
+  # 可选占位符：%server_name%, %world_name%, %message%
   toPlatform: "[服务器]%message%"
-  #可选占位符：%group_name%, %message%
+  # 可选占位符：%group_name%, %message%
   toServer: "[%group_name%]%message%"
-#可选占位符：%player_name%, %server_name%
+
+# 可选占位符：%player_name%, %server_name%
 playerJoinMsg: "%player_name%进入服务器"
 playerLeaveMsg: "%player_name%退出服务器"
+
 whitelist:
-  #可选占位符：%enable_groups%
+  # 可选占位符：%enable_groups%
   kickServer: "请加入qq群:xxx申请白名单"
-  #可选占位符：%player_name%, %server_name%
+  # 可选占位符：%player_name%, %server_name%
   kickPlatform: "%player_name%未在白名单内而被踢出服务器"
   user:
-    #可选占位符：%player_name%, %whitelist_name%, %platform_id%
+    # 可选占位符：%player_name%, %whitelist_name%, %platform_id%
     addBind: "成功申请白名单，您目前的白名单为%whitelist_name%"
     removeBind: "成功删除白名单，您目前的白名单为%whitelist_name%"
-    #可选占位符：%whitelist_name%, %platform_id%
+    # 可选占位符：%whitelist_name%, %platform_id%
     queryBind: "您目前的白名单为%whitelist_name%"
   admin:
-    #可选占位符：%player_name%, %whitelist_name%, %target_platform_id%, %sender_platform_id%
+    # 可选占位符：%player_name%, %whitelist_name%, %target_platform_id%, %sender_platform_id%
     addBind: "成功申请白名单，%target_platform_id%目前的白名单为%whitelist_name%"
     removeBind: "成功删除白名单，%target_platform_id%目前的白名单为%whitelist_name%"
-    #可选占位符：%whitelist_name%, %target_platform_id%, %sender_platform_id%
+    # 可选占位符：%whitelist_name%, %target_platform_id%, %sender_platform_id%
     queryBind: "%target_platform_id%目前的白名单为%whitelist_name%"
-#可选占位符：%command%, %server_name%
+
+# 可选占位符：%command%, %server_name%
 commandSendFinish: "已发送指令到服务器"
-#可选占位符：%player_name%, %world_name%, %pos%
+
+# 可选占位符：%player_name%, %world_name%, %pos%
 messageOnDie: "玩家%player_name%在%world_name%的%pos%死亡"
