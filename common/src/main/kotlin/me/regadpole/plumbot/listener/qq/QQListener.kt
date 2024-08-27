@@ -1,22 +1,24 @@
 package me.regadpole.plumbot.listener.qq
 
-import love.forte.simbot.component.onebot.v11.core.event.message.OneBotGroupMessageEvent
-import love.forte.simbot.component.onebot.v11.core.event.message.OneBotPrivateMessageEvent
-import love.forte.simbot.component.onebot.v11.core.event.notice.OneBotGroupMemberDecreaseEvent
+import cn.evole.onebot.client.annotations.SubscribeEvent
+import cn.evole.onebot.client.interfaces.Listener
+import cn.evole.onebot.sdk.event.message.GroupMessageEvent
+import cn.evole.onebot.sdk.event.message.PrivateMessageEvent
+import cn.evole.onebot.sdk.event.notice.group.GroupDecreaseNoticeEvent
 
+class QQListener: Listener {
+    @SubscribeEvent
+    fun onGroupMessage(event: GroupMessageEvent) {
+    }
 
-class QQListener {
-    companion object {
-        fun onGroupMessage(event: OneBotGroupMessageEvent) {
-        }
+    @SubscribeEvent
+    fun onPrivateMessage(e: PrivateMessageEvent) {
+    }
 
-        fun onPrivateMessage(event: OneBotPrivateMessageEvent) {
-
-        }
-
-        /**
-         * unstable
-         */
-        fun onGroupMemberDecreased(event: OneBotGroupMemberDecreaseEvent) {}
+    /**
+     * unstable
+     */
+    @SubscribeEvent
+    fun onGroupMemberDecreased(e: GroupDecreaseNoticeEvent) {
     }
 }

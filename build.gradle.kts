@@ -28,13 +28,11 @@ subprojects {
     }
 
     dependencies {
-        taboo("love.forte.simbot:simbot-core:4.6.0")
-        taboo("love.forte.simbot.component:simbot-component-onebot-v11-core:1.3.0")
+        taboo("com.github.RegadPoleCN:onebot-client:f73b158fc4")
         taboo("com.github.SNWCreations:KookBC:0.27.4")
         compileOnly("ink.ptms.core:v12004:12004:mapped")
         compileOnly("ink.ptms.core:v12004:12004:universal")
         compileOnly(kotlin("stdlib"))
-        runtimeOnly("io.ktor:ktor-client-java:2.3.12")
     }
 
     java {
