@@ -6,6 +6,9 @@ import me.regadpole.plumbot.bot.QQBot
 import me.regadpole.plumbot.config.ConfigLoader
 import me.regadpole.plumbot.config.ConfigResolver
 import me.regadpole.plumbot.config.LangConfig
+import me.regadpole.plumbot.database.Database
+import me.regadpole.plumbot.database.MySQL
+import me.regadpole.plumbot.database.SQLite
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.disablePlugin
 import taboolib.common.platform.function.info
@@ -21,6 +24,8 @@ object PlumBot : Plugin() {
 
     private lateinit var lang: LangConfig
 
+    private lateinit var database: Database
+
     override fun onLoad() {
         ConfigResolver.loadConfig()
         config = ConfigResolver.getConfigLoader()
@@ -30,6 +35,13 @@ object PlumBot : Plugin() {
 
     // 项目使用TabooLib Start Jar 创建!
     override fun onEnable() {
+        database = when(config.getConfig().database.type?.lowercase()) {
+            "sqlite" -> SQLite()
+            "mysql" -> MySQL()
+            else -> error("Unknown database type.")
+        }
+        database.initialize()
+        info("Loaded database")
         info("Successfully running PlumBot!")
     }
 
@@ -54,15 +66,8 @@ object PlumBot : Plugin() {
     }
 
     override fun onDisable() {
-        when (config.getConfig().bot.mode) {
-            "go-cqhttp", "kook" -> {
-                bot.shutdown()
-            }
-            else -> {
-                warning("无法正常关闭服务，将在服务器关闭后强制关闭")
-                disablePlugin()
-            }
-        }
+        bot.shutdown()
+        database.close()
     }
 
     fun reloadConfig() {
@@ -81,5 +86,7 @@ object PlumBot : Plugin() {
     fun getLangConfig(): LangConfig {
         return lang
     }
-
+    fun getDatabase(): Database {
+        return database
+    }
 }

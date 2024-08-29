@@ -2,7 +2,6 @@ package me.regadpole.plumbot.database
 
 import me.regadpole.plumbot.PlumBot
 import taboolib.common.platform.function.info
-import taboolib.common.util.asList
 import taboolib.module.database.ColumnOptionSQL
 import taboolib.module.database.ColumnTypeSQL
 import taboolib.module.database.Table
@@ -55,9 +54,9 @@ class MySQL: Database {
         }
     }
 
-    override fun removeBind(user: String, name: String) {
+    override fun removeBind(user: String, id: Int) {
         table.delete(dataSource) {
-            where { "user" eq user and ("name" eq name) }
+            where { "user" eq user and ("id" eq id) }
         }
     }
 
@@ -73,11 +72,15 @@ class MySQL: Database {
         }
     }
 
-    override fun getBind(user: String): List<String> {
-        return table.select(dataSource) {
+    override fun getBind(user: String): MutableMap<Int, String> {
+        val map: MutableMap<Int, String> = LinkedHashMap()
+        val result = table.select(dataSource) {
+            rows("id")
             rows("name")
             where("user" eq user)
-        }.asList()
+        }
+        result.forEach { map[getInt("id")] = getString("name") }
+        return map
     }
 
     override fun getBindByName(name: String): String? {

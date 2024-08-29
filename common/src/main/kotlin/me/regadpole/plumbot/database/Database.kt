@@ -26,10 +26,10 @@ interface Database {
 
     fun addBind(user: String, name: String)
 
-    fun removeBind(user: String, name: String)
+    fun removeBind(user: String, id: Int)
     fun removeBind(user: String)
     fun removeBindByName(name: String)
 
-    fun getBind(user: String): List<String>
+    fun getBind(user: String): MutableMap<Int, String>
     fun getBindByName(name: String): String?
 }
