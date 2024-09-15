@@ -194,23 +194,6 @@ public class QQEvent {
                 }
             }
 
-            pattern = Pattern.compile(Prefix+".*");
-            matcher = pattern.matcher(msg);
-            if(matcher.find()){
-                if (!Config.SDC()){
-                    return;
-                }
-                String scmd = matcher.group().replace(Prefix+"", "");
-                String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
-                if(gcmd!=null) {
-                    PlumBot.getScheduler().runTaskAsynchronously(()->{
-                        String sendCqMsg = ServerManager.sendCmd(gcmd, true);
-                        bot.sendCQMsg(true, sendCqMsg, groupID);
-                    });
-                    return;
-                }
-            }
-
             pattern = Pattern.compile(Prefix + "查询白名单 .*");
             matcher = pattern.matcher(msg);
             if (matcher.find()) {
@@ -256,6 +239,22 @@ public class QQEvent {
                 return;
             }
 
+            pattern = Pattern.compile(Prefix+".*");
+            matcher = pattern.matcher(msg);
+            if(matcher.find()){
+                if (!Config.SDC()){
+                    return;
+                }
+                String scmd = matcher.group().replace(Prefix+"", "");
+                String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
+                if(gcmd!=null) {
+                    PlumBot.getScheduler().runTaskAsynchronously(()->{
+                        String sendCqMsg = ServerManager.sendCmd(gcmd, true);
+                        bot.sendCQMsg(true, sendCqMsg, groupID);
+                    });
+                    return;
+                }
+            }
         }
 
         if(msg.equals(Prefix+"帮助")) {
