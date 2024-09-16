@@ -238,23 +238,6 @@ public class QQEvent {
                 }
                 return;
             }
-
-            pattern = Pattern.compile(Prefix+".*");
-            matcher = pattern.matcher(msg);
-            if(matcher.find()){
-                if (!Config.SDC()){
-                    return;
-                }
-                String scmd = matcher.group().replace(Prefix+"", "");
-                String gcmd = Config.getCommandsYaml().getString("Admin."+scmd);
-                if(gcmd!=null) {
-                    PlumBot.getScheduler().runTaskAsynchronously(()->{
-                        String sendCqMsg = ServerManager.sendCmd(gcmd, true);
-                        bot.sendCQMsg(true, sendCqMsg, groupID);
-                    });
-                    return;
-                }
-            }
         }
 
         if(msg.equals(Prefix+"帮助")) {
@@ -406,6 +389,16 @@ public class QQEvent {
                 return;
             }
             String scmd = matcher.group().replace(Prefix+"", "");
+            if(Config.getAdmins().contains(senderID)) {
+                String gcmd = Config.getCommandsYaml().getString("Admin." + scmd);
+                if (gcmd != null) {
+                    PlumBot.getScheduler().runTaskAsynchronously(() -> {
+                        String sendCqMsg = ServerManager.sendCmd(gcmd, true);
+                        bot.sendCQMsg(true, sendCqMsg, groupID);
+                    });
+                    return;
+                }
+            }
             String gcmd = Config.getCommandsYaml().getString("User."+scmd);
             if(gcmd!=null) {
                 PlumBot.getScheduler().runTaskAsynchronously(()->{
