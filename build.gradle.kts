@@ -25,11 +25,12 @@ subprojects {
     repositories {
         mavenCentral()
         maven("https://jitpack.io")
+        maven("https://repo.panda-lang.org/releases")
     }
 
     dependencies {
         compileOnly("com.github.RegadPoleCN:onebot-client:f73b158fc4")
-        taboo("com.github.SNWCreations:KookBC:0.27.4")
+        taboo("com.github.SNWCreations:KookBC:0.28.0")
         compileOnly("ink.ptms.core:v12004:12004:mapped")
         compileOnly("ink.ptms.core:v12004:12004:universal")
         compileOnly(kotlin("stdlib"))
