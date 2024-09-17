@@ -1,6 +1,7 @@
 package me.regadpole.plumbot.config
 
 import taboolib.common.platform.function.getDataFolder
+import taboolib.library.configuration.ConfigurationSection
 import taboolib.module.configuration.Configuration
 import taboolib.module.configuration.util.getMap
 import taboolib.module.database.getHost
@@ -9,6 +10,7 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
     private val config = Config(config)
     private val commands = Commands(commandsConfig)
     private val returns = Returns(returnsConfig)
+    private val tabooConfig = config
 
 
     class Config(config: Configuration){
@@ -68,10 +70,10 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
                 }
             }
             val enable = config.getBoolean("enable")
-            val host = config.getHost("host")
+            val host = config.getString("host")
             val port = config.getInt("port")
             val database = config.getString("database")
-            val username = config.getString("username")
+            val user = config.getString("user")
             val password = config.getString("password")
             val table = config.getString("table")
             val columns = config.getMap<String, String>("columns")
@@ -121,6 +123,9 @@ class ConfigLoader(config: Configuration, commandsConfig: Configuration, returns
     }
     fun getReturns(): Returns {
         return returns
+    }
+    fun getMySQLSection(): ConfigurationSection {
+        return tabooConfig.getConfigurationSection("database.settings.mysql")!!
     }
 
 }

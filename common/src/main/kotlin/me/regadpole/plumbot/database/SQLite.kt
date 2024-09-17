@@ -3,12 +3,14 @@ package me.regadpole.plumbot.database
 import me.regadpole.plumbot.PlumBot
 import taboolib.common.platform.function.info
 import taboolib.module.database.ColumnTypeSQLite
+import taboolib.module.database.HostSQLite
 import taboolib.module.database.Table
+import java.io.File
 import javax.sql.DataSource
 
 class SQLite: Database {
 
-    private val host = PlumBot.getConfig().getConfig().database.host
+    private val host = HostSQLite(File(PlumBot.getConfig().getConfig().database.settings.sqlite.path!!))
     private val dataSource by lazy { host.createDataSource() }
 
     private val table = Table("whitelist", host) {

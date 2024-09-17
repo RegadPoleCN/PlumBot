@@ -4,12 +4,13 @@ import me.regadpole.plumbot.PlumBot
 import taboolib.common.platform.function.info
 import taboolib.module.database.ColumnOptionSQL
 import taboolib.module.database.ColumnTypeSQL
+import taboolib.module.database.HostSQL
 import taboolib.module.database.Table
 import javax.sql.DataSource
 
 class MySQL: Database {
 
-    private val host = PlumBot.getConfig().getConfig().database.host
+    private val host = HostSQL(PlumBot.getConfig().getMySQLSection())
     private val dataSource by lazy { host.createDataSource() }
 
     private val table = Table("whitelist", host) {

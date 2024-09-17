@@ -66,7 +66,7 @@ database:
       host: localhost
       port: 3306
       database: plumbot
-      username: plumbot
+      user: plumbot
       password: plumbot
       flagsURL: "?useSSL=false"
     # 连接池设置
