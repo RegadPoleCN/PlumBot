@@ -30,7 +30,7 @@ object PlumBot : Plugin() {
         ConfigResolver.loadConfig()
         config = ConfigResolver.getConfigLoader()
         lang =ConfigResolver.getLangConf()
-        info("Successfully load config")
+        info("成功加载配置文件!")
     }
 
     // 项目使用TabooLib Start Jar 创建!
@@ -41,14 +41,13 @@ object PlumBot : Plugin() {
             else -> error("Unknown database type.")
         }
         database.initialize()
-        info("Loaded database")
-        info("Successfully running PlumBot!")
+        info("成功连接到数据库!")
     }
 
     override fun onActive() {
         submitAsync(now = true) {
             when (config.getConfig().bot.mode) {
-                "go-cqhttp" -> {
+                "onebot" -> {
                     bot = QQBot(this@PlumBot)
                     bot.start()
                 }
@@ -63,11 +62,14 @@ object PlumBot : Plugin() {
                 }
             }
         }
+        info("成功启用机器人服务!")
     }
 
     override fun onDisable() {
         bot.shutdown()
+        info("成功关闭机器人服务")
         database.close()
+        info("成功关闭数据库链接!")
     }
 
     fun reloadConfig() {
@@ -86,7 +88,9 @@ object PlumBot : Plugin() {
     fun getLangConfig(): LangConfig {
         return lang
     }
+
     fun getDatabase(): Database {
         return database
     }
+
 }

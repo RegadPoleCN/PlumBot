@@ -68,7 +68,7 @@ object ConfigResolver {
 
         config = ConfigLoader(Configuration.loadFromFile(configFile, Type.YAML), Configuration.loadFromFile(commandsFile, Type.YAML), Configuration.loadFromFile(returnsFile, Type.YAML))
 
-        if ("2.0.0" != config.getConfig().ver) {
+        if ("2.0.0" != config.getConfig().version) {
             plugin.javaClass.getResourceAsStream("/" + configFile.getName()).use { inputStream ->
                 checkNotNull(inputStream)
                 Files.copy(inputStream, configFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -76,7 +76,7 @@ object ConfigResolver {
                 return this
             }
         }
-        if ("2.0.0" != config.getCommands().ver) {
+        if ("2.0.0" != config.getCommands().version) {
             plugin.javaClass.getResourceAsStream("/" + commandsFile.getName()).use { inputStream ->
                 checkNotNull(inputStream)
                 Files.copy(inputStream, commandsFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
@@ -84,7 +84,7 @@ object ConfigResolver {
                 return this
             }
         }
-        if ("2.0.0" != config.getReturns().ver) {
+        if ("2.0.0" != config.getReturns().version) {
             plugin.javaClass.getResourceAsStream("/" + returnsFile.getName()).use { inputStream ->
                 checkNotNull(inputStream)
                 Files.copy(inputStream, returnsFile.toPath(), StandardCopyOption.REPLACE_EXISTING)

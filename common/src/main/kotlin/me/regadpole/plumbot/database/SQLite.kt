@@ -8,7 +8,7 @@ import javax.sql.DataSource
 
 class SQLite: Database {
 
-    private val host = PlumBot.getConfig().getConfig().database.sqliteHost
+    private val host = PlumBot.getConfig().getConfig().database.host
     private val dataSource by lazy { host.createDataSource() }
 
     private val table = Table("whitelist", host) {

@@ -1,46 +1,75 @@
 #机器人功能设置
-Ver: "2.0.0"
 
-#语言文件在lang文件夹里
+# 版本号, 请勿修改!
+version: "2.0.0"
+
+# 语言文件, 在lang文件夹里
 lang: "zh_CN"
-#群聊命令前缀
-commandPrefix: "/"
-#消息转发
-forwarding:
-  enable: true
-  mode: 0 #mode设为0即无条件转发消息，设为1则消息前有前缀才会转发消息
-  prefix: "#"
-#死亡报告
-dieReport: false
-#白名单
-whiteList:
-  enable: false
-  maxCount: 1
-#执行命令功能
-cmd: true
-#进出提示
-joinAndLeave: true
-#在线玩家查询
-online: true
-#tps查询
-tps: true
-#自定义命令
-SDC: true
-#自定义回复
-SDR: true
 
+# 群聊设置
+groups:
+  # 在哪些群聊(组号)启用
+  enableGroups:
+    - 111
+
+  # 管理员的userId
+  botAdmins:
+    - 111
+
+  #群聊命令前缀
+  commandPrefix: "/"
+
+  #消息转发
+  forwarding:
+    # 群聊消息 / 游戏内消息 双向转发
+    message:
+      enable: true
+      mode: 0 #mode设为0即无条件转发消息，设为1则消息前有前缀才会转发消息
+      prefix: "#"
+
+    # 转发死亡信息
+    dieMessage: false
+
+    # 白名单功能
+    whitelist:
+      enable: false
+      # 一个用户最多可以加多少个Minecraft账号
+      maxCount: 1
+
+    # 群聊内执行命令功能
+    cmd: true
+
+    # 玩家进出提示
+    joinAndLeave: true
+
+    # 服务器在线玩家查询
+    online: true
+
+    # 服务器TPS查询
+    tps: true
+
+    # 自定义命令功能
+    SDC: true
+
+    # 自定义回复功能
+    SDR: true
+
+# 数据库功能
 database:
+  # 数据库类型, 可选sqlite, mysql
   type: sqlite
   settings:
     sqlite:
+      # 数据库保存路径
       path: "%plugin_folder%/database.db"
     mysql:
       host: localhost
       port: 3306
       database: plumbot
-      user: plumbot
+      username: plumbot
       password: plumbot
       flagsURL: "?useSSL=false"
+    # 连接池设置
     pool:
       connectionTimeout: 30000
       idleTimeout: 600000
@@ -48,32 +77,26 @@ database:
       maximumPoolSize: 15
       keepaliveTime: 0
       minimumIdle: 5
-      #当服务端出现类似
-      #“Receiver class org.sqlite.Conn does not define or
+      # 当服务端出现类似
+      # “Receiver class org.sqlite.Conn does not define or
       # inherit an implementation of the resolved method 'abstract boolean isValid(int)'
       # of interface java.sql.Connection.”
-      #报错时，将下面配置取消注释
-      #connectionTestQuery: "SELECT 1"
-
-enableGroups:
-  - 111
-  #启用消息转发功能的群聊Id
-
-botAdmins:
-  - 111
-  #管理员的userId
+      # 的报错时, 取消下面的注释项
+      # connectionTestQuery: "SELECT 1"
 
 bot:
+  # 机器人模式, 可选onebot, kook
   mode: "kook"
-  #机器人模式，可选go-cqhttp、kook
-  go-cqhttp:
+  onebot:
+    # onebot协议端的正向ws模式的对应地址
     ws: "ws://127.0.0.1:3001"
-    #go-cqhttp的config文件中正向ws模式
-    token: ""
-    #go-cqhttp是否开启了access-token模式，如是，请填写，如否，则该项无效
-    hasAccessToken: false
-    #go-cqhttp是否开启了access-token模式
+    token:
+      # 是否需要token验证
+      enable: true
+
+      # 协议端token
+      accessToken: ""
+  # kook机器人，只支持websocket
   kook:
-    #kook机器人，只支持websocket
+    # kook机器人token
     token: ""
-    #kook机器人Token

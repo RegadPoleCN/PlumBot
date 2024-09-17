@@ -17,16 +17,16 @@ class QQBot(private val plugin: PlumBot): Bot {
      * Start a bot
      */
     override fun start(): Bot {
-        onebot = if (plugin.getConfig().getConfig().bot.gocqhttp.hasAccessToken) {
-            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.gocqhttp.ws, plugin.getConfig().getConfig().bot.gocqhttp.token)) //创建websocket客户端
+        onebot = if (plugin.getConfig().getConfig().bot.onebot.token.enable) {
+            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.onebot.ws, plugin.getConfig().getConfig().bot.onebot.token.token)) //创建websocket客户端
                 .open() //连接onebot服务端
                 .registerEvents(QQListener()) //注册事件监听器
         } else {
-            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.gocqhttp.ws)) //创建websocket客户端
+            OneBotClient.create(BotConfig(plugin.getConfig().getConfig().bot.onebot.ws)) //创建websocket客户端
                 .open() //连接onebot服务端
                 .registerEvents(QQListener()) //注册事件监听器
         }
-        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
+        val groups: List<String> = plugin.getConfig().getConfig().groups.enableGroups
         for (groupID in groups) {
             sendMsg(true, groupID, "PlumBot已启动")
         }
@@ -38,7 +38,7 @@ class QQBot(private val plugin: PlumBot): Bot {
      * Stop a bot
      */
     override fun shutdown() {
-        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
+        val groups: List<String> = plugin.getConfig().getConfig().groups.enableGroups
         for (groupID in groups) {
             sendMsg(true, groupID, "PlumBot已关闭")
         }

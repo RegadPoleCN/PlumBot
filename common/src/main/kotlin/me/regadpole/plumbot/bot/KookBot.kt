@@ -57,7 +57,7 @@ class KookBot(private val plugin: PlumBot): Bot {
         kookClient = kook
         kookBot = this
         kook.core.eventManager.registerHandlers(kook.internalPlugin, KookListener())
-        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
+        val groups: List<String> = plugin.getConfig().getConfig().groups.enableGroups
         for (groupID in groups) {
             PlumBot.getBot().sendMsg(true, "PlumBot已启动", groupID)
         }
@@ -69,7 +69,7 @@ class KookBot(private val plugin: PlumBot): Bot {
      * Stop a bot
      */
     override fun shutdown() {
-        val groups: List<String> = plugin.getConfig().getConfig().enableGroups
+        val groups: List<String> = plugin.getConfig().getConfig().groups.enableGroups
         for (groupID in groups) {
             sendMsg(true, "PlumBot已关闭", groupID)
         }
