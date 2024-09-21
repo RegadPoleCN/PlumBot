@@ -26,6 +26,8 @@ object PlumBot : Plugin() {
 
     private lateinit var database: Database
 
+    var playerList = mutableListOf<String>()
+
     override fun onLoad() {
         ConfigResolver.loadConfig()
         config = ConfigResolver.getConfigLoader()
@@ -63,6 +65,9 @@ object PlumBot : Plugin() {
             }
         }
         info("成功启用机器人服务!")
+        config.getConfig().groups.enableGroups.forEach {
+            bot.sendGroupMsg(it, lang.getLangConf().onEnable ?: return@forEach)
+        }
     }
 
     override fun onDisable() {
@@ -70,6 +75,9 @@ object PlumBot : Plugin() {
         info("成功关闭机器人服务")
         database.close()
         info("成功关闭数据库链接!")
+        config.getConfig().groups.enableGroups.forEach {
+            bot.sendGroupMsg(it, lang.getLangConf().onDisable ?: return@forEach)
+        }
     }
 
     fun reloadConfig() {

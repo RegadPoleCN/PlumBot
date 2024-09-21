@@ -12,10 +12,10 @@ onDisable: "PlumBot已关闭"
 
 # 消息转发
 forwarding:
-  # 可选占位符：%server_name%, %world_name%, %message%
-  toPlatform: "[服务器]%message%"
-  # 可选占位符：%group_name%, %message%
-  toServer: "[%group_name%]%message%"
+  # 可选占位符：%server_name%, %player_name%, %world_name%, %message%
+  toPlatform: "[服务器] %player_name%: %message%"
+  # 可选占位符：%group_name%, %platform_name%, %message%
+  toServer: "[%group_name%] %qq_id%: %message%"
 
 # 可选占位符：%player_name%, %server_name%
 playerJoinMsg: "%player_name%进入服务器"
@@ -32,6 +32,12 @@ whitelist:
     removeBind: "成功删除白名单，您目前的白名单为%whitelist_name%"
     # 可选占位符：%whitelist_name%, %platform_id%
     queryBind: "您目前的白名单为%whitelist_name%"
+    # 可选占位符：%player_name%, %whitelist_name%, %platform_id%, %whitelist_limit%
+    fullBind: "你能申请的白名单数额已满: %whitelist_limit%"
+    # 可选占位符：%player_name%
+    existsBind: "%player_name% 已被他人绑定!"
+    notExistsBind: "%player_name% 暂未被人绑定过!"
+    notBelongToYou: "%player_name% 不是由你绑定的!"
   admin:
     # 可选占位符：%player_name%, %whitelist_name%, %target_platform_id%, %sender_platform_id%
     addBind: "成功申请白名单，%target_platform_id%目前的白名单为%whitelist_name%"
@@ -44,3 +50,14 @@ commandSendFinish: "已发送指令到服务器"
 
 # 可选占位符：%player_name%, %world_name%, %pos%
 messageOnDie: "玩家%player_name%在%world_name%的%pos%死亡"
+
+# 可选占位符: %prefix%
+help:
+  - "PlumBot 帮助"
+  - "%prefix%在线人数   - 查看在线人数"
+  - "%prefix%tps   - 查看服务器TPS"
+  - "%prefix%申请白名单 <游戏名>   - 申请白名单"
+  - "%prefix%移除白名单 <游戏名>   - 移除白名单"
+  - "%prefix%查询白名单   - 查询自己申请的所有白名单"
+  - "管理员命令"
+  - "%prefix%cmd <命令>   - 向服务器发送命令并获取返回值"

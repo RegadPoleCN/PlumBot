@@ -3,7 +3,7 @@ package me.regadpole.plumbot.internal
 import me.regadpole.plumbot.PlumBot
 
 
-class WhitelistHelper {
+object WhitelistHelper {
     fun checkCount(user: String): Boolean {
         val idList = PlumBot.getDatabase().getBind(user).values
         val maxCount: Int = PlumBot.getConfig().getConfig().groups.forwarding.whitelist.maxCount
@@ -13,6 +13,10 @@ class WhitelistHelper {
 
     fun checkIDNotExist(name: String): Boolean {
         return PlumBot.getDatabase().getBindByName(name).isNullOrEmpty()
+    }
+
+    fun checkIDBelong(user: String, name: String): Boolean {
+        return PlumBot.getDatabase().getBindByName(name) == user
     }
 
     fun addAndGet(user: String, name: String): MutableMap<Int, String> {

@@ -28,6 +28,10 @@ class LangConfig(langConfig: Configuration) {
                 val addBind = config.getString("whitelist.user.addBind")
                 val removeBind = config.getString("whitelist.user.removeBind")
                 val queryBind = config.getString("whitelist.user.queryBind")
+                val fullBind = config.getString("whitelist.user.fullBind")
+                val existsBind = config.getString("whitelist.user.existsBind")
+                val notExistsBind = config.getString("whitelist.user.nonExistsBind")
+                val notBelongToYou = config.getString("whitelist.user.notBelongToYou")
             }
             class Admin(config: Configuration) {
                 val addBind = config.getString("whitelist.admin.addBind")

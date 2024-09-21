@@ -5,6 +5,7 @@ import me.regadpole.plumbot.event.GDeathEvent
 import me.regadpole.plumbot.event.GJoinEvent
 import me.regadpole.plumbot.event.GPlayerChatEvent
 import me.regadpole.plumbot.event.GQuitEvent
+import taboolib.common5.util.replace
 
 object GameListener {
     fun onChat(event: GPlayerChatEvent) {
@@ -16,6 +17,7 @@ object GameListener {
             var message: String = PlumBot.getLangConfig().getLangConf().forwarding.toPlatform?: return
             message = message.replace("%server_name%", event.player.server)
                 .replace("%world_name%", event.player.position.world)
+                .replace("%player_name%", event.player.name)
                 .replace("%message%", event.message)
             PlumBot.getConfig().getConfig().groups.enableGroups.forEach {
                 PlumBot.getBot().sendGroupMsg(it, message)
@@ -36,6 +38,10 @@ object GameListener {
     }
 
     fun onJoin(event: GJoinEvent) {
+        PlumBot.playerList.add(event.player.name)
+        if (!PlumBot.getConfig().getConfig().groups.forwarding.whitelist.enable) {
+            return
+        }
         if (PlumBot.getDatabase().getBindByName(event.player.name) == null) {
             var message: String = PlumBot.getLangConfig().getLangConf().whitelist.kickServer?: return
             message = message.replace("%enable_groups%", PlumBot.getConfig().getConfig().groups.enableGroups.joinToString("/"))
@@ -57,6 +63,7 @@ object GameListener {
     }
 
     fun onQuit(event: GQuitEvent) {
+        PlumBot.playerList.remove(event.player.name)
         if (PlumBot.getConfig().getConfig().groups.forwarding.joinAndLeave) {
             var message: String = PlumBot.getLangConfig().getLangConf().playerLeaveMsg?: return
             message = message.replace("%player_name%", event.player.name)
