@@ -5,9 +5,8 @@ import me.regadpole.plumbot.event.GDeathEvent
 import me.regadpole.plumbot.event.GJoinEvent
 import me.regadpole.plumbot.event.GPlayerChatEvent
 import me.regadpole.plumbot.event.GQuitEvent
-import taboolib.common5.util.replace
 
-class GameListener {
+object GameListener {
     fun onChat(event: GPlayerChatEvent) {
         if (PlumBot.getConfig().getConfig().groups.forwarding.message.enable) {
             if (PlumBot.getConfig().getConfig().groups.forwarding.message.mode == 1 && !event.message.startsWith(
