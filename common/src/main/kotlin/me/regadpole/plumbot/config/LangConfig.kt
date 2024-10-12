@@ -12,9 +12,12 @@ class LangConfig(langConfig: Configuration) {
         val forwarding = Forwarding(config)
         val playerJoinMsg = config.getString("playerJoinMsg")
         val playerLeaveMsg = config.getString("playerLeaveMsg")
+        val online = config.getString("online")
+        val tps = config.getString("tps")
         val whitelist = Whitelist(config)
         val commandSendFinish = config.getString("commandSendFinish")
         val messageOnDie = config.getString("messageOnDie")
+        val help = config.getStringList("help")
         class Forwarding(config: Configuration) {
             val toPlatform = config.getString("forwarding.toPlatform")
             val toServer = config.getString("forwarding.toServer")

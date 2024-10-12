@@ -5,7 +5,6 @@ import me.regadpole.plumbot.event.GDeathEvent
 import me.regadpole.plumbot.event.GJoinEvent
 import me.regadpole.plumbot.event.GPlayerChatEvent
 import me.regadpole.plumbot.event.GQuitEvent
-import taboolib.common5.util.replace
 
 object GameListener {
     fun onChat(event: GPlayerChatEvent) {
@@ -38,7 +37,7 @@ object GameListener {
     }
 
     fun onJoin(event: GJoinEvent) {
-        PlumBot.playerList.add(event.player.name)
+//        PlumBot.playerList.add(event.player.name)
         if (!PlumBot.getConfig().getConfig().groups.forwarding.whitelist.enable) {
             return
         }
@@ -63,7 +62,7 @@ object GameListener {
     }
 
     fun onQuit(event: GQuitEvent) {
-        PlumBot.playerList.remove(event.player.name)
+//        PlumBot.playerList.remove(event.player.name)
         if (PlumBot.getConfig().getConfig().groups.forwarding.joinAndLeave) {
             var message: String = PlumBot.getLangConfig().getLangConf().playerLeaveMsg?: return
             message = message.replace("%player_name%", event.player.name)

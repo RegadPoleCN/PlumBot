@@ -2,7 +2,6 @@ package me.regadpole.plumbot.listener
 
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.internal.WhitelistHelper
-import taboolib.common5.util.replace
 
 object GPlatformListener {
     fun onGroupMessage(message: String, groupId: String, senderId: String, senderName: String) {
@@ -22,14 +21,22 @@ object GPlatformListener {
                 }
             }
             if (message.substring(1) == "help" || message.substring(1) == "帮助") {
-
+                val sbuilder = StringBuilder()
+                PlumBot.getLangConfig().getLangConf().help.forEach {
+                    sbuilder.append(it.replace("prefix", PlumBot.getConfig().getConfig().groups.prefix!!))
+                }
+                PlumBot.getBot().sendGroupMsg(groupId, sbuilder.toString())
             }
             if (PlumBot.getConfig().getConfig().groups.forwarding.tps && message.substring(1) == "tps") {
-                // TODO: 获取服务器 TPS 并返回
+                val tps = PlumBot.getPlatformImpl().getTPS()
+                PlumBot.getBot().sendGroupMsg(groupId, PlumBot.getLangConfig().getLangConf().tps!!
+                    .replace("%tps%", tps[0].toString())
+                    .replace("%mspt%", tps[1].toString()))
             }
             if (PlumBot.getConfig().getConfig().groups.forwarding.online && message.substring(1) == "在线人数") {
-                // TODO: 看看这样写有没有问题((
-                PlumBot.getBot().sendGroupMsg(groupId, "在线玩家: ${PlumBot.playerList.joinToString(", ")}")
+                PlumBot.getBot().sendGroupMsg(groupId, PlumBot.getLangConfig().getLangConf().online!!
+                    .replace("%count%", PlumBot.playerList.size.toString())
+                    .replace("%player_list%", PlumBot.playerList.joinToString(", ")))
             }
             if (PlumBot.getConfig().getConfig().groups.botAdmins.contains(groupId) && message.substring(1) == "cmd") {
                 // TODO: 执行message内游戏命令并返回

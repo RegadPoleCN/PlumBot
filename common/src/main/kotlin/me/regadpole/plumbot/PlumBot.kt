@@ -10,10 +10,7 @@ import me.regadpole.plumbot.database.Database
 import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import taboolib.common.platform.Plugin
-import taboolib.common.platform.function.disablePlugin
-import taboolib.common.platform.function.info
-import taboolib.common.platform.function.submitAsync
-import taboolib.common.platform.function.warning
+import taboolib.common.platform.function.*
 
 
 object PlumBot : Plugin() {
@@ -26,8 +23,11 @@ object PlumBot : Plugin() {
 
     private lateinit var database: Database
 
-    var playerList = mutableListOf<String>()
+    // TODO: 初始化platformImpl
+    private lateinit var platformImpl: PlatformImpl
 
+//    var playerList = mutableListOf<String>()
+    val playerList = onlinePlayers()
     override fun onLoad() {
         ConfigResolver.loadConfig()
         config = ConfigResolver.getConfigLoader()
@@ -99,6 +99,9 @@ object PlumBot : Plugin() {
 
     fun getDatabase(): Database {
         return database
+    }
+    fun getPlatformImpl(): PlatformImpl {
+        return platformImpl
     }
 
 }

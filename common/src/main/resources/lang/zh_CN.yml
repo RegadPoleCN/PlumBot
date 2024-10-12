@@ -21,6 +21,11 @@ forwarding:
 playerJoinMsg: "%player_name%进入服务器"
 playerLeaveMsg: "%player_name%退出服务器"
 
+# 可选占位符：%count%, %player_list%
+online: "当前在线: (%count%人): %player_list%"
+# 可选占位符：%tps%, %mspt%
+tps: "当前tps：%tps% \n 当前mspt：%mspt%"
+
 whitelist:
   # 可选占位符：%enable_groups%
   kickServer: "请加入qq群:xxx申请白名单"

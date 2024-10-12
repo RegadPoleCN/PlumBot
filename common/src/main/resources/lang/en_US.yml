@@ -21,6 +21,11 @@ forwarding:
 playerJoinMsg: "%player_name% join the server"
 playerLeaveMsg: "%player_name% leave the server"
 
+# Optional placeholders: %count%, %player_list%
+online: "Online players: (%count% players): %player_list%"
+# Optional placeholders：%tps%, %mspt%
+tps: "tps：%tps% \n mspt：%mspt%"
+
 whitelist:
   # Optional placeholders：%enable_groups%
   kickServer: "please enter the group to apply the whitelist"
@@ -32,6 +37,12 @@ whitelist:
     removeBind: "successfully remove the whitelist, your whitelist is %whitelist_name%"
     # Optional placeholders：%whitelist_name%, %platform_id%
     queryBind: "your whitelist is %whitelist_name%"
+    # Optional placeholders：%player_name%, %whitelist_name%, %platform_id%, %whitelist_limit%
+    fullBind: "You have applied for whitelist with limit: %whitelist_limit%"
+    # Optional placeholders：%player_name%
+    existsBind: "%player_name% has been bound!"
+    notExistsBind: "%player_name% hasn't been bound!"
+    notBelongToYou: "%player_name% hasn't been bound by YOU!"
   admin:
     # Optional placeholders：%player_name%, %whitelist_name%, %target_platform_id%, %sender_platform_id%
     addBind: "successfully apply the whitelist, %target_platform_id%'s whitelist is %whitelist_name%"
@@ -44,3 +55,14 @@ commandSendFinish: "sending the command to the server..."
 
 # Optional placeholders：%player_name%, %world_name%, %pos%
 messageOnDie: "Player %player_name% was died at %pos% in %world_name%"
+
+# Optional placeholders: %prefix%
+help:
+  - "PlumBot help page"
+  - "%prefix%在线人数   - List online players"
+  - "%prefix%tps   - Query the TPS"
+  - "%prefix%申请白名单 <ID>   - Apply for whitelist"
+  - "%prefix%移除白名单 <ID>   - Remove whitelist"
+  - "%prefix%查询白名单   - Query whitelist"
+  - "管理员命令"
+  - "%prefix%cmd <命令>   - Dispatch commands to the server"
