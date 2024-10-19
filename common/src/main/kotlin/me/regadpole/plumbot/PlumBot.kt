@@ -9,8 +9,10 @@ import me.regadpole.plumbot.config.LangConfig
 import me.regadpole.plumbot.database.Database
 import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
+import taboolib.common.platform.Platform
 import taboolib.common.platform.Plugin
 import taboolib.common.platform.function.*
+import taboolib.platform.util.isBukkitServerRunning
 
 
 object PlumBot : Plugin() {

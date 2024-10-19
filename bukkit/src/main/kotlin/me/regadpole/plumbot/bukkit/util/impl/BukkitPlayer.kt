@@ -1,4 +1,4 @@
-package me.regadpole.plumbot.util.impl;
+package me.regadpole.plumbot.bukkit.util.impl;
 
 import me.regadpole.plumbot.util.GPlayer
 import me.regadpole.plumbot.util.GPosition
