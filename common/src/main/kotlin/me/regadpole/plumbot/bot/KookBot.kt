@@ -127,6 +127,44 @@ class KookBot(private val plugin: PlumBot): Bot {
         }
     }
 
+    /**
+     * Send a picture to group
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
+    override fun sendGroupPicWithText(targetId: String, message: String) {
+        val channel = kookClient.core.httpAPI.getChannel(targetId) as TextChannel
+        val list: MutableList<ImageElement> = ArrayList()
+        list.add(ImageElement(createPicWithText(message), "", false))
+        val card: MultipleCardComponent = CardBuilder()
+            .setTheme(Theme.PRIMARY)
+            .setSize(Size.LG)
+            .addModule(ContainerModule(list))
+            .build()
+        submitAsync(now = true) {
+            channel.sendComponent(card)
+        }
+    }
+
+    /**
+     * Send a picture to user
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
+    override fun sendUserPicWithText(targetId: String, message: String) {
+        val user = kookClient.core.httpAPI.getUser(targetId)
+        val list: MutableList<ImageElement> = ArrayList()
+        list.add(ImageElement(createPicWithText(message), "", false))
+        val card: MultipleCardComponent = CardBuilder()
+            .setTheme(Theme.PRIMARY)
+            .setSize(Size.LG)
+            .addModule(ContainerModule(list))
+            .build()
+        submitAsync(now = true) {
+            user.sendPrivateMessage(card)
+        }
+    }
+
 
     /**
      * Send message to the group/user
@@ -179,7 +217,7 @@ class KookBot(private val plugin: PlumBot): Bot {
         user.sendPrivateMessage(s)
     }
 
-    private fun createFile(s: String): String? {
+    private fun createPicWithText(s: String): String? {
         try {
             val file = File.createTempFile("PlumBot-", ".png")
             val fos = FileOutputStream(file)
@@ -192,9 +230,9 @@ class KookBot(private val plugin: PlumBot): Bot {
         return null
     }
 
-    fun sendPrivateFileReply(e: PrivateMessageReceivedEvent, s: String) {
+    fun sendPrivatePicReplyWithText(e: PrivateMessageReceivedEvent, s: String) {
         val list: MutableList<ImageElement> = ArrayList()
-        list.add(ImageElement(createFile(s), "", false))
+        list.add(ImageElement(createPicWithText(s), "", false))
         val card: MultipleCardComponent = CardBuilder()
             .setTheme(Theme.PRIMARY)
             .setSize(Size.LG)
@@ -207,7 +245,7 @@ class KookBot(private val plugin: PlumBot): Bot {
 
     fun sendChannelFileReply(e: ChannelMessageEvent, s: String) {
         val list: MutableList<ImageElement> = ArrayList()
-        list.add(ImageElement(createFile(s), "", false))
+        list.add(ImageElement(createPicWithText(s), "", false))
         val card: MultipleCardComponent = CardBuilder()
             .setTheme(Theme.PRIMARY)
             .setSize(Size.LG)

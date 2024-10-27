@@ -5,6 +5,7 @@ import cn.evole.onebot.client.core.BotConfig
 import cn.evole.onebot.sdk.util.MsgUtils
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.listener.qq.QQListener
+import me.regadpole.plumbot.tool.TextToImg
 import taboolib.common.platform.function.info
 import taboolib.common.platform.function.submitAsync
 
@@ -92,6 +93,30 @@ class QQBot(private val plugin: PlumBot): Bot {
         if (targetId.toLongOrNull() == null) return
         val target = targetId.toLong()
         onebot.bot.sendGroupMsg(target, MsgUtils.builder().text(message).build(), true)
+    }
+
+    /**
+     * Send a picture to group
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
+    override fun sendGroupPicWithText(targetId: String, message: String) {
+        if (targetId.toLongOrNull() == null) return
+        val target = targetId.toLong()
+        val msg = TextToImg.toImgCQCode(message)
+        onebot.bot.sendGroupMsg(target, msg, false)
+    }
+
+    /**
+     * Send a picture to user
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
+    override fun sendUserPicWithText(targetId: String, message: String) {
+        if (targetId.toLongOrNull() == null) return
+        val target = targetId.toLong()
+        val msg = TextToImg.toImgCQCode(message)
+        onebot.bot.sendPrivateMsg(target, msg, false)
     }
 
     /**

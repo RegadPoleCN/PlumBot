@@ -31,7 +31,7 @@ class BukkitImpl: PlatformImpl() {
         TODO("Not yet implemented")
     }
 
-    override fun dispatchCommand(cmd: String): StringBuilder {
+    override fun dispatchCommand(cmd: String): String {
         TODO("Not yet implemented")
     }
 }
