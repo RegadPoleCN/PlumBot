@@ -99,6 +99,7 @@
             <version>0.28.0</version>
             <scope>compile</scope>
         </dependency>
+
         <dependency>
             <groupId>net.kyori</groupId>
             <artifactId>event-api</artifactId>
