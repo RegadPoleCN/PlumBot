@@ -3,7 +3,6 @@ package me.regadpole.plumbot.bot;
 import me.regadpole.plumbot.PlumBot;
 import me.regadpole.plumbot.config.Config;
 import me.regadpole.plumbot.event.kook.KookEvent;
-import me.regadpole.plumbot.internal.kook.KookClient;
 import me.regadpole.plumbot.tool.TextToImg;
 import snw.jkook.JKook;
 import snw.jkook.config.ConfigurationSection;
@@ -50,7 +49,7 @@ public class KookBot implements Bot {
         if (JKook.getCore() == null) JKook.setCore(kookcore);
         config = YamlConfiguration.loadConfiguration(new File(kookFolder, "kbc.yml"));
         kookPlugins = new File(kookFolder, "plugins");
-        kook = new KookClient(kookcore, config, kookPlugins, Config.getKookBotToken(), "websocket");
+        kook = new KBCClient(kookcore, config, kookPlugins, Config.getKookBotToken(), "websocket");
         kook.start();
         kookClient = kook;
         kookBot = new KookBot();
