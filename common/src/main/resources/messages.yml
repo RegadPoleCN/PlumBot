@@ -1,0 +1,68 @@
+ver: "1.0"
+
+prefix: "<white>[<aqua>PlumBot<white>]<reset> "
+
+load: "PlumBot enabled"
+unload: "PlumBot disabled"
+
+# group_name, group_id, user_nick, message, user_id, user_name
+ob2server: "[%group_name%] %user_name%: %message%"
+# server, player_name, message
+server2ob: "[%server%] %player_name%: %message%"
+
+# player_list, player_num
+playerList: "Online Players: %player_list% for %player_num% players"
+
+# player_name
+joinProxy: "%player_name% join the proxy"
+# player_name, server
+leaveProxy: "%player_name% leave the proxy"
+# player_name, origin_server, target_server
+# JUST FOR VELOCITY !!!
+changeServer: "%player_name% has change the server from %origin_server% to %target_server%"
+
+# groups
+kickServer: "请加入qq群:xxx申请白名单"
+# player_name
+kickPlatform: "%player_name%未在白名单内而被踢出服务器"
+
+# user_nick, user_name, user_id, target_player, num, current
+playerAddBind: "%user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+playerDeleteBind: "%user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+# user_nick, user_name, user_id, num, current
+playerQueryBind: "%user_id% now has %num% bind: %current%"
+
+# player_name, current, user_id, whitelist_limit, user_name, user_nick
+fullBind: "你能申请的白名单数额已满: %whitelist_limit%"
+# user_id, user_name, user_nick
+qqEmptyBind: "您尚未申请白名单"
+# player
+idEmptyBind: "id尚未申请白名单"
+# player_name
+existsBind: "%player_name% 已被他人绑定!"
+notExistsBind: "%player_name% 暂未被人绑定过!"
+notBelongToYou: "%player_name% 不是由你绑定的!"
+wrongUsage: "请正确输入命令"
+
+# origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
+adminAddBind: "%origin_id% has sudo %user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+adminDeleteBind: "%origin_id% has sudo %user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+# origin_id, origin_name, user_id, user_name, user_nick, num, current
+adminQueryQQBind: "%user_id% now has %num% bind: %current%"
+# origin_id, origin_name, user_id, user_name, user_nick, player
+adminQueryIdBind: "%player% now has been bind by %user_id%"
+
+# cmdprefix
+help:
+  - "PlumBot 帮助"
+  - "%cmdprefix%$list   - 查看在线人数"
+  - "%cmdprefix%$addBind <游戏名>   - 申请白名单"
+  - "%cmdprefix%$deleteBind <游戏名>   - 移除白名单"
+  - "%cmdprefix%$queryBind   - 查询自己申请的所有白名单"
+
+noCommandFound: "<red>请正确输入命令"
+commandAddBind: "<green>已将<aqua>%player%<green>添加至<aqua>%target_id%<green>的白名单"
+commandDeleteBindById: "<green>已将<aqua>%player%<green>从白名单中移除"
+commandDeleteBindByQQ: "<green>已将<aqua>%target_id%<green>的所有白名单中移除"
+commandQueryBindById: "<aqua>%player%<green>的白名单为<aqua>%target_id%"
+commandQueryBindByQQ: "<aqua>%target_id%<green>拥有白名单: <aqua>%player%"

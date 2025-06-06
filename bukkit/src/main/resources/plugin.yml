@@ -1,0 +1,5 @@
+name: PlumBot
+version: ${version}
+main: me.regadpole.plumbot.bukkit.PlumBotBukkit
+api-version: '1.20'
+author: RegadPole

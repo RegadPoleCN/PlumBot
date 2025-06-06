@@ -1,40 +1,23 @@
-# PlumBot
+# PlumBot-V3
 
-#### *升级版本时请提前备份配置文件，以防数据丢失*
+This project uses [Gradle](https://gradle.org/).
+To build and run the application, use the *Gradle* tool window by clicking the Gradle icon in the right-hand toolbar,
+or run it directly from the terminal:
 
-插件交流群：[825894832](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=-PcufP7TIjLBMOte4H8bHoNmMkP5xZT0&authKey=aPKkGldknKtdCUfX7hhWMFkAOuOpOUYuNZihsUZi9DXvIHVzJhuIRLVfTdCsobZt&noverify=0&group_code=825894832)
+* Run `./gradlew run` to build and run the application.
+* Run `./gradlew build` to only build the application.
+* Run `./gradlew check` to run all checks, including tests.
+* Run `./gradlew clean` to clean all build outputs.
 
-![GitHub](https://img.shields.io/github/license/RegadPoleCN/PlumBot)
-[![Java CI with Maven](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven.yml)
-[![Java CI dev](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven-dev.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/maven-dev.yml)
-[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/RegadPoleCN/PlumBot/total?logo=github)](https://github.com/RegadPoleCN/PlumBot/releases)
-[![GitHub release (with filter)](https://img.shields.io/github/v/release/RegadPoleCN/PlumBot)](https://github.com/RegadPoleCN/PlumBot/releases)
-[![Modrinth Downloads](https://img.shields.io/modrinth/dt/plumbot?logo=modrinth)](https://modrinth.com/plugin/plumbot)
+Note the usage of the Gradle Wrapper (`./gradlew`).
+This is the suggested way to use Gradle in production projects.
 
+[Learn more about the Gradle Wrapper](https://docs.gradle.org/current/userguide/gradle_wrapper.html).
 
-本插件适用于[go-cqhttp](https://github.com/Mrs4s/go-cqhttp)中的http通信模式 和 [kook](https://kookapp.cn)的websocket模式
+[Learn more about Gradle tasks](https://docs.gradle.org/current/userguide/command_line_interface.html#common_tasks).
 
-测试环境：[go-cqhttp1.1.0](https://github.com/Mrs4s/go-cqhttp/releases/tag/v1.1.0) / [kook机器人](https://developer.kookapp.cn/app/index)+[paper1.20](https://papermc.io/downloads/paper)+[zulujdk17](https://www.azul.com/downloads)
+This project follows the suggested multi-module setup and consists of the `app` and `utils` subprojects.
+The shared build logic was extracted to a convention plugin located in `buildSrc`.
 
-适用Minecraft Java版本：全版本
-（低版本如果出现数据库报错请先检查config.yml）
-
-
-## bStats
-
-<a href="https://bstats.org/plugin/bukkit/PlumBot/19427">![https://bstats.org/plugin/bukkit/PlumBot/19427](https://bstats.org/signatures/bukkit/PlumBot.svg)</a>
-
-## 安全状态
-
-[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FRegadPoleCN%2FPlumBot.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FRegadPoleCN%2FPlumBot?ref=badge_large)
-[![Security Status](https://www.murphysec.com/platform3/v31/badge/1811686602642419712.svg)](https://www.murphysec.com/console/report/1688753239833206784/1811686602642419712)
-
-## 开源声明
-
-本项目所用代码部分来自于[LinearBot](https://github.com/LinearBit/LinearBot)和[go-cqhttp-sdk](https://github.com/nulltoworld/go-cqhttp-sdk)
-
-[ChatSync](https://github.com/MakesYT/chatsync)：文字转图片部分代码
-
-[helper](https://github.com/lucko/helper)：动态加载依赖
-
-本项目使用GNU AGPL3.0协议
+This project uses a version catalog (see `gradle/libs.versions.toml`) to declare and version dependencies
+and both a build cache and a configuration cache (see `gradle.properties`).
