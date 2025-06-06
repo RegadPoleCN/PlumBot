@@ -33,7 +33,7 @@ interface PlumBot: TaskProvider {
     fun loadDependencies()
 
     fun enable() {
-        TextToImg.ttfFile = File(config.getStringFromConfig("feature", "img", "file")!!.replace("%plugin_folder%", dataDirectory.pathString))
+        TextToImg.ttfFile = File(config.getString("feature", "img", "file")!!.replace("%plugin_folder%", dataDirectory.pathString))
         loadBot()
         log(LogLevel.INFO, "Bot started!")
         loadDatabase()
@@ -50,21 +50,21 @@ interface PlumBot: TaskProvider {
     }
 
     fun loadBot() {
-        val addr = URI.create("ws://" + config.getStringFromConfig("bot", "address"))
-        val token = config.getStringFromConfig("bot", "token")
+        val addr = URI.create("ws://" + config.getString("bot", "address"))
+        val token = config.getString("bot", "token")
         if (token.isNullOrEmpty()) BotProvider.loadBot(this, addr)
         else BotProvider.loadBot(this, addr, token)
     }
 
     fun loadDatabase() {
         Database.settingsFile = DatabaseSource(datasource.getNode())
-        val mode = config.getStringFromConfig("database", "mode")
+        val mode = config.getString("database", "mode")
         val database = when (mode) {
-            "sqlite" -> SQLite(config.getStringFromConfig("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+            "sqlite" -> SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
             "mysql" -> MySQL(config.getNode("database", "mysql"))
             else -> {
                 log(LogLevel.ERROR, "Unknown database type! Using SQLite...")
-                SQLite(config.getStringFromConfig("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+                SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
             }
         }
         DatabaseProvider.start(database)

@@ -57,7 +57,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     override fun kickPlayer(name: String) {
         val kickMessage = getLegacyFromComponent(getComponentFromMiniMsg(
             messages.kickServer
-                .replace("%groups%", config.getLongListFromConfig("groups").toString())
+                .replace("%groups%", config.getLongList("groups").toString())
         ))
         server.getPlayer(name)?.kickPlayer(kickMessage)
     }
@@ -119,8 +119,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         messages::class.members.forEach{
             if (it is KMutableProperty<*>) {
                 when(it.returnType.classifier) {
-                    String::class -> it.setter.call(messages, messagesConf!!.getStringFromConfig(it.name))
-                    List::class -> it.setter.call(messages, messagesConf!!.getStringListFromConfig(it.name))
+                    String::class -> it.setter.call(messages, messagesConf!!.getString(it.name))
+                    List::class -> it.setter.call(messages, messagesConf!!.getStringList(it.name))
                 }
                 log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(messages)}")
             }

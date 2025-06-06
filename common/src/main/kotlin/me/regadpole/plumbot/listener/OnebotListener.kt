@@ -10,7 +10,7 @@ import top.alazeprt.aonebot.event.notice.GroupMemberDecreaseEvent
 class OnebotListener(private val onebot: Onebot): Listener {
     @SubscribeBotEvent
     fun onGroupMessage(event: GroupMessageEvent) {
-        if (!onebot.plugin.config.getLongListFromConfig("groups").contains(event.groupId)) return
+        if (!onebot.plugin.config.getLongList("groups").contains(event.groupId)) return
         onebot.handler?.onGroupMessage(event)
     }
 

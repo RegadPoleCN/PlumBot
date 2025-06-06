@@ -16,32 +16,32 @@ class ServerListener(private val plugin: PlumBot): Listener {
     @EventHandler
     fun onChat(event: AsyncPlayerChatEvent) {
         if (event.isCancelled) return
-        if (!plugin.config.getBooleanFromConfig("feature", "message", "enable")) return
+        if (!plugin.config.getBoolean("feature", "message", "enable")) return
 
         val message = event.message.replace(Regex("&([0-9a-fklmnor])")) { matchResult ->
             "§" + matchResult.groupValues[1]
         }.replace(Regex("#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})"), "")
-        if (plugin.config.getIntegerFromConfig("feature", "message", "mode") == 0) {
+        if (plugin.config.getInteger("feature", "message", "mode") == 0) {
 //          # server, player_name, message
-            plugin.config.getLongListFromConfig("groups").forEach {
+            plugin.config.getLongList("groups").forEach {
                 BotProvider.getBot()?.sendMsg(true, it,
                     plugin.messages.server2ob
                     .replace("%server%", Bukkit.getServer().name)
                     .replace("%player_name%", event.player.name)
-                    .replace("%message%", message), plugin.config.getBooleanFromConfig("feature", "message", "pic"))
+                    .replace("%message%", message), plugin.config.getBoolean("feature", "message", "pic"))
             }
             return
-        } else if (plugin.config.getIntegerFromConfig("feature", "message", "mode") == 1 &&
-            Regex(plugin.config.getStringFromConfig("feature", "message", "prefix")!!).matchesAt(event.message, 0)
+        } else if (plugin.config.getInteger("feature", "message", "mode") == 1 &&
+            Regex(plugin.config.getString("feature", "message", "prefix")!!).matchesAt(event.message, 0)
         ) {
 //          # server, player_name, message
-            plugin.config.getLongListFromConfig("groups").forEach {
+            plugin.config.getLongList("groups").forEach {
                 BotProvider.getBot()?.sendMsg(true, it,
                     plugin.messages.server2ob
                         .replace("%server%", Bukkit.getServer().name)
                         .replace("%player_name%", event.player.name)
-                        .replace("%message%", message.replace(plugin.config.getStringFromConfig("feature", "message", "prefix")!!, ""))
-                    , plugin.config.getBooleanFromConfig("feature", "message", "pic"))
+                        .replace("%message%", message.replace(plugin.config.getString("feature", "message", "prefix")!!, ""))
+                    , plugin.config.getBoolean("feature", "message", "pic"))
             }
             return
         }
@@ -61,7 +61,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
 //            }
 //        }
 
-        if (plugin.config.getBooleanFromConfig("feature", "bind", "whitelist")) {
+        if (plugin.config.getBoolean("feature", "bind", "whitelist")) {
             plugin.submitAsync {
                 synchronized(lock) {
                     val qq = (DatabaseProvider.getBindByName(name))
@@ -69,22 +69,22 @@ class ServerListener(private val plugin: PlumBot): Listener {
                         event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
                             getLegacyFromComponent(getComponentFromMiniMsg(
                                 plugin.messages.kickServer
-                                    .replace("%groups%", plugin.config.getLongListFromConfig("groups").toString())
+                                    .replace("%groups%", plugin.config.getLongList("groups").toString())
                             ))
                         )
-                        plugin.config.getLongListFromConfig("groups").forEach {
+                        plugin.config.getLongList("groups").forEach {
                             BotProvider.getBot()?.sendMsg(
                                 true,
                                 it,
                                 plugin.messages.kickPlatform
                                     .replace("%player_name%", name),
-                                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                plugin.config.getBoolean("feature", "bind", "pic")
                             )
                         }
                         lock.notifyAll()
                         return@submitAsync
                     }
-                    if (!plugin.config.getBooleanFromConfig("feature", "joinAndLeave", "joinProxy")) {
+                    if (!plugin.config.getBoolean("feature", "joinAndLeave", "joinProxy")) {
                         lock.notifyAll()
                         return@submitAsync
                     }
@@ -131,13 +131,13 @@ class ServerListener(private val plugin: PlumBot): Listener {
 //                        }
 //                    }
                     event.allow()
-                    plugin.config.getLongListFromConfig("groups").forEach {
+                    plugin.config.getLongList("groups").forEach {
                         BotProvider.getBot()?.sendMsg(
                             true,
                             it,
                             plugin.messages.joinProxy
                                 .replace("%player_name%", name),
-                            plugin.config.getBooleanFromConfig("feature", "joinAndLeave", "pic")
+                            plugin.config.getBoolean("feature", "joinAndLeave", "pic")
                         )
                     }
                     lock.notifyAll()
@@ -148,12 +148,12 @@ class ServerListener(private val plugin: PlumBot): Listener {
                 lock.wait()
             }
         } else {
-            if (plugin.config.getBooleanFromConfig("feature", "joinAndLeave", "joinProxy")) {
-                plugin.config.getLongListFromConfig("groups").forEach {
+            if (plugin.config.getBoolean("feature", "joinAndLeave", "joinProxy")) {
+                plugin.config.getLongList("groups").forEach {
                     BotProvider.getBot()?.sendMsg(true, it,
                         plugin.messages.joinProxy
                             .replace("%player_name%", name)
-                        , plugin.config.getBooleanFromConfig("feature", "joinAndLeave", "pic"))
+                        , plugin.config.getBoolean("feature", "joinAndLeave", "pic"))
                 }
             }
         }
@@ -173,15 +173,15 @@ class ServerListener(private val plugin: PlumBot): Listener {
     @EventHandler
     fun onLeave(event: PlayerQuitEvent) {
         plugin.submitAsync {
-            if (plugin.config.getBooleanFromConfig("feature", "joinAndLeave", "leaveProxy")) {
-                plugin.config.getLongListFromConfig("groups").forEach {
+            if (plugin.config.getBoolean("feature", "joinAndLeave", "leaveProxy")) {
+                plugin.config.getLongList("groups").forEach {
                     BotProvider.getBot()?.sendMsg(
                         true,
                         it,
                         plugin.messages.leaveProxy
                             .replace("%player_name%", event.player.name)
                             .replace("%server%", Bukkit.getServer().name),
-                        plugin.config.getBooleanFromConfig("feature", "joinAndLeave", "pic")
+                        plugin.config.getBoolean("feature", "joinAndLeave", "pic")
                     )
                 }
             }

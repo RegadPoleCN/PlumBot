@@ -19,7 +19,7 @@ class WhitelistHelper private constructor(private val plugin: PlumBot) {
     fun checkUserBindingFull(userId: String): Boolean {
         val wl = DatabaseProvider.getBindByUser(userId)
         if (wl.isEmpty()) return false
-        return DatabaseProvider.getBindByUser(userId).size >= plugin.config.getIntegerFromConfig("feature", "bind", "maxNum")
+        return DatabaseProvider.getBindByUser(userId).size >= plugin.config.getInteger("feature", "bind", "maxNum")
     }
 
     fun checkPlayerBelongToUser(player: String, userId: String): Boolean {

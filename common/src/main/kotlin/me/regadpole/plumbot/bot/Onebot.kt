@@ -29,10 +29,10 @@ class Onebot(val plugin: PlumBot, override val client: WebsocketBotClient): BotI
         client.connect()
         client.registerEvent(OnebotListener(this))
 
-        if (plugin.config.getBooleanFromConfig("feature", "load", "enable")) plugin.config.getLongListFromConfig("groups").forEach {
+        if (plugin.config.getBoolean("feature", "load", "enable")) plugin.config.getLongList("groups").forEach {
             sendMsg(true, it,
                 plugin.messages.load
-                , plugin.config.getBooleanFromConfig("feature", "load", "pic"))
+                , plugin.config.getBoolean("feature", "load", "pic"))
         }
 
         idCache = Caffeine.newBuilder()
@@ -49,8 +49,8 @@ class Onebot(val plugin: PlumBot, override val client: WebsocketBotClient): BotI
     }
 
     override fun shutdown() {
-        if (plugin.config.getBooleanFromConfig("feature", "load", "enable")) plugin.config.getLongListFromConfig("groups").forEach {
-            if (plugin.config.getBooleanFromConfig("feature", "load", "pic")) sendGroupPicWithText(it, plugin.messages.unload)
+        if (plugin.config.getBoolean("feature", "load", "enable")) plugin.config.getLongList("groups").forEach {
+            if (plugin.config.getBoolean("feature", "load", "pic")) sendGroupPicWithText(it, plugin.messages.unload)
             else sendGroupMsg(it, plugin.messages.unload)
         }
         handler = null
@@ -161,7 +161,7 @@ class Onebot(val plugin: PlumBot, override val client: WebsocketBotClient): BotI
     }
 
     private fun loadAllCache(){
-        plugin.config.getLongListFromConfig("groups").forEach { groupId ->
+        plugin.config.getLongList("groups").forEach { groupId ->
             client.action(GetGroupMemberList(groupId)) { users ->
                 users.forEach {
                     cache.put(it.member.userId, CompletableFuture.supplyAsync {
@@ -173,7 +173,7 @@ class Onebot(val plugin: PlumBot, override val client: WebsocketBotClient): BotI
     }
 
     private fun loadAllIdCache(){
-        plugin.config.getLongListFromConfig("groups").forEach { groupId ->
+        plugin.config.getLongList("groups").forEach { groupId ->
             client.action(GetGroupMemberList(groupId)) { users ->
                 users.forEach {
                     idCache.put(it.member.userId, CompletableFuture.supplyAsync { groupId })

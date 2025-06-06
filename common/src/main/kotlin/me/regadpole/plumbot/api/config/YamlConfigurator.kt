@@ -25,7 +25,7 @@ class YamlConfigurator(private val config: ConfigurationNode): Cloneable {
     }
 
     /*method to obtain a string list from the yml file */
-    fun getStringListFromConfig(vararg nodePath: String?): List<String?> {
+    fun getStringList(vararg nodePath: String?): List<String?> {
         if (nodePath.toString().split(".").size > 1) {
             val resultList: MutableList<String?> = ArrayList()
             val subNode = config.node(nodePath.toString().split("."))
@@ -49,10 +49,10 @@ class YamlConfigurator(private val config: ConfigurationNode): Cloneable {
     }
 
     /*method to obtain a long list from the yml file */
-    fun getLongListFromConfig(vararg nodePath: String?): List<Long> {
+    fun getLongList(vararg nodePath: String?): List<Long> {
         if (nodePath.toString().split(".").size > 1) {
             val resultList: MutableList<Long> = ArrayList()
-            val subNode = config.node(nodePath.toString().split(".").size)
+            val subNode = config.node(nodePath.toString().split("."))
             if (subNode.isList) {
                 val list = subNode.childrenList()
                 for (item in list) {
@@ -73,28 +73,28 @@ class YamlConfigurator(private val config: ConfigurationNode): Cloneable {
     }
 
     /*method to get boolean value from yml file*/
-    fun getBooleanFromConfig(vararg nodePath: String?): Boolean {
+    fun getBoolean(vararg nodePath: String?): Boolean {
         if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).boolean
         val aBoolean = config.node(*nodePath).boolean
         return aBoolean
     }
 
     /*method to get integer value from yml file*/
-    fun getIntegerFromConfig(vararg nodePath: String?): Int {
+    fun getInteger(vararg nodePath: String?): Int {
         if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).int
         val integer = config.node(*nodePath).int
         return integer
     }
 
     /*method to get string from yml file*/
-    fun getStringFromConfig(vararg nodePath: String?): String? {
+    fun getString(vararg nodePath: String?): String? {
         if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).string
         val string = config.node(*nodePath).string
         return string
     }
 
     /*method to get long value from yml file*/
-    fun getLongFromConfig(vararg nodePath: String?): Long {
+    fun getLong(vararg nodePath: String?): Long {
         if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).long
         val long = config.node(*nodePath).long
         return long

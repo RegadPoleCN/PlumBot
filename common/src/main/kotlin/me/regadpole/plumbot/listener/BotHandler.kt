@@ -42,10 +42,10 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //        synchronized(lock) {
 //            lock.wait()
         val keys = plugin.config.getConfigMaker("keys")
-        val prefix = plugin.config.getStringFromConfig("feature", "cmdPrefix")
-        keys.getStringListFromConfig("list").forEach {
+        val prefix = plugin.config.getString("feature", "cmdPrefix")
+        keys.getStringList("list").forEach {
             val regexString = """$prefix$it"""
-            if (regexString.toRegex().matches(message) && plugin.config.getBooleanFromConfig(
+            if (regexString.toRegex().matches(message) && plugin.config.getBoolean(
                     "feature",
                     "list",
                     "enable"
@@ -55,9 +55,9 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 return
             }
         }
-        keys.getStringListFromConfig("addBind").forEach {
+        keys.getStringList("addBind").forEach {
             val regexString = """$prefix$it (.+)"""
-            if (regexString.toRegex().matches(message) && plugin.config.getBooleanFromConfig(
+            if (regexString.toRegex().matches(message) && plugin.config.getBoolean(
                     "feature",
                     "bind",
                     "enable"
@@ -67,9 +67,9 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 return
             }
         }
-        keys.getStringListFromConfig("deleteBind").forEach {
+        keys.getStringList("deleteBind").forEach {
             val regexString = """$prefix$it (.+)"""
-            if (regexString.toRegex().matches(message) && plugin.config.getBooleanFromConfig(
+            if (regexString.toRegex().matches(message) && plugin.config.getBoolean(
                     "feature",
                     "bind",
                     "enable"
@@ -79,9 +79,9 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 return
             }
         }
-        keys.getStringListFromConfig("queryBind").forEach {
+        keys.getStringList("queryBind").forEach {
             val regexString = """$prefix$it(.*)"""
-            if (regexString.toRegex().matches(message) && plugin.config.getBooleanFromConfig(
+            if (regexString.toRegex().matches(message) && plugin.config.getBoolean(
                     "feature",
                     "bind",
                     "enable"
@@ -92,9 +92,9 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             }
         }
 
-        if (!plugin.config.getBooleanFromConfig("feature", "message", "enable")) return
+        if (!plugin.config.getBoolean("feature", "message", "enable")) return
 
-        if (plugin.config.getIntegerFromConfig("feature", "message", "mode") == 0) {
+        if (plugin.config.getInteger("feature", "message", "mode") == 0) {
             plugin.sendMessage(
                 getComponentFromMiniMsg(
                     // group_name, group_id, user_nick, message, user_id, user_name
@@ -111,9 +111,9 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 )
             )
             return
-        } else if (plugin.config.getIntegerFromConfig("feature", "message", "mode") == 1 &&
+        } else if (plugin.config.getInteger("feature", "message", "mode") == 1 &&
             Regex(
-                plugin.config.getStringFromConfig(
+                plugin.config.getString(
                     "feature",
                     "message",
                     "prefix"
@@ -127,7 +127,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%group_name%", bot.getGroupName(event.groupId))
                         .replace("%group_id%", event.groupId.toString())
                         .replace("%user_nick%", bot.getGroupUserCard(event.groupId, event.senderId))
-                        .replace("%message%", message.replace(plugin.config.getStringFromConfig("feature", "message", "prefix")!!, ""))
+                        .replace("%message%", message.replace(plugin.config.getString("feature", "message", "prefix")!!, ""))
                         .replace("%user_id%", event.senderId.toString())
                         .replace(
                             "%user_name%",
@@ -142,7 +142,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
     private fun onWhitelistApply(message: String, groupId: Long, userId: Long) {
         try {
-            if (plugin.config.getLongListFromConfig("admins").contains(userId)) {
+            if (plugin.config.getLongList("admins").contains(userId)) {
                 val args = message.split(" ")
                 when (args.size) {
                     1 -> {
@@ -154,7 +154,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 true,
                                 groupId,
                                 msg,
-                                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                plugin.config.getBoolean("feature", "bind", "pic")
                             )
                             return
                         }
@@ -171,7 +171,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 .replace("%target_player%", message)
                                 .replace("%num%", wl.size.toString())
                                 .replace("%current%", wl.keys.toString()),
-                            plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                            plugin.config.getBoolean("feature", "bind", "pic")
                         )
                         return
                     }
@@ -185,7 +185,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 true,
                                 groupId,
                                 msg,
-                                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                plugin.config.getBoolean("feature", "bind", "pic")
                             )
                             return
                         }
@@ -204,7 +204,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 .replace("%target_player%", args[1])
                                 .replace("%num%", wl.size.toString())
                                 .replace("%current%", wl.keys.toString()),
-                            plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                            plugin.config.getBoolean("feature", "bind", "pic")
                         )
                         return
                     }
@@ -219,18 +219,18 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%user_id%", userId.toString())
                         .replace(
                             "%whitelist_limit%",
-                            plugin.config.getIntegerFromConfig("feature", "bind", "maxNum").toString()
+                            plugin.config.getInteger("feature", "bind", "maxNum").toString()
                         )
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                    bot.sendMsg(true, groupId, msg, plugin.config.getBooleanFromConfig("feature", "bind", "pic"))
+                    bot.sendMsg(true, groupId, msg, plugin.config.getBoolean("feature", "bind", "pic"))
                     return
                 }
                 if (WhitelistHelper.getInstance(plugin).checkPlayerExists(message)) {
                     val msg = plugin.messages.existsBind
 //                        # player_name
                         .replace("%player_name%", message)
-                    bot.sendMsg(true, groupId, msg, plugin.config.getBooleanFromConfig("feature", "bind", "pic"))
+                    bot.sendMsg(true, groupId, msg, plugin.config.getBoolean("feature", "bind", "pic"))
                     return
                 }
                 DatabaseProvider.getDatabase()!!.addBind(userId, message)
@@ -246,7 +246,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%target_player%", message)
                         .replace("%num%", wl.size.toString())
                         .replace("%current%", wl.keys.toString()),
-                    plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                    plugin.config.getBoolean("feature", "bind", "pic")
                 )
                 return
             }
@@ -255,7 +255,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 true,
                 groupId,
                 plugin.messages.wrongUsage,
-                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                plugin.config.getBoolean("feature", "bind", "pic")
             )
             return
         }
@@ -263,7 +263,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
     private fun onWhitelistQuery(message: String, groupId: Long, userId: Long) {
         try {
-            if (message.findAnyOf(listOf(" ")) != null && plugin.config.getLongListFromConfig("admins")
+            if (message.findAnyOf(listOf(" ")) != null && plugin.config.getLongList("admins")
                     .contains(userId)
             ) {
                 val msg = message.substring(1)
@@ -277,7 +277,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 groupId,
                                 plugin.messages.idEmptyBind
                                     .replace("%player%", arg),
-                                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                plugin.config.getBoolean("feature", "bind", "pic")
                             )
                             return
                         }
@@ -292,7 +292,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 .replace("%user_name%", bot.getGroupUserName(groupId, wl.toLong()))
                                 .replace("%user_nick%", bot.getGroupUserCard(groupId, wl.toLong()))
                                 .replace("%player%", arg),
-                            plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                            plugin.config.getBoolean("feature", "bind", "pic")
                         )
                         return
                     }
@@ -309,7 +309,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                     .replace("%user_id%", arg.toString())
                                     .replace("%user_name%", bot.getGroupUserName(groupId, arg))
                                     .replace("%user_nick%", bot.getGroupUserCard(groupId, arg)),
-                                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                plugin.config.getBoolean("feature", "bind", "pic")
                             )
                             return
                         }
@@ -325,7 +325,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 .replace("%user_nick%", bot.getGroupUserCard(groupId, arg))
                                 .replace("%num%", wl.size.toString())
                                 .replace("%current%", wl.keys.toString()),
-                            plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                            plugin.config.getBoolean("feature", "bind", "pic")
                         )
                         return
                     }
@@ -340,7 +340,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%user_id%", userId.toString())
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId)),
-                    plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                    plugin.config.getBoolean("feature", "bind", "pic")
                 )
                 return
             }
@@ -352,7 +352,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                     .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                     .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
                     .replace("%num%", wl.size.toString())
-                    .replace("%current%", wl.toString()), plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                    .replace("%current%", wl.toString()), plugin.config.getBoolean("feature", "bind", "pic")
             )
             return
         } catch (_: Exception) {
@@ -360,7 +360,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 true,
                 groupId,
                 plugin.messages.wrongUsage,
-                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                plugin.config.getBoolean("feature", "bind", "pic")
             )
             return
         }
@@ -368,7 +368,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
     private fun onWhitelistRemove(message: String, groupId: Long, userId: Long) {
         try {
-            if (plugin.config.getLongListFromConfig("admins").contains(userId)) {
+            if (plugin.config.getLongList("admins").contains(userId)) {
                 try {
                     when (message.substring(0..2)) {
                         "id:" -> {
@@ -381,7 +381,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                     true,
                                     groupId,
                                     msg,
-                                    plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                    plugin.config.getBoolean("feature", "bind", "pic")
                                 )
                                 return
                             }
@@ -409,7 +409,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                     .replace("%target_player%", arg)
                                     .replace("%num%", wl.size.toString())
                                     .replace("%current%", wl.keys.toString()),
-                                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                plugin.config.getBoolean("feature", "bind", "pic")
                             )
                             return
                         }
@@ -432,7 +432,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                     true,
                                     groupId,
                                     msg,
-                                    plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                    plugin.config.getBoolean("feature", "bind", "pic")
                                 )
                                 return
                             }
@@ -466,7 +466,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                     .replace("%target_player%", target!!)
                                     .replace("%num%", wl.size.toString())
                                     .replace("%current%", wl.keys.toString()),
-                                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                                plugin.config.getBoolean("feature", "bind", "pic")
                             )
                             return
                         }
@@ -495,7 +495,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%target_player%", target!!)
                         .replace("%num%", wl.size.toString())
                         .replace("%current%", wl.keys.toString()),
-                    plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                    plugin.config.getBoolean("feature", "bind", "pic")
                 )
             } catch (_: NumberFormatException) {
                 if (!WhitelistHelper.getInstance(plugin).checkPlayerBelongToUser(message, userId.toString())) {
@@ -506,7 +506,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         true,
                         groupId,
                         msg,
-                        plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                        plugin.config.getBoolean("feature", "bind", "pic")
                     )
                     return
                 }
@@ -531,7 +531,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%target_player%", message)
                         .replace("%num%", wl.size.toString())
                         .replace("%current%", wl.keys.toString()),
-                    plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                    plugin.config.getBoolean("feature", "bind", "pic")
                 )
             }
             return
@@ -540,7 +540,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 true,
                 groupId,
                 plugin.messages.wrongUsage,
-                plugin.config.getBooleanFromConfig("feature", "bind", "pic")
+                plugin.config.getBoolean("feature", "bind", "pic")
             )
             return
         }
@@ -569,7 +569,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //            # player_list, player_num, max_player
             plugin.messages.playerList
                 .replace("%player_list%", plugin.listPlayerString())
-                .replace("%player_num%", plugin.listPlayers().size.toString()), plugin.config.getBooleanFromConfig("feature", "list", "pic"))
+                .replace("%player_num%", plugin.listPlayers().size.toString()), plugin.config.getBoolean("feature", "list", "pic"))
         return
     }
 
