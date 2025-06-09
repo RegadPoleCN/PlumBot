@@ -19,6 +19,9 @@ dependencyResolutionManagement {
         maven("https://repo.alessiodp.com/releases/") {
             name = "AlessioDP"
         }
+        maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") {
+            name = "maven-snapshots"
+        }
     }
 }
 

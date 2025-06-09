@@ -1,32 +1,40 @@
 package me.regadpole.plumbot.bukkit
 
+import com.alessiodp.libby.BukkitLibraryManager
+import com.alessiodp.libby.Library
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.PlumBotAPI
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.api.config.YamlConfigurator
+import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.bukkit.listener.ServerListener
+import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
 import net.kyori.adventure.platform.bukkit.BukkitAudiences
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
+import org.bukkit.plugin.ServicePriority
 import org.bukkit.plugin.java.JavaPlugin
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
-import kotlin.reflect.KMutableProperty
 
 class PlumBotBukkit: JavaPlugin(), PlumBot{
-    private val libraryManager = BukkitLibraryManager(plugin)
+    private val libraryManager = BukkitLibraryManager(this)
     private val audience = BukkitAudiences.create(this)
 
     override var dataDirectory: Path = dataFolder.toPath()
     override var datasource: YamlConfigurator = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
     override var config: YamlConfigurator = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
-    override var messages: Messages = Messages()
 
     override fun onEnable() {
         // 插件启用时的逻辑
+        server.servicesManager.register(BotProvider.javaClass, BotProvider, this, ServicePriority.Normal)
+        server.servicesManager.register(DatabaseProvider.javaClass, DatabaseProvider, this, ServicePriority.Normal)
+        server.servicesManager.register(PlumBotAPI::class.java, PlumBotAPI(this), this, ServicePriority.Normal)
+
         enable()
         server.pluginManager.registerEvents(ServerListener(this), this)
         logger.info("PlumBot has been enabled!")
@@ -56,7 +64,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
     override fun kickPlayer(name: String) {
         val kickMessage = getLegacyFromComponent(getComponentFromMiniMsg(
-            messages.kickServer
+            Messages.kickServer
                 .replace("%groups%", config.getLongList("groups").toString())
         ))
         server.getPlayer(name)?.kickPlayer(kickMessage)
@@ -112,20 +120,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         return CompletableFuture.completedFuture<Void>(null)
     }
 
-    fun loadConfig() {
-        config = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
-        datasource = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
-        val messagesConf = YamlConfigurator.createConfig(dataDirectory, "messages.yml")
-        messages::class.members.forEach{
-            if (it is KMutableProperty<*>) {
-                when(it.returnType.classifier) {
-                    String::class -> it.setter.call(messages, messagesConf!!.getString(it.name))
-                    List::class -> it.setter.call(messages, messagesConf!!.getStringList(it.name))
-                }
-                log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(messages)}")
-            }
-        }
-    }
+
 
     override fun loadDependencies() {
         val adventureBukkitLib = Library.builder()
@@ -202,10 +197,41 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             .version("4.2.0")
             .resolveTransitiveDependencies(true)
             .build()
+        val kotlinStdlibJDK8Lib = Library.builder()
+            .groupId("org.jetbrains.kotlin")
+            .artifactId("kotlin-stdlib-jdk8")
+            .version("2.1.20")
+            .resolveTransitiveDependencies(true)
+            .build()
+        val kotlinReflectLib = Library.builder()
+            .groupId("org.jetbrains.kotlin")
+            .artifactId("kotlin-reflect")
+            .version("2.1.20")
+            .resolveTransitiveDependencies(true)
+            .build()
+        val kotlinxDatetimeLib = Library.builder()
+            .groupId("org.jetbrains.kotlinx")
+            .artifactId("kotlinx-datetime")
+            .version("0.6.1")
+            .resolveTransitiveDependencies(true)
+            .build()
+        val kotlinxSerializationJsonLib = Library.builder()
+            .groupId("org.jetbrains.kotlinx")
+            .artifactId("kotlinx-serialization-json")
+            .version("1.7.3")
+            .resolveTransitiveDependencies(true)
+            .build()
+        val kotlinxCoroutinesCoreLib = Library.builder()
+            .groupId("org.jetbrains.kotlinx")
+            .artifactId("kotlinx-coroutines-core")
+            .version("1.9.0")
+            .resolveTransitiveDependencies(true)
+            .build()
 
         libraryManager.addRepository("https://maven.aliyun.com/repository/public")
         libraryManager.addMavenCentral()
         libraryManager.addJitPack()
         libraryManager.loadLibraries(adventureBukkitLib, guavaLib, hikaricpLib, sqliteLib, mysqlLib, databaseLib, aonebotLib, aedileLib, gsonLib, configurateYamlLib, configurateHoconLib, configurateExtraKotlinLib)
+        libraryManager.loadLibraries(kotlinReflectLib, kotlinStdlibJDK8Lib, kotlinxDatetimeLib, kotlinxCoroutinesCoreLib, kotlinxSerializationJsonLib)
     }
 }
