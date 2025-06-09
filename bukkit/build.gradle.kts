@@ -7,12 +7,12 @@ plugins {
 dependencies {
     implementation(project(":common"))
     // kotlin
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation(kotlin("reflect"))
-    implementation(libs.bundles.kotlinxEcosystem)
+    compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    compileOnly(kotlin("reflect"))
+    compileOnly(libs.bundles.kotlinxEcosystem)
     testImplementation(kotlin("test"))
     // bukkit
-    compileOnly("org.spigotmc:spigot-api:1.16.5-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")
     compileOnly("net.kyori:adventure-platform-bukkit:4.4.0")
     // libby
     implementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
@@ -21,18 +21,25 @@ dependencies {
 tasks {
     processResources {
         filesMatching("plugin.yml") {
-            expand(project.properties)
+            expand(rootProject.properties)
         }
     }
     
     shadowJar {
-        relocate("net.byteflux.libby", "me.regadpole.plumbot.lib.net.byteflux.libby")
-        
         dependencies {
-            include(dependency("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT"))
+            exclude(dependency("com.mojang:brigadier"))
+//            include(dependency("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT"))
         }
 
+        relocate("com.alessiodp.libby", "me.regadpole.plumbot.lib.com.alessiodp.libby")
+        relocate("me.lucko.commodore", "me.regadpole.plumbot.lib.me.lucko.commodore")
+
         minimize()
+
+        archiveBaseName.set("PlumBot-Bukkit")
+        archiveVersion.set("")
+        archiveClassifier.set("")
+//        archiveFile.get().asFile.copyTo(File("${rootProject.buildDir}/libs/PlumBot-Bukkit.jar"), overwrite = true)
     }
     
     build {
