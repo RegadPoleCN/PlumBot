@@ -2,6 +2,7 @@ package me.regadpole.plumbot.bukkit
 
 import com.alessiodp.libby.BukkitLibraryManager
 import com.alessiodp.libby.Library
+import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.PlumBotAPI
 import me.regadpole.plumbot.api.config.Messages
@@ -28,6 +29,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     override var dataDirectory: Path = dataFolder.toPath()
     override var datasource: YamlConfigurator = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
     override var config: YamlConfigurator = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
+    override var debugProvider = DebugProvider(this)
 
     override fun onEnable() {
         // 插件启用时的逻辑
@@ -48,8 +50,14 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
     override fun log(level: LogLevel, log: String) {
         when (level) {
-            LogLevel.TRACE -> logger.finest(log)
-            LogLevel.DEBUG -> logger.fine(log)
+            LogLevel.TRACE -> {
+                logger.finest(log)
+                debugProvider.log(log)
+            }
+            LogLevel.DEBUG -> {
+                logger.fine(log)
+                debugProvider.log(log)
+            }
             LogLevel.INFO -> logger.info(log)
             LogLevel.WARN -> logger.warning(log)
             LogLevel.ERROR -> logger.severe(log)

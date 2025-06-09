@@ -24,6 +24,7 @@ interface PlumBot: TaskProvider {
     var datasource: YamlConfigurator
     var config: YamlConfigurator
     var dataDirectory: Path
+    var debugProvider: DebugProvider
 
     fun log(level: LogLevel, log: String)
     fun sendMessage(message: Component)
@@ -33,13 +34,15 @@ interface PlumBot: TaskProvider {
     fun loadDependencies()
 
     fun enable() {
+        loadConfig()
+        log(LogLevel.INFO, "Config loaded!")
+        debugProvider.load()
+        log(LogLevel.INFO, "Debugging loaded!")
         TextToImg.ttfFile = File(config.getString("feature", "img", "file")!!.replace("%plugin_folder%", dataDirectory.pathString))
-        loadBot()
-        log(LogLevel.INFO, "Bot started!")
         loadDatabase()
         log(LogLevel.INFO, "Database initialized!")
-        DebugProvider(this).load()
-        log(LogLevel.INFO, "Debugging loaded!")
+        loadBot()
+        log(LogLevel.INFO, "Bot started!")
     }
 
     fun disable() {
@@ -47,6 +50,10 @@ interface PlumBot: TaskProvider {
         log(LogLevel.INFO, "Bot stopped!")
         DatabaseProvider.shutdown()
         log(LogLevel.INFO, "Database closed!")
+        TaskProviderImpl.shutdown()
+        log(LogLevel.INFO, "TaskProvider shutdown!")
+        debugProvider.unload()
+        log(LogLevel.INFO, "Debugging unloaded!")
     }
 
     fun loadBot() {
@@ -84,7 +91,7 @@ interface PlumBot: TaskProvider {
                     String::class -> it.setter.call(Messages, messagesConf!!.getString(it.name))
                     List::class -> it.setter.call(Messages, messagesConf!!.getStringList(it.name))
                 }
-                log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(Messages)}")
+//                log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(Messages)}")
             }
         }
     }
