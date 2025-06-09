@@ -20,10 +20,10 @@ dependencies {
     compileOnly("com.mysql:mysql-connector-j:8.2.0")
     compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
     // kotlin
-    compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    compileOnly(kotlin("reflect"))
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation(kotlin("reflect"))
     testImplementation(kotlin("test"))
-    compileOnly(libs.bundles.kotlinxEcosystem)
+    implementation(libs.bundles.kotlinxEcosystem)
     // logger
 //    implementation("org.slf4j:slf4j-api:2.0.17")
 //    implementation("org.slf4j:slf4j-jdk14:2.0.17")

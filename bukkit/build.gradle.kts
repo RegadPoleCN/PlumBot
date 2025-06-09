@@ -7,13 +7,13 @@ plugins {
 dependencies {
     implementation(project(":common"))
     // kotlin
-    compileOnly("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    compileOnly(kotlin("reflect"))
-    compileOnly(libs.bundles.kotlinxEcosystem)
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation(kotlin("reflect"))
+    implementation(libs.bundles.kotlinxEcosystem)
     testImplementation(kotlin("test"))
     // bukkit
     compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")
-    compileOnly("net.kyori:adventure-platform-bukkit:4.4.0")
+    implementation("net.kyori:adventure-platform-bukkit:4.4.0")
     // libby
     implementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
 }
@@ -33,6 +33,7 @@ tasks {
 
         relocate("com.alessiodp.libby", "me.regadpole.plumbot.lib.com.alessiodp.libby")
         relocate("me.lucko.commodore", "me.regadpole.plumbot.lib.me.lucko.commodore")
+        relocate("net.kyori.adventure", "me.regadpole.plumbot.lib.net.kyori.adventure")
 
         minimize()
 

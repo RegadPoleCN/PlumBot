@@ -23,8 +23,8 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
 class PlumBotBukkit: JavaPlugin(), PlumBot{
-    private val libraryManager = BukkitLibraryManager(this)
-    private val audience = BukkitAudiences.create(this)
+    private val libraryManager: BukkitLibraryManager by lazy { BukkitLibraryManager(this) }
+    private val audience: BukkitAudiences by lazy { BukkitAudiences.create(this) }
 
     override var dataDirectory: Path = dataFolder.toPath()
     override var datasource: YamlConfigurator = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
@@ -131,12 +131,12 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
 
     override fun loadDependencies() {
-        val adventureBukkitLib = Library.builder()
-            .groupId("net{}kyori")
-            .artifactId("adventure-platform-bukkit")
-            .version("4.3.4")
-            .resolveTransitiveDependencies(true)
-            .build()
+//        val adventureBukkitLib = Library.builder()
+//            .groupId("net{}kyori")
+//            .artifactId("adventure-platform-bukkit")
+//            .version("4.3.4")
+//            .resolveTransitiveDependencies(true)
+//            .build()
         val databaseLib = Library.builder()
             .groupId("com{}github{}RegadPoleCN")
             .artifactId("taboolib-database")
@@ -205,41 +205,10 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             .version("4.2.0")
             .resolveTransitiveDependencies(true)
             .build()
-        val kotlinStdlibJDK8Lib = Library.builder()
-            .groupId("org.jetbrains.kotlin")
-            .artifactId("kotlin-stdlib-jdk8")
-            .version("2.1.20")
-            .resolveTransitiveDependencies(true)
-            .build()
-        val kotlinReflectLib = Library.builder()
-            .groupId("org.jetbrains.kotlin")
-            .artifactId("kotlin-reflect")
-            .version("2.1.20")
-            .resolveTransitiveDependencies(true)
-            .build()
-        val kotlinxDatetimeLib = Library.builder()
-            .groupId("org.jetbrains.kotlinx")
-            .artifactId("kotlinx-datetime")
-            .version("0.6.1")
-            .resolveTransitiveDependencies(true)
-            .build()
-        val kotlinxSerializationJsonLib = Library.builder()
-            .groupId("org.jetbrains.kotlinx")
-            .artifactId("kotlinx-serialization-json")
-            .version("1.7.3")
-            .resolveTransitiveDependencies(true)
-            .build()
-        val kotlinxCoroutinesCoreLib = Library.builder()
-            .groupId("org.jetbrains.kotlinx")
-            .artifactId("kotlinx-coroutines-core")
-            .version("1.9.0")
-            .resolveTransitiveDependencies(true)
-            .build()
 
         libraryManager.addRepository("https://maven.aliyun.com/repository/public")
         libraryManager.addMavenCentral()
         libraryManager.addJitPack()
-        libraryManager.loadLibraries(adventureBukkitLib, guavaLib, hikaricpLib, sqliteLib, mysqlLib, databaseLib, aonebotLib, aedileLib, gsonLib, configurateYamlLib, configurateHoconLib, configurateExtraKotlinLib)
-        libraryManager.loadLibraries(kotlinReflectLib, kotlinStdlibJDK8Lib, kotlinxDatetimeLib, kotlinxCoroutinesCoreLib, kotlinxSerializationJsonLib)
+        libraryManager.loadLibraries(guavaLib, hikaricpLib, sqliteLib, mysqlLib, databaseLib, aonebotLib, aedileLib, gsonLib, configurateYamlLib, configurateHoconLib, configurateExtraKotlinLib)
     }
 }
