@@ -1,6 +1,7 @@
 package me.regadpole.plumbot.bukkit.listener
 
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
@@ -25,7 +26,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
 //          # server, player_name, message
             plugin.config.getLongList("groups").forEach {
                 BotProvider.getBot()?.sendMsg(true, it,
-                    plugin.messages.server2ob
+                    Messages.server2ob
                     .replace("%server%", Bukkit.getServer().name)
                     .replace("%player_name%", event.player.name)
                     .replace("%message%", message), plugin.config.getBoolean("feature", "message", "pic"))
@@ -37,7 +38,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
 //          # server, player_name, message
             plugin.config.getLongList("groups").forEach {
                 BotProvider.getBot()?.sendMsg(true, it,
-                    plugin.messages.server2ob
+                    Messages.server2ob
                         .replace("%server%", Bukkit.getServer().name)
                         .replace("%player_name%", event.player.name)
                         .replace("%message%", message.replace(plugin.config.getString("feature", "message", "prefix")!!, ""))
@@ -68,7 +69,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
                     if (qq.isNullOrEmpty()) {
                         event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
                             getLegacyFromComponent(getComponentFromMiniMsg(
-                                plugin.messages.kickServer
+                                Messages.kickServer
                                     .replace("%groups%", plugin.config.getLongList("groups").toString())
                             ))
                         )
@@ -76,7 +77,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
                             BotProvider.getBot()?.sendMsg(
                                 true,
                                 it,
-                                plugin.messages.kickPlatform
+                                Messages.kickPlatform
                                     .replace("%player_name%", name),
                                 plugin.config.getBoolean("feature", "bind", "pic")
                             )
@@ -103,7 +104,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
 //                                plugin.bot!!.sendMsg(
 //                                    true,
 //                                    it,
-//                                    plugin.messages.joinProxy
+//                                    _root_ide_package_.me.regadpole.plumbot.api.config.Messages.joinProxy
 //                                        .replace("%player_name%", name),
 //                                    plugin.config!!.getBooleanFromConfig("feature", "joinAndLeave", "pic")
 //                                )
@@ -113,7 +114,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
 //                        } else {
 //                            event.result = PreLoginEvent.PreLoginComponentResult.denied(
 //                                getComponentFromMiniMsg(
-//                                    plugin.messages.kickServer
+//                                    _root_ide_package_.me.regadpole.plumbot.api.config.Messages.kickServer
 //                                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
 //                                )
 //                            )
@@ -121,7 +122,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
 //                                plugin.bot!!.sendMsg(
 //                                    true,
 //                                    it,
-//                                    plugin.messages.kickPlatform
+//                                    _root_ide_package_.me.regadpole.plumbot.api.config.Messages.kickPlatform
 //                                        .replace("%player_name%", name),
 //                                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
 //                                )
@@ -135,7 +136,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
                         BotProvider.getBot()?.sendMsg(
                             true,
                             it,
-                            plugin.messages.joinProxy
+                            Messages.joinProxy
                                 .replace("%player_name%", name),
                             plugin.config.getBoolean("feature", "joinAndLeave", "pic")
                         )
@@ -151,7 +152,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
             if (plugin.config.getBoolean("feature", "joinAndLeave", "joinProxy")) {
                 plugin.config.getLongList("groups").forEach {
                     BotProvider.getBot()?.sendMsg(true, it,
-                        plugin.messages.joinProxy
+                        Messages.joinProxy
                             .replace("%player_name%", name)
                         , plugin.config.getBoolean("feature", "joinAndLeave", "pic"))
                 }
@@ -178,7 +179,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
                     BotProvider.getBot()?.sendMsg(
                         true,
                         it,
-                        plugin.messages.leaveProxy
+                        Messages.leaveProxy
                             .replace("%player_name%", event.player.name)
                             .replace("%server%", Bukkit.getServer().name),
                         plugin.config.getBoolean("feature", "joinAndLeave", "pic")

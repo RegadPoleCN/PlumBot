@@ -2,6 +2,7 @@ package me.regadpole.plumbot.listener
 
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.bot.IBot
+import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.utils.WhitelistHelper
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
@@ -98,7 +99,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             plugin.sendMessage(
                 getComponentFromMiniMsg(
                     // group_name, group_id, user_nick, message, user_id, user_name
-                    plugin.messages.ob2server
+                    Messages.ob2server
                         .replace("%group_name%", bot.getGroupName(event.groupId))
                         .replace("%group_id%", event.groupId.toString())
                         .replace("%user_nick%", bot.getGroupUserCard(event.groupId, event.senderId))
@@ -122,7 +123,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
         ) {
             plugin.sendMessage(
                 getComponentFromMiniMsg(
-                    plugin.messages.ob2server
+                    Messages.ob2server
                         // group_name, group_id, user_nick, message, user_id, user_name
                         .replace("%group_name%", bot.getGroupName(event.groupId))
                         .replace("%group_id%", event.groupId.toString())
@@ -147,7 +148,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 when (args.size) {
                     1 -> {
                         if (WhitelistHelper.getInstance(plugin).checkPlayerExists(message)) {
-                            val msg = plugin.messages.existsBind
+                            val msg = Messages.existsBind
 //                        # player_name
                                 .replace("%player_name%", message)
                             bot.sendMsg(
@@ -164,7 +165,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         bot.sendMsg(
                             true,
                             groupId,
-                            plugin.messages.playerAddBind
+                            Messages.playerAddBind
                                 .replace("%user_id%", userId.toString())
                                 .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                                 .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
@@ -178,7 +179,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
                     2 -> {
                         if (WhitelistHelper.getInstance(plugin).checkPlayerExists(args[1])) {
-                            val msg = plugin.messages.existsBind
+                            val msg = Messages.existsBind
 //                        # player_name
                                 .replace("%player_name%", args[1])
                             bot.sendMsg(
@@ -195,7 +196,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             true,
                             groupId,
 //                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                            plugin.messages.adminAddBind
+                            Messages.adminAddBind
                                 .replace("%origin_id%", userId.toString())
                                 .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                 .replace("%user_id%", args[0])
@@ -212,7 +213,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             } else {
                 if (WhitelistHelper.getInstance(plugin).checkUserBindingFull(userId.toString())) {
                     val wl = DatabaseProvider.getBindByUser(userId.toString())
-                    val msg = plugin.messages.fullBind
+                    val msg = Messages.fullBind
 //                        # player_name, current, user_id, whitelist_limit, user_name, user_nick
                         .replace("%player_name%", wl.keys.toString())
                         .replace("%current%", wl.size.toString())
@@ -227,7 +228,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                     return
                 }
                 if (WhitelistHelper.getInstance(plugin).checkPlayerExists(message)) {
-                    val msg = plugin.messages.existsBind
+                    val msg = Messages.existsBind
 //                        # player_name
                         .replace("%player_name%", message)
                     bot.sendMsg(true, groupId, msg, plugin.config.getBoolean("feature", "bind", "pic"))
@@ -239,7 +240,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 bot.sendMsg(
                     true,
                     groupId,
-                    plugin.messages.playerAddBind
+                    Messages.playerAddBind
                         .replace("%user_id%", userId.toString())
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
@@ -254,7 +255,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             bot.sendMsg(
                 true,
                 groupId,
-                plugin.messages.wrongUsage,
+                Messages.wrongUsage,
                 plugin.config.getBoolean("feature", "bind", "pic")
             )
             return
@@ -275,7 +276,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             bot.sendMsg(
                                 true,
                                 groupId,
-                                plugin.messages.idEmptyBind
+                                Messages.idEmptyBind
                                     .replace("%player%", arg),
                                 plugin.config.getBoolean("feature", "bind", "pic")
                             )
@@ -285,7 +286,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             true,
                             groupId,
 //                        # origin_id, origin_name, user_id, user_name, user_nick, player
-                            plugin.messages.adminQueryIdBind
+                            Messages.adminQueryIdBind
                                 .replace("%origin_id%", userId.toString())
                                 .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                 .replace("%user_id%", wl)
@@ -305,7 +306,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 true,
                                 groupId,
 //                            # user_id, user_name, user_nick
-                                plugin.messages.qqEmptyBind
+                                Messages.qqEmptyBind
                                     .replace("%user_id%", arg.toString())
                                     .replace("%user_name%", bot.getGroupUserName(groupId, arg))
                                     .replace("%user_nick%", bot.getGroupUserCard(groupId, arg)),
@@ -317,7 +318,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             true,
                             groupId,
 //                        # origin_id, origin_name, user_id, user_name, user_nick, num, current
-                            plugin.messages.adminQueryQQBind
+                            Messages.adminQueryQQBind
                                 .replace("%origin_id%", userId.toString())
                                 .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                 .replace("%user_id%", arg.toString())
@@ -336,7 +337,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 bot.sendMsg(
                     true,
                     groupId,
-                    plugin.messages.qqEmptyBind
+                    Messages.qqEmptyBind
                         .replace("%user_id%", userId.toString())
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId)),
@@ -347,7 +348,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             bot.sendMsg(
                 true, groupId,
 //            # user_nick, user_name, user_id, num, current
-                plugin.messages.playerQueryBind
+                Messages.playerQueryBind
                     .replace("%user_id%", userId.toString())
                     .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                     .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
@@ -359,7 +360,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             bot.sendMsg(
                 true,
                 groupId,
-                plugin.messages.wrongUsage,
+                Messages.wrongUsage,
                 plugin.config.getBoolean("feature", "bind", "pic")
             )
             return
@@ -374,7 +375,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         "id:" -> {
                             val arg = message.substring(3)
                             if (!WhitelistHelper.getInstance(plugin).checkPlayerExists(arg)) {
-                                val msg = plugin.messages.notExistsBind
+                                val msg = Messages.notExistsBind
 //                        # player_name
                                     .replace("%player_name%", arg)
                                 bot.sendMsg(
@@ -390,7 +391,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //                            val player = plugin.server.getPlayer(arg)
 //                            if (player.isPresent) player.get().disconnect(
 //                                getComponentFromMiniMsg(
-//                                    plugin.messages.kickServer
+//                                    Messages.kickServer
 //                                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
 //                                )
 //                            )
@@ -400,7 +401,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             bot.sendMsg(
                                 true,
                                 groupId,
-                                plugin.messages.adminDeleteBind
+                                Messages.adminDeleteBind
                                     .replace("%origin_id%", userId.toString())
                                     .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                     .replace("%user_id%", target.toString())
@@ -417,7 +418,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         "qq:" -> {
                             val arg = message.substring(3).split(" ")
                             if (DatabaseProvider.getBindByUser(arg[0]).isEmpty()) {
-                                val msg = plugin.messages.qqEmptyBind
+                                val msg = Messages.qqEmptyBind
 //                        # user_id, user_name, user_nick
                                     .replace("%user_id%", arg[0])
                                     .replace(
@@ -440,7 +441,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //                            val player = plugin.server.getPlayer(target)
 //                            if (player.isPresent) player.get().disconnect(
 //                                getComponentFromMiniMsg(
-//                                    plugin.messages.kickServer
+//                                    Messages.kickServer
 //                                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
 //                                )
 //                            )
@@ -451,7 +452,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 true,
                                 groupId,
 //                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                                plugin.messages.adminDeleteBind
+                                Messages.adminDeleteBind
                                     .replace("%origin_id%", userId.toString())
                                     .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                     .replace("%user_id%", arg[0])
@@ -478,7 +479,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //                val player = plugin.server.getPlayer(target)
 //                if (player.isPresent) player.get().disconnect(
 //                    getComponentFromMiniMsg(
-//                        plugin.messages.kickServer
+//                        Messages.kickServer
 //                            .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
 //                    ))
                 target?.let { plugin.kickPlayer(it) }
@@ -488,7 +489,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 bot.sendMsg(
                     true,
                     groupId,
-                    plugin.messages.playerDeleteBind
+                    Messages.playerDeleteBind
                         .replace("%user_id%", userId.toString())
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
@@ -499,7 +500,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 )
             } catch (_: NumberFormatException) {
                 if (!WhitelistHelper.getInstance(plugin).checkPlayerBelongToUser(message, userId.toString())) {
-                    val msg = plugin.messages.notBelongToYou
+                    val msg = Messages.notBelongToYou
 //                        # player_name
                         .replace("%player_name%", message)
                     bot.sendMsg(
@@ -514,7 +515,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //                val player = plugin.server.getPlayer(message)
 //                if (player.isPresent) player.get().disconnect(
 //                    getComponentFromMiniMsg(
-//                        plugin.messages.kickServer
+//                        Messages.kickServer
 //                            .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
 //                    ))
                 plugin.kickPlayer(message)
@@ -524,7 +525,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 bot.sendMsg(
                     true,
                     groupId,
-                    plugin.messages.playerDeleteBind
+                    Messages.playerDeleteBind
                         .replace("%user_id%", userId.toString())
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
@@ -539,7 +540,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             bot.sendMsg(
                 true,
                 groupId,
-                plugin.messages.wrongUsage,
+                Messages.wrongUsage,
                 plugin.config.getBoolean("feature", "bind", "pic")
             )
             return
@@ -567,7 +568,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
         bot.sendMsg(true, groupId,
 //            # player_list, player_num, max_player
-            plugin.messages.playerList
+            Messages.playerList
                 .replace("%player_list%", plugin.listPlayerString())
                 .replace("%player_num%", plugin.listPlayers().size.toString()), plugin.config.getBoolean("feature", "list", "pic"))
         return
@@ -578,7 +579,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //            val player = plugin.server.getPlayer(it)
 //            if (player.isPresent) player.get().disconnect(
 //                getComponentFromMiniMsg(
-//                    plugin.messages.kickServer
+//                    Messages.kickServer
 //                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
 //                ))
             plugin.kickPlayer(it)

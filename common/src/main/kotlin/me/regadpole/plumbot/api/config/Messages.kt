@@ -1,6 +1,6 @@
 package me.regadpole.plumbot.api.config
 
-class Messages: Cloneable {
+object Messages: Cloneable {
     lateinit var prefix: String
 
     lateinit var load: String

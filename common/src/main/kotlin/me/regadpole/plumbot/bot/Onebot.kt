@@ -5,6 +5,7 @@ import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.sksamuel.aedile.core.refreshAfterWrite
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.listener.BotHandler
 import me.regadpole.plumbot.listener.OnebotListener
 import me.regadpole.plumbot.utils.TextToImg
@@ -31,7 +32,7 @@ class Onebot(val plugin: PlumBot, override val client: WebsocketBotClient): BotI
 
         if (plugin.config.getBoolean("feature", "load", "enable")) plugin.config.getLongList("groups").forEach {
             sendMsg(true, it,
-                plugin.messages.load
+                Messages.load
                 , plugin.config.getBoolean("feature", "load", "pic"))
         }
 
@@ -50,8 +51,8 @@ class Onebot(val plugin: PlumBot, override val client: WebsocketBotClient): BotI
 
     override fun shutdown() {
         if (plugin.config.getBoolean("feature", "load", "enable")) plugin.config.getLongList("groups").forEach {
-            if (plugin.config.getBoolean("feature", "load", "pic")) sendGroupPicWithText(it, plugin.messages.unload)
-            else sendGroupMsg(it, plugin.messages.unload)
+            if (plugin.config.getBoolean("feature", "load", "pic")) sendGroupPicWithText(it, Messages.unload)
+            else sendGroupMsg(it, Messages.unload)
         }
         handler = null
         idCache.synchronous().invalidateAll()

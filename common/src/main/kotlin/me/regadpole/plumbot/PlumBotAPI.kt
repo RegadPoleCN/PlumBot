@@ -31,7 +31,7 @@ class PlumBotAPI(private val plugin: PlumBot) {
      * @return the object of Messages
      */
     fun getMessages(): Messages {
-        return plugin.messages
+        return Messages
     }
 
     /**
