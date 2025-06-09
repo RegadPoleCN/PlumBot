@@ -9,6 +9,7 @@ import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.task.TaskProvider
+import me.regadpole.plumbot.task.TaskProviderImpl
 import me.regadpole.plumbot.utils.TextToImg
 import net.kyori.adventure.text.Component
 import taboolib.module.database.Database
@@ -16,16 +17,15 @@ import java.io.File
 import java.net.URI
 import java.nio.file.Path
 import kotlin.io.path.pathString
+import kotlin.reflect.KMutableProperty
 
 interface PlumBot: TaskProvider {
 
     var datasource: YamlConfigurator
     var config: YamlConfigurator
-    var messages: Messages
     var dataDirectory: Path
 
     fun log(level: LogLevel, log: String)
-    fun getMessages(): Messages {return messages}
     fun sendMessage(message: Component)
     fun kickPlayer(name: String)
     fun listPlayers(): List<String>
@@ -50,23 +50,42 @@ interface PlumBot: TaskProvider {
     }
 
     fun loadBot() {
-        val addr = URI.create("ws://" + config.getString("bot", "address"))
-        val token = config.getString("bot", "token")
-        if (token.isNullOrEmpty()) BotProvider.loadBot(this, addr)
-        else BotProvider.loadBot(this, addr, token)
+        TaskProviderImpl.submitAsync {
+            val addr = URI.create("ws://" + config.getString("bot", "address"))
+            val token = config.getString("bot", "token")
+            if (token.isNullOrEmpty()) BotProvider.loadBot(this, addr)
+            else BotProvider.loadBot(this, addr, token)
+        }
     }
 
     fun loadDatabase() {
-        Database.settingsFile = DatabaseSource(datasource.getNode())
-        val mode = config.getString("database", "mode")
-        val database = when (mode) {
-            "sqlite" -> SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
-            "mysql" -> MySQL(config.getNode("database", "mysql"))
-            else -> {
-                log(LogLevel.ERROR, "Unknown database type! Using SQLite...")
-                SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+        TaskProviderImpl.submitAsync {
+            Database.settingsFile = DatabaseSource(datasource.getNode())
+            val mode = config.getString("database", "mode")
+            val database = when (mode) {
+                "sqlite" -> SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+                "mysql" -> MySQL(config.getNode("database", "mysql"))
+                else -> {
+                    log(LogLevel.ERROR, "Unknown database type! Using SQLite...")
+                    SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+                }
+            }
+            DatabaseProvider.start(database)
+        }
+    }
+
+    fun loadConfig() {
+        config = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
+        datasource = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
+        val messagesConf = YamlConfigurator.createConfig(dataDirectory, "messages.yml")
+        Messages::class.members.forEach{
+            if (it is KMutableProperty<*>) {
+                when(it.returnType.classifier) {
+                    String::class -> it.setter.call(Messages, messagesConf!!.getString(it.name))
+                    List::class -> it.setter.call(Messages, messagesConf!!.getStringList(it.name))
+                }
+                log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(Messages)}")
             }
         }
-        DatabaseProvider.start(database)
     }
 }

@@ -1,6 +1,7 @@
 package me.regadpole.plumbot.listener
 
 import me.regadpole.plumbot.bot.Onebot
+import me.regadpole.plumbot.task.TaskProviderImpl
 import top.alazeprt.aonebot.event.Listener
 import top.alazeprt.aonebot.event.SubscribeBotEvent
 import top.alazeprt.aonebot.event.message.GroupMessageEvent
@@ -11,7 +12,8 @@ class OnebotListener(private val onebot: Onebot): Listener {
     @SubscribeBotEvent
     fun onGroupMessage(event: GroupMessageEvent) {
         if (!onebot.plugin.config.getLongList("groups").contains(event.groupId)) return
-        onebot.handler?.onGroupMessage(event)
+        TaskProviderImpl.submitAsync { onebot.handler?.onGroupMessage(event) }
+
     }
 
     @SubscribeBotEvent
@@ -19,6 +21,6 @@ class OnebotListener(private val onebot: Onebot): Listener {
 
     @SubscribeBotEvent
     fun onGroupMemberDecrease(event: GroupMemberDecreaseEvent) {
-        onebot.handler?.onUserDecrease(event)
+        TaskProviderImpl.submitAsync { onebot.handler?.onUserDecrease(event) }
     }
 }
