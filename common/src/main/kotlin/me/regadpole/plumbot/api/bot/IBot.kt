@@ -1,10 +1,9 @@
 package me.regadpole.plumbot.api.bot
 
-import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
+import me.regadpole.plumbot.listener.BotHandler
 
 interface IBot: Cloneable {
-
-    val client:WebsocketBotClient
+    var handler: BotHandler?
 
     /**
      * Start a bot

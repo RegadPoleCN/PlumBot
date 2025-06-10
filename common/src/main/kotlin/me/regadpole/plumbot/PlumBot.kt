@@ -58,10 +58,21 @@ interface PlumBot: TaskProvider {
 
     fun loadBot() {
         TaskProviderImpl.submitAsync {
-            val addr = URI.create("ws://" + config.getString("bot", "address"))
-            val token = config.getString("bot", "token")
-            if (token.isNullOrEmpty()) BotProvider.loadBot(this, addr)
-            else BotProvider.loadBot(this, addr, token)
+            when(config.getString("bot", "type")?.lowercase()) {
+                "mirai" -> {
+                    BotProvider.loadMiraiMCBot(this)
+                }
+                "onebot" -> {
+                    val addr = URI.create("ws://" + config.getString("bot", "onebot", "address"))
+                    val token = config.getString("bot", "onebot", "token")
+                    if (token.isNullOrEmpty()) BotProvider.loadOneBot(this, addr)
+                    else BotProvider.loadOneBot(this, addr, token)
+                }
+                else -> {
+                    log(LogLevel.ERROR, "Unknown bot type! Using OneBot...")
+                    BotProvider.loadBot(this, "onebot")
+                }
+            }
         }
     }
 

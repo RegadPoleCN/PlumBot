@@ -1,8 +1,13 @@
 ver: "1.0"
 
-bot: 
-    address: "localhost:8080"
-    token: ""
+bot:
+    # 可取：onebot、miraimc
+    type: "onebot"
+    onebot:
+        address: "localhost:8080"
+        token: ""
+    miraimc:
+        botId: 10000
 admins: 
     - 10000
 groups: 

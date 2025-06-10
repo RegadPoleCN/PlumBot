@@ -34,4 +34,6 @@ dependencies {
     compileOnly("net.kyori:adventure-text-serializer-legacy:4.21.0")
     // libby
     implementation("com.alessiodp.libby:libby-core:2.0.0-SNAPSHOT")
+    // miraimc
+    compileOnly("io.github.dreamvoid:MiraiMC-Integration:1.9")
 }

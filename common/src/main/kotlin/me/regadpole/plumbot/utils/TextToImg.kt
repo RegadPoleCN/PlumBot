@@ -95,6 +95,7 @@ object TextToImg {
         g.dispose()
         val os = ByteArrayOutputStream()
 
+
         // 创建一个MemoryCacheImageOutputStream对象，传入os作为参数
         val mcios = MemoryCacheImageOutputStream(os)
         // 使用ImageIO.write方法将image写入mcios，指定图片格式为png
@@ -167,6 +168,18 @@ object TextToImg {
             throw RuntimeException(e)
         }
         return "[CQ:image,file=base64://$base64]"
+    }
+
+    fun toFile(string: String): File {
+        try {
+            val inputStream: InputStream = ByteArrayInputStream(toImg(string))
+            val image = ImageIO.read(inputStream)
+            val file = File.createTempFile("PlumBot", ".png")
+            ImageIO.write(image, "png", file)
+            return file
+        } catch (e: Exception) {
+            throw RuntimeException(e)
+        }
     }
 
     fun toImgBinary(string: String): String {

@@ -8,6 +8,7 @@ import me.regadpole.plumbot.PlumBotAPI
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.api.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
+import me.regadpole.plumbot.bukkit.listener.MiraiMCListener
 import me.regadpole.plumbot.bukkit.listener.ServerListener
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.LogLevel
@@ -32,6 +33,11 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     override var debugProvider = DebugProvider(this)
 
     override fun onEnable() {
+        if (!Bukkit.getPluginManager().isPluginEnabled("MiraiMC") && config.getString("bot", "type").equals("mirai", ignoreCase = true)) {
+            logger.severe("MiraiMC is not enabled! Please install MiraiMC to use Mirai bot.")
+            Bukkit.getPluginManager().disablePlugin(this)
+            return
+        }
         // 插件启用时的逻辑
         server.servicesManager.register(BotProvider.javaClass, BotProvider, this, ServicePriority.Normal)
         server.servicesManager.register(DatabaseProvider.javaClass, DatabaseProvider, this, ServicePriority.Normal)
@@ -39,6 +45,10 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
         enable()
         server.pluginManager.registerEvents(ServerListener(this), this)
+        if(config.getString("bot", "type").equals("mirai", ignoreCase = true)) {
+            // MiraiMC 监听器
+            server.pluginManager.registerEvents(MiraiMCListener(this), this)
+        }
         logger.info("PlumBot has been enabled!")
     }
 

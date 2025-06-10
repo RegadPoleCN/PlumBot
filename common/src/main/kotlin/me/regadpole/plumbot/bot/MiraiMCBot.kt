@@ -4,31 +4,32 @@ import com.github.benmanes.caffeine.cache.AsyncCache
 import com.github.benmanes.caffeine.cache.AsyncLoadingCache
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.sksamuel.aedile.core.refreshAfterWrite
+import me.dreamvoid.miraimc.api.MiraiBot
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.listener.BotHandler
-import me.regadpole.plumbot.listener.OneBotHandler
-import me.regadpole.plumbot.listener.OnebotListener
+import me.regadpole.plumbot.listener.MiraiMCHandler
 import me.regadpole.plumbot.utils.TextToImg
-import top.alazeprt.aonebot.action.*
-import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
-import top.alazeprt.aonebot.result.Group
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import java.util.function.Function
 import kotlin.time.Duration.Companion.minutes
 
-class Onebot(val plugin: PlumBot, val client: WebsocketBotClient): BotImpl {
+class MiraiMCBot(val plugin: PlumBot): BotImpl {
+
+    val botId = plugin.config.getLong("bot", "miraimc", "botId")
+    private val bot = MiraiBot.getBot(botId)
 
     override var handler: BotHandler? = null
     lateinit var cache: AsyncLoadingCache<Long, LinkedHashMap<String, String>>
     lateinit var idCache: AsyncCache<Long, Long>
 
-
-    override fun start(): BotImpl {
-        handler = OneBotHandler(plugin, this)
-        client.connect()
-        client.registerEvent(OnebotListener(this))
+    /**
+     * Start a bot
+     */
+    override fun start(): IBot {
+        handler = MiraiMCHandler(plugin, this)
 
         if (plugin.config.getBoolean("feature", "load", "enable")) plugin.config.getLongList("groups").forEach {
             sendMsg(true, it,
@@ -49,6 +50,9 @@ class Onebot(val plugin: PlumBot, val client: WebsocketBotClient): BotImpl {
         return this
     }
 
+    /**
+     * Stop a bot
+     */
     override fun shutdown() {
         if (plugin.config.getBoolean("feature", "load", "enable")) plugin.config.getLongList("groups").forEach {
             if (plugin.config.getBoolean("feature", "load", "pic")) sendGroupPicWithText(it, Messages.unload)
@@ -57,74 +61,77 @@ class Onebot(val plugin: PlumBot, val client: WebsocketBotClient): BotImpl {
         handler = null
         idCache.synchronous().invalidateAll()
         cache.synchronous().invalidateAll()
-        client.disconnect()
     }
 
+    /**
+     * Get the group name
+     * @param groupId the id of group
+     * @return the group name
+     */
     override fun getGroupName(groupId: Long): String {
-        val lock = Object()
-        var name = "Null"
-        client.action(GetGroupInfo(groupId)) { group: Group ->
-            synchronized(lock) {
-                name = group.groupName
-                lock.notifyAll()
-            }
-        }
-        synchronized(lock) {
-            lock.wait()
-            return name
-        }
+        return bot.getGroup(groupId).name
     }
 
+    /**
+     * check if the user is in group
+     * @param userId the id of user
+     * @param groupId the id of group
+     * @return true if the user is in group, false otherwise
+     */
     override fun checkUserInGroup(userId: Long, groupId: Long): Boolean {
-        val lock = Object()
-        var isHere = false
-        client.action(GetGroupMemberList(groupId)) { memberList -> memberList.forEach{
-            synchronized(lock) {
-                if (it.member.userId == userId) isHere = true
-                lock.notifyAll()
-            }
-        }}
-        synchronized(lock) {
-            lock.wait()
-//            synchronized(suplock) {if (canNotify) suplock.notifyAll()}
-            return isHere
-        }
+        return userId in bot.getGroup(groupId).members.map { member -> member.id }.stream().toList()
     }
 
+    /**
+     * Send a group message
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
     override fun sendGroupMsg(targetId: Long, message: String) {
-        client.action(SendGroupMessage(targetId, message, false))
+        bot.getGroup(targetId).sendMessage(message)
     }
 
+    /**
+     * Send a user message
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
     override fun sendUserMsg(targetId: Long, message: String) {
-        client.action(SendPrivateMessage(targetId, message, false))
+        bot.getFriend(targetId).sendMessage(message)
     }
 
+    /**
+     * Send a picture to group
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
     override fun sendGroupPicWithText(targetId: Long, message: String) {
-        val msg = TextToImg.toImgCQCode(message)
-        client.action(SendGroupMessage(targetId, msg, false))
+        val group = bot.getGroup(targetId)
+        val imageId = group.uploadImage(TextToImg.toFile(message))
+        group.sendMessageMirai("[mirai:image:$imageId]")
     }
 
+    /**
+     * Send a picture to user
+     * @param targetId ID of the target
+     * @param message Message to send
+     */
     override fun sendUserPicWithText(targetId: Long, message: String) {
-        val msg = TextToImg.toImgCQCode(message)
-        client.action(SendPrivateMessage(targetId, msg, false))
+        val friend = bot.getFriend(targetId)
+        val imageId = friend.uploadImage(TextToImg.toFile(message))
+        friend.sendMessageMirai("[mirai:image:$imageId]")
     }
+
+    /**
+     * Get user's name from group list
+     * @param groupId group's id
+     * @param targetId user's id
+     * @return the name of user
+     */
     override fun getGroupUserName(groupId: Long, targetId: Long): String {
-//        val lock = Object()
         val name: String
         try {
-//            client.action(GetGroupMemberInfo(groupId, targetId)) {
-//                synchronized(lock) {
-//                    try {
-//                        name = it.member.nickname
-//                    } catch (_: Exception) {}
-//                    lock.notifyAll()
-//                }
-//            }
-//            synchronized(lock) {
-//                lock.wait()
-//                return name?:targetId.toString()
-//            }
-            val map = cache.get(targetId, Function{
+            val map = cache.get(targetId, Function {
                 refreshCache(groupId, targetId)
             }).get(10, TimeUnit.SECONDS)
             name = map.getOrDefault("name", targetId.toString())
@@ -134,27 +141,20 @@ class Onebot(val plugin: PlumBot, val client: WebsocketBotClient): BotImpl {
         }
     }
 
+    /**
+     * Get user's card from group list
+     * @param groupId group's id
+     * @param targetId user's id
+     * @return the card of user in group
+     */
     override fun getGroupUserCard(groupId: Long, targetId: Long): String {
-//        val lock = Object()
         val name: String
         try {
-//            client.action(GetGroupMemberInfo(groupId, targetId)) {
-//                synchronized(lock) {
-//                    try {
-//                        name = it.card
-//                    } catch (_: Exception) {}
-//                    lock.notifyAll()
-//                }
-//            }
-//            synchronized(lock) {
-//                lock.wait()
-//                return name?:targetId.toString()
-//            }
             val map = cache.get(targetId, Function{
                 refreshCache(groupId, targetId)
             }).get(10, TimeUnit.SECONDS)
             name = if (map["card"].isNullOrBlank()) getGroupUserName(groupId, targetId)
-                    else map.getOrDefault("card", targetId.toString())
+            else map.getOrDefault("card", targetId.toString())
             return name
         } catch (_: Exception) {
             return targetId.toString()
@@ -163,22 +163,18 @@ class Onebot(val plugin: PlumBot, val client: WebsocketBotClient): BotImpl {
 
     private fun loadAllCache(){
         plugin.config.getLongList("groups").forEach { groupId ->
-            client.action(GetGroupMemberList(groupId)) { users ->
-                users.forEach {
-                    cache.put(it.member.userId, CompletableFuture.supplyAsync {
-                        linkedMapOf("card" to it.card, "name" to it.member.nickname)
-                    })
-                }
+            bot.getGroup(groupId).members.forEach{ it ->
+                cache.put(it.id, CompletableFuture.supplyAsync {
+                    linkedMapOf("card" to it.nameCard, "name" to it.nick)
+                })
             }
         }
     }
 
     private fun loadAllIdCache(){
         plugin.config.getLongList("groups").forEach { groupId ->
-            client.action(GetGroupMemberList(groupId)) { users ->
-                users.forEach {
-                    idCache.put(it.member.userId, CompletableFuture.supplyAsync { groupId })
-                }
+            bot.getGroup(groupId).members.forEach{ it ->
+                idCache.put(it.id, CompletableFuture.supplyAsync { groupId })
             }
         }
     }
@@ -186,16 +182,14 @@ class Onebot(val plugin: PlumBot, val client: WebsocketBotClient): BotImpl {
     private fun refreshCache(groupId: Long, userId: Long): LinkedHashMap<String, String>{
         val lock = Object()
         var map = linkedMapOf("card" to userId.toString(), "name" to userId.toString())
-        client.action(GetGroupMemberInfo(groupId, userId)) {
-            synchronized(lock) {
-                map = linkedMapOf("card" to it.card, "name" to it.member.nickname)
-                lock.notifyAll()
-            }
+        synchronized(lock) {
+            val member = bot.getGroup(groupId).getMember(userId)
+            map = linkedMapOf("card" to member.nameCard, "name" to member.nick)
+            lock.notifyAll()
         }
         synchronized(lock) {
             lock.wait()
             return map
         }
     }
-
 }

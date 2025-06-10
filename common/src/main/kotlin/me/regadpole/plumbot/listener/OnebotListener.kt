@@ -12,7 +12,18 @@ class OnebotListener(private val onebot: Onebot): Listener {
     @SubscribeBotEvent
     fun onGroupMessage(event: GroupMessageEvent) {
         if (!onebot.plugin.config.getLongList("groups").contains(event.groupId)) return
-        TaskProviderImpl.submitAsync { onebot.handler?.onGroupMessage(event) }
+        TaskProviderImpl.submitAsync {
+            var message = ""
+            event.jsonMessage.forEach {
+                val jsonObject = it.asJsonObject ?: return@forEach
+                when (jsonObject.get("type").asString) {
+                    "text" -> message += jsonObject.get("data").asJsonObject.get("text").asString
+                    "image" -> message += "[图片]"
+                    "at" -> message += onebot.getGroupUserCard(event.groupId, jsonObject.get("data").asJsonObject.get("qq").asLong)
+                }
+            }
+            onebot.handler?.onGroupMessage(message, event.groupId, event.senderId)
+        }
 
     }
 
@@ -21,6 +32,7 @@ class OnebotListener(private val onebot: Onebot): Listener {
 
     @SubscribeBotEvent
     fun onGroupMemberDecrease(event: GroupMemberDecreaseEvent) {
-        TaskProviderImpl.submitAsync { onebot.handler?.onUserDecrease(event) }
+        if (!onebot.plugin.config.getLongList("groups").contains(event.groupId)) return
+        TaskProviderImpl.submitAsync { onebot.handler?.onUserDecrease(event.groupId, event.userId) }
     }
 }
