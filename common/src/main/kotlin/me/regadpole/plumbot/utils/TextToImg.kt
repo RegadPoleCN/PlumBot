@@ -176,6 +176,7 @@ object TextToImg {
             val image = ImageIO.read(inputStream)
             val file = File.createTempFile("PlumBot", ".png")
             ImageIO.write(image, "png", file)
+            file.deleteOnExit()
             return file
         } catch (e: Exception) {
             throw RuntimeException(e)
