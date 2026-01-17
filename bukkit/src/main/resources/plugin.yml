@@ -1,6 +1,0 @@
-name: PlumBot
-version: ${version}
-main: me.regadpole.plumbot.bukkit.PlumBotBukkit
-api-version: '1.13'
-author: RegadPole
-softdepend: ["MiraiMC"]

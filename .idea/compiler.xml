@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <bytecodeTargetLevel target="17" />
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="PlumBotYSY" options="-proc:none" />
+      <module name="PlumBotYSY.main" options="-proc:none" />
+      <module name="PlumBotYSY.plugin" options="-XDenableSunApiLintControl -proc:none" />
+      <module name="PlumBotYSY.plugin.main" options="-XDenableSunApiLintControl -proc:none" />
+      <module name="PlumBotYSY.plugin.test" options="-XDenableSunApiLintControl -proc:none" />
+      <module name="PlumBotYSY.test" options="-proc:none" />
+    </option>
+  </component>
+</project>
