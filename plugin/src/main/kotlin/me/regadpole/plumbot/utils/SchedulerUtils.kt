@@ -6,7 +6,7 @@ import kotlin.time.Duration
 import kotlin.time.toJavaDuration
 
 fun runTask(runnable: Runnable): ScheduledTask {
-    return PlumBot.INSTANCE.server.scheduler.buildTask(PlumBot.INSTANCE, runnable).schedule()
+    return PlumBot.INSTANCE..buildTask(PlumBot.INSTANCE, runnable).schedule()
 }
 
 fun runTaskDelay(duration: Duration, runnable: Runnable): ScheduledTask {

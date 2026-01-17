@@ -35,6 +35,8 @@ dependencies {
     // cache
 //    implementation("com.github.ben-manes.caffeine:caffeine:3.2.0")
     implementation("com.sksamuel.aedile:aedile-core:2.0.3")
+    // config
+    implementation("org.spongepowered:configurate-yaml:4.2.0")
     // OneBot
     implementation("com.github.alazeprt:AOneBot:1.0.7-beta")
     // database
@@ -55,11 +57,10 @@ kotlin {
 
 }
 
-tasks.processResources {
-    filesMatching('manifest.json') {
-        "version" to  project.version
-    }
-}
+//tasks.processResources {
+//    filesMatching('manifest.json') {
+//    }
+//}
 
 tasks.build {
     dependsOn("shadowJar")

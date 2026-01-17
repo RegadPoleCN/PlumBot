@@ -1,9 +1,15 @@
 {
-  "Group": "PlumBot",
+  "Group": "me.regadpole",
   "Name": "PlumBot",
   "Version": "${pluginVersion}",
   "Description": "A bot plugin for QQ and Onebot.",
-  "Authors": [{"Name": "RegadPole"}],
+  "Authors": [
+    {
+      "Name": "RegadPole",
+      "Email": "1651233735@qq.com",
+      "Url": "https://regadpole.top"
+    }
+  ],
   "Website": "https://github.com/RegadPoleCN/PlumBot",
   "ServerVersion": "*",
   "Dependencies": {},

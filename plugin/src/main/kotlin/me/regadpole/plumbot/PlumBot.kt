@@ -1,13 +1,10 @@
 package me.regadpole.plumbot
 
-import com.google.inject.Inject
+import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent
+import com.hypixel.hytale.server.core.plugin.JavaPlugin
+import com.hypixel.hytale.server.core.plugin.JavaPluginInit
 import com.velocitypowered.api.event.Subscribe
-import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
-import com.velocitypowered.api.plugin.Dependency
-import com.velocitypowered.api.plugin.Plugin
-import com.velocitypowered.api.plugin.annotation.DataDirectory
-import com.velocitypowered.api.proxy.ProxyServer
 import com.velocitypowered.api.scheduler.ScheduledTask
 import me.regadpole.config.DatabaseSource
 import me.regadpole.plumbot.api.bot.IBot
@@ -22,26 +19,12 @@ import me.regadpole.plumbot.utils.debug
 import me.regadpole.plumbot.utils.info
 import me.regadpole.plumbot.utils.runTask
 import me.regadpole.plumbot.utils.runTaskRepeat
-import org.slf4j.Logger
 import taboolib.module.database.Database
 import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
-import java.nio.file.Path
 import kotlin.reflect.KMutableProperty
 import kotlin.time.Duration.Companion.minutes
 
-
-@Plugin(
-    id = "plumbot",
-    name = "PlumBot",
-    version = "1.0-SNAPSHOT",
-    description = "PlumBot ysy-fanserver",
-    dependencies = [
-        Dependency(id = "floodgate", optional = true)
-    ],
-    url = "https://regadpole.top",
-    authors = ["RegadPole"]
-)
-class PlumBot @Inject constructor(val server: ProxyServer, val logger: Logger, @DataDirectory val dataDirectory:Path) {
+class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
 
     companion object {
         @JvmStatic
@@ -50,13 +33,14 @@ class PlumBot @Inject constructor(val server: ProxyServer, val logger: Logger, @
     }
 
     init {
-         INSTANCE = this
+        INSTANCE = this
     }
 
     private var autoReconnectTask: ScheduledTask? = null
     private var botTask: ScheduledTask? = null
     private var messagesConf: ConfigMaker? = null
     private var datasource: ConfigMaker? = null
+    private lateinit var listener: ServerListener
     var config: ConfigMaker? = null
         private set
     var messages: Messages = Messages()
@@ -66,22 +50,24 @@ class PlumBot @Inject constructor(val server: ProxyServer, val logger: Logger, @
     var bot: IBot? = null
         private set
 
-    @Subscribe
-    fun onProxyInitialization(event: ProxyInitializeEvent) {
+    override fun setup() {
         loadConfig()
         info("Config loaded!")
-        loadBot()
-        info("Bot started!")
         loadDatabase()
         info("Database initialized!")
+    }
+
+    override fun start() {
+        loadBot()
+        info("Bot started!")
         registerCommand()
         info("Command registered!")
-        server.eventManager.register(this, ServerListener(this))
+        listener = ServerListener(this)
+        eventRegistry.register(PlayerChatEvent::class.java, listener::onChat)
         info("Listeners registered!")
     }
 
-    @Subscribe
-    fun onProxyShutdown(event: ProxyShutdownEvent) {
+    override fun shutdown() {
         bot!!.shutdown()
         info("Bot stopped!")
         database!!.close()

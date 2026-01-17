@@ -5,6 +5,12 @@
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="PlumBot-hytale" options="-proc:none" />
+      <module name="PlumBot-hytale.main" options="-proc:none" />
+      <module name="PlumBot-hytale.plugin" options="-XDenableSunApiLintControl -proc:none" />
+      <module name="PlumBot-hytale.plugin.main" options="-XDenableSunApiLintControl -proc:none" />
+      <module name="PlumBot-hytale.plugin.test" options="-XDenableSunApiLintControl -proc:none" />
+      <module name="PlumBot-hytale.test" options="-proc:none" />
       <module name="PlumBotYSY" options="-proc:none" />
       <module name="PlumBotYSY.main" options="-proc:none" />
       <module name="PlumBotYSY.plugin" options="-XDenableSunApiLintControl -proc:none" />

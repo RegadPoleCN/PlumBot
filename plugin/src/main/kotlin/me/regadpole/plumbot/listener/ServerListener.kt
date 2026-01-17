@@ -1,21 +1,22 @@
 package me.regadpole.plumbot.listener
 
-import com.velocitypowered.api.event.Subscribe
-import com.velocitypowered.api.event.connection.DisconnectEvent
-import com.velocitypowered.api.event.connection.PreLoginEvent
-import com.velocitypowered.api.event.player.PlayerChatEvent
+import com.hypixel.hytale.server.core.Message
+import com.hypixel.hytale.server.core.entity.entities.Player
+import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent
+import com.hypixel.hytale.server.core.universe.PlayerRef
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.runTask
 
 
 class ServerListener(private val plugin: PlumBot) {
-    @Subscribe
+
     fun onChat(event: PlayerChatEvent) {
-        if (!event.result.isAllowed) return
+        event.sender
+        if (event.isCancelled) return
         if (!plugin.config!!.getBooleanFromConfig("feature", "message", "enable")) return
 
-        val message = event.message.replace(Regex("&([0-9a-fklmnor])")) { matchResult ->
+        val message = event.content.replace(Regex("&([0-9a-fklmnor])")) { matchResult ->
             "§" + matchResult.groupValues[1]
         }.replace(Regex("#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})"), "")
         if (plugin.config!!.getIntegerFromConfig("feature", "message", "mode") == 0) {
@@ -23,20 +24,20 @@ class ServerListener(private val plugin: PlumBot) {
             plugin.config!!.getLongListFromConfig("groups").forEach {
                 plugin.bot!!.sendMsg(true, it,
                     plugin.messages.server2ob
-                    .replace("%server%", event.player.currentServer.get().serverInfo.name)
-                    .replace("%player_name%", event.player.username)
+                    .replace("%server%", )
+                    .replace("%player_name%", event.sender.username)
                     .replace("%message%", message), plugin.config!!.getBooleanFromConfig("feature", "message", "pic"))
             }
             return
         } else if (plugin.config!!.getIntegerFromConfig("feature", "message", "mode") == 1 &&
-            Regex(plugin.config!!.getStringFromConfig("feature", "message", "prefix")!!).matchesAt(event.message, 0)
+            Regex(plugin.config!!.getStringFromConfig("feature", "message", "prefix")!!).matchesAt(event.content, 0)
         ) {
 //          # server, player_name, message
             plugin.config!!.getLongListFromConfig("groups").forEach {
                 plugin.bot!!.sendMsg(true, it,
                     plugin.messages.server2ob
                         .replace("%server%", event.player.currentServer.get().serverInfo.name)
-                        .replace("%player_name%", event.player.username)
+                        .replace("%player_name%", event.sender.username)
                         .replace("%message%", message.replace(plugin.config!!.getStringFromConfig("feature", "message", "prefix")!!, ""))
                     , plugin.config!!.getBooleanFromConfig("feature", "message", "pic"))
             }
