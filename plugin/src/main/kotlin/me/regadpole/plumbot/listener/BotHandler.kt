@@ -333,7 +333,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 .replace("%user_name%", bot.getGroupUserName(groupId, arg))
                                 .replace("%user_nick%", bot.getGroupUserCard(groupId, arg))
                                 .replace("%num%", wl.size.toString())
-                                .replace("%current%", wl.keys.toString()),
+                                .replace("%current%", wl.toString()),
                             plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
                         )
                         return
@@ -407,7 +407,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             bot.sendMsg(
                                 true,
                                 groupId,
-                                plugin.messages.adminDeleteBindByNum
+                                plugin.messages.adminDeleteBind
                                     .replace("%origin_id%", userId.toString())
                                     .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                     .replace("%user_id%", target.toString())
@@ -460,7 +460,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                     true,
                                     groupId,
 //                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                                    plugin.messages.adminDeleteBindByNum
+                                    plugin.messages.adminDeleteAllBind
                                         .replace("%origin_id%", userId.toString())
                                         .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                         .replace("%user_id%", arg[0])
@@ -508,7 +508,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 true,
                                 groupId,
 //                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                                plugin.messages.adminDeleteBindByNum
+                                plugin.messages.adminDeleteBind
                                     .replace("%origin_id%", userId.toString())
                                     .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                     .replace("%user_id%", arg[0])

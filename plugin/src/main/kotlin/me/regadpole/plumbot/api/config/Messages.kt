@@ -30,8 +30,8 @@ class Messages: Cloneable {
     lateinit var wrongUsage: String
 
     lateinit var adminAddBind: String
-    lateinit var adminDeleteBindByNum: String
     lateinit var adminDeleteBind: String
+    lateinit var adminDeleteAllBind: String
     lateinit var adminQueryIdBind: String
     lateinit var adminQueryQQBind: String
 
