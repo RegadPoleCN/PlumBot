@@ -83,6 +83,10 @@ object CommandHandler {
      */
     private fun handleDeleteBind(source: PlumBotCommandSource, plugin: PlumBot, args: Array<String>) {
         if (!source.hasPermission("plumbot.admin.unbind")) sendNoCommandFound(source, plugin)
+        if (args.size == 3 && args[0] == "qq") {
+            handleDeleteBindByNum(source, plugin, args.drop(1).toTypedArray())
+            return
+        }
         if (args.size != 2) {
             sendNoCommandFound(source, plugin)
             return
@@ -154,6 +158,32 @@ object CommandHandler {
         val message = plugin.messages.prefix +
             plugin.messages.commandDeleteBindByQQ
                 .replace("%target_id%", qqIdStr)
+        source.sendMessage(message)
+    }
+
+    private fun handleDeleteBindByNum(source: PlumBotCommandSource, plugin: PlumBot, args: Array<String>) {
+        val qqId = args[0].toLongOrNull()
+        if (qqId == null) {
+            sendError(source, plugin, "QQ ID must be a valid number")
+            return
+        }
+        if (plugin.database!!.getBind(qqId).isNullOrEmpty()) {
+            val msg = plugin.messages.qqEmptyBind
+//                        # user_id, user_name, user_nick
+                .replace("%user_id%", qqId.toString())
+            sendError(source, plugin, msg)
+            return
+        }
+        val target = plugin.database!!.removeBindByNum(qqId, args[1].toInt())
+        val player = Universe.get().getPlayerByUsername(target!!, NameMatching.EXACT)
+        player!!.packetHandler.disconnect(
+            plugin.messages.kickServer
+                .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
+        )
+
+        val message = plugin.messages.prefix +
+                plugin.messages.commandDeleteBindById
+                    .replace("%player%", target)
         source.sendMessage(message)
     }
 

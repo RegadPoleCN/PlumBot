@@ -407,7 +407,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             bot.sendMsg(
                                 true,
                                 groupId,
-                                plugin.messages.adminDeleteBind
+                                plugin.messages.adminDeleteBindByNum
                                     .replace("%origin_id%", userId.toString())
                                     .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                     .replace("%user_id%", target.toString())
@@ -423,6 +423,59 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
                         "qq:" -> {
                             val arg = message.substring(3).split(" ")
+                            if (arg.size == 1) {
+                                val bindings = plugin.database?.getBind(arg[0].toLong())
+                                if (bindings.isNullOrEmpty()) {
+                                    val msg = plugin.messages.qqEmptyBind
+//                        # user_id, user_name, user_nick
+                                        .replace("%user_id%", arg[0])
+                                        .replace(
+                                            "%user_name%",
+                                            bot.getGroupUserName(groupId, arg[0].toLong())
+                                        )
+                                        .replace(
+                                            "%user_nick%",
+                                            bot.getGroupUserCard(groupId, arg[0].toLong())
+                                        )
+                                    bot.sendMsg(
+                                        true,
+                                        groupId,
+                                        msg,
+                                        plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
+                                    )
+                                    return
+                                }
+
+                                plugin.database?.removeBind(arg[0].toLong())
+
+                                // 踢出所有绑定的在线玩家
+                                bindings.forEach { (playerName, _) ->
+                                    val player = Universe.get().getPlayerByUsername(playerName, NameMatching.EXACT)
+                                    val kickMessage = plugin.messages.kickServer
+                                        .replace("%groups%", plugin.config?.getLongListFromConfig("groups").toString())
+                                    player?.packetHandler?.disconnect(kickMessage)
+                                }
+
+                                bot.sendMsg(
+                                    true,
+                                    groupId,
+//                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
+                                    plugin.messages.adminDeleteBindByNum
+                                        .replace("%origin_id%", userId.toString())
+                                        .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
+                                        .replace("%user_id%", arg[0])
+                                        .replace(
+                                            "%user_name%",
+                                            bot.getGroupUserName(groupId, arg[0].toLong())
+                                        )
+                                        .replace(
+                                            "%user_nick%",
+                                            bot.getGroupUserCard(groupId, arg[0].toLong())
+                                        ),
+                                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
+                                )
+                                return
+                            }
                             if (plugin.database!!.getBind(arg[0].toLong()).isNullOrEmpty()) {
                                 val msg = plugin.messages.qqEmptyBind
 //                        # user_id, user_name, user_nick
@@ -455,7 +508,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 true,
                                 groupId,
 //                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                                plugin.messages.adminDeleteBind
+                                plugin.messages.adminDeleteBindByNum
                                     .replace("%origin_id%", userId.toString())
                                     .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
                                     .replace("%user_id%", arg[0])

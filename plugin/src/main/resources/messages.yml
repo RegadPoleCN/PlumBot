@@ -43,7 +43,9 @@ wrongUsage: "请正确输入命令"
 
 # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
 adminAddBind: "%origin_id% has sudo %user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
-adminDeleteBind: "%origin_id% has sudo %user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+adminDeleteBindByNum: "%origin_id% has sudo %user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+# origin_id, origin_name, user_id, user_name, user_nick
+adminDeleteBind: "%origin_id% has sudo deleted all the binds of %user_id%"
 # origin_id, origin_name, user_id, user_name, user_nick, num, current
 adminQueryQQBind: "%user_id% now has %num% bind: %current%"
 # origin_id, origin_name, user_id, user_name, user_nick, player
