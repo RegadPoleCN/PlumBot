@@ -3,10 +3,10 @@
 # certain platforms or Java versions, and provides a first line of defence
 # against bad commits.
 
-name: PlumBot build
+name: PlumBot-hytale build
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "hytale" ]
   workflow_dispatch:
 
 jobs:
