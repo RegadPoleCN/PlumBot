@@ -1,7 +1,7 @@
 {
   "Group": "me.regadpole",
   "Name": "PlumBot",
-  "Version": "${pluginVersion}",
+  "Version": "1.0-SNAPSHOT",
   "Description": "A bot plugin for QQ and Onebot.",
   "Authors": [
     {
