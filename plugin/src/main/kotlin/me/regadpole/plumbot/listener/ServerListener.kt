@@ -1,12 +1,11 @@
 package me.regadpole.plumbot.listener
 
-import com.hypixel.hytale.server.core.Message
-import com.hypixel.hytale.server.core.entity.entities.Player
 import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent
-import com.hypixel.hytale.server.core.universe.PlayerRef
+import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent
+import com.hypixel.hytale.server.core.event.events.player.PlayerSetupConnectEvent
+import com.hypixel.hytale.server.core.universe.Universe
 import me.regadpole.plumbot.PlumBot
-import me.regadpole.plumbot.utils.getComponentFromMiniMsg
-import me.regadpole.plumbot.utils.runTask
+import me.regadpole.plumbot.utils.runTaskAsync
 
 
 class ServerListener(private val plugin: PlumBot) {
@@ -24,7 +23,7 @@ class ServerListener(private val plugin: PlumBot) {
             plugin.config!!.getLongListFromConfig("groups").forEach {
                 plugin.bot!!.sendMsg(true, it,
                     plugin.messages.server2ob
-                    .replace("%server%", )
+                    .replace("%world%", Universe.get().getWorld(event.sender.worldUuid!!)?.name!!)
                     .replace("%player_name%", event.sender.username)
                     .replace("%message%", message), plugin.config!!.getBooleanFromConfig("feature", "message", "pic"))
             }
@@ -36,7 +35,7 @@ class ServerListener(private val plugin: PlumBot) {
             plugin.config!!.getLongListFromConfig("groups").forEach {
                 plugin.bot!!.sendMsg(true, it,
                     plugin.messages.server2ob
-                        .replace("%server%", event.player.currentServer.get().serverInfo.name)
+                        .replace("%world%", Universe.get().getWorld(event.sender.worldUuid!!)?.name!!)
                         .replace("%player_name%", event.sender.username)
                         .replace("%message%", message.replace(plugin.config!!.getStringFromConfig("feature", "message", "prefix")!!, ""))
                     , plugin.config!!.getBooleanFromConfig("feature", "message", "pic"))
@@ -45,23 +44,19 @@ class ServerListener(private val plugin: PlumBot) {
         }
     }
 
-    @Subscribe
-    fun onPreLogin(event: PreLoginEvent) {
-        if (!event.result.isAllowed) return
+    fun onPreLogin(event: PlayerSetupConnectEvent) {
+        if (event.isCancelled) return
         val lock = Object()
         val name = event.username
 
         if (plugin.config!!.getBooleanFromConfig("feature", "bind", "whitelist")) {
-            runTask {
+            runTaskAsync {
                 synchronized(lock) {
                     val qq = (plugin.database!!.getBind(name))
                     if (qq == 0L || qq == null) {
-                        event.result = PreLoginEvent.PreLoginComponentResult.denied(
-                            getComponentFromMiniMsg(
-                                plugin.messages.kickServer
+                        event.reason = plugin.messages.kickServer
                                     .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                            )
-                        )
+                        event.isCancelled = true
                         plugin.config!!.getLongListFromConfig("groups").forEach {
                             plugin.bot!!.sendMsg(
                                 true,
@@ -72,11 +67,11 @@ class ServerListener(private val plugin: PlumBot) {
                             )
                         }
                         lock.notifyAll()
-                        return@runTask
+                        return@runTaskAsync
                     }
                     if (!plugin.config!!.getBooleanFromConfig("feature", "joinAndLeave", "joinServer")) {
                         lock.notifyAll()
-                        return@runTask
+                        return@runTaskAsync
                     }
 //                    var isInGroup = false
 //                    val grouplock = Object()
@@ -120,7 +115,6 @@ class ServerListener(private val plugin: PlumBot) {
 //                            return@runTask
 //                        }
 //                    }
-                    event.result = PreLoginEvent.PreLoginComponentResult.allowed()
                     plugin.config!!.getLongListFromConfig("groups").forEach {
                         plugin.bot!!.sendMsg(
                             true,
@@ -131,7 +125,7 @@ class ServerListener(private val plugin: PlumBot) {
                         )
                     }
                     lock.notifyAll()
-                    return@runTask
+                    return@runTaskAsync
                 }
             }
             synchronized(lock){
@@ -147,20 +141,17 @@ class ServerListener(private val plugin: PlumBot) {
                 }
             }
         }
-        runTask {
-            plugin.database!!.setUUID(name, event.uniqueId!!)
+        runTaskAsync {
+            plugin.database!!.setUUID(name, event.uuid)
         }
     }
 
-    @Subscribe
-    fun onLeave(event: DisconnectEvent) {
-        if (event.loginStatus != DisconnectEvent.LoginStatus.SUCCESSFUL_LOGIN) return
+    fun onLeave(event: PlayerDisconnectEvent) {
         if (plugin.config!!.getBooleanFromConfig("feature", "joinAndLeave", "leaveServer")) {
             plugin.config!!.getLongListFromConfig("groups").forEach {
                 plugin.bot!!.sendMsg(true, it,
                     plugin.messages.leaveServer
-                        .replace("%player_name%", event.player.username)
-                        .replace("%server%", event.player.currentServer.get().serverInfo.name)
+                        .replace("%player_name%", event.playerRef.username)
                     , plugin.config!!.getBooleanFromConfig("feature", "joinAndLeave", "pic"))
             }
         }

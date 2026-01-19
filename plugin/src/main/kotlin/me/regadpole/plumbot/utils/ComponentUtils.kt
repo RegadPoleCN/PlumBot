@@ -1,8 +1,7 @@
 package me.regadpole.plumbot.utils
 
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.minimessage.MiniMessage
+import com.hypixel.hytale.server.core.Message
 
-fun getComponentFromMiniMsg(msg: String): Component {
-    return MiniMessage.miniMessage().deserialize(msg)
+fun getMessageFromString(msg: String): Message {
+    return Message.parse(msg)
 }

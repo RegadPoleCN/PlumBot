@@ -2,7 +2,7 @@ package me.regadpole.plumbot.listener
 
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.bot.Onebot
-import me.regadpole.plumbot.utils.runTask
+import me.regadpole.plumbot.utils.runTaskAsync
 import top.alazeprt.aonebot.event.Listener
 import top.alazeprt.aonebot.event.SubscribeBotEvent
 import top.alazeprt.aonebot.event.message.GroupMessageEvent
@@ -13,7 +13,7 @@ class OnebotListener(private val onebot: Onebot): Listener {
     @SubscribeBotEvent
     fun onGroupMessage(event: GroupMessageEvent) {
         if (!PlumBot.INSTANCE.config!!.getLongListFromConfig("groups").contains(event.groupId)) return
-        runTask{
+        runTaskAsync{
             onebot.handler?.onGroupMessage(event)
         }
     }
@@ -23,7 +23,7 @@ class OnebotListener(private val onebot: Onebot): Listener {
 
     @SubscribeBotEvent
     fun onGroupMemberDecrease(event: GroupMemberDecreaseEvent) {
-        runTask {
+        runTaskAsync {
             onebot.handler?.onUserDecrease(event)
         }
     }

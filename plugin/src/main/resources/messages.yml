@@ -1,14 +1,14 @@
 ver: "1.0"
 
-prefix: "<white>[<aqua>PlumBot<white>]<reset> "
+prefix: "[PlumBot] "
 
 load: "PlumBot enabled"
 unload: "PlumBot disabled"
 
 # group_name, group_id, user_nick, message, user_id, user_name
 ob2server: "[%group_name%] %user_name%: %message%"
-# server, player_name, message
-server2ob: "[%server%] %player_name%: %message%"
+# world, player_name, message
+server2ob: "[%world%] %player_name%: %message%"
 
 # player_list, player_num
 playerList: "Online Players: %player_list% for %player_num% players"
@@ -57,9 +57,9 @@ help:
   - "%cmdprefix%$deleteBind <游戏名>   - 移除白名单"
   - "%cmdprefix%$queryBind   - 查询自己申请的所有白名单"
 
-noCommandFound: "<red>请正确输入命令"
-commandAddBind: "<green>已将<aqua>%player%<green>添加至<aqua>%target_id%<green>的白名单"
-commandDeleteBindById: "<green>已将<aqua>%player%<green>从白名单中移除"
-commandDeleteBindByQQ: "<green>已将<aqua>%target_id%<green>的所有白名单中移除"
-commandQueryBindById: "<aqua>%player%<green>的白名单为<aqua>%target_id%"
-commandQueryBindByQQ: "<aqua>%target_id%<green>拥有白名单: <aqua>%player%"
+noCommandFound: "请正确输入命令"
+commandAddBind: "已将%player%添加至%target_id%的白名单"
+commandDeleteBindById: "已将%player%从白名单中移除"
+commandDeleteBindByQQ: "已将%target_id%的所有白名单中移除"
+commandQueryBindById: "%player%的白名单为%target_id%"
+commandQueryBindByQQ: "%target_id%拥有白名单: %player%"

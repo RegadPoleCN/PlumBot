@@ -1,11 +1,12 @@
 package me.regadpole.plumbot.listener
 
-import com.velocitypowered.api.proxy.server.RegisteredServer
+import com.hypixel.hytale.server.core.NameMatching
+import com.hypixel.hytale.server.core.universe.Universe
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.utils.WhitelistHelper
-import me.regadpole.plumbot.utils.getComponentFromMiniMsg
-import me.regadpole.plumbot.utils.runTask
+import me.regadpole.plumbot.utils.getMessageFromString
+import me.regadpole.plumbot.utils.runTaskAsync
 import top.alazeprt.aonebot.event.message.GroupMessageEvent
 import top.alazeprt.aonebot.event.notice.GroupMemberDecreaseEvent
 
@@ -38,10 +39,10 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 "image" -> message += "[图片]"
                 "at" -> {
                     val qq = jsonObject.get("data").asJsonObject.get("qq")
-                    if (qq.asString.equals("all", true)) {
-                        message += "@全体成员"
+                    message += if (qq.asString.equals("all", true)) {
+                        "@全体成员"
                     } else {
-                        message += bot.getGroupUserCard(event.groupId, qq.asLong)
+                        bot.getGroupUserCard(event.groupId, qq.asLong)
                     }
                 }
             }
@@ -103,8 +104,8 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
         if (!plugin.config!!.getBooleanFromConfig("feature", "message", "enable")) return
 
         if (plugin.config!!.getIntegerFromConfig("feature", "message", "mode") == 0) {
-            plugin.server.sendMessage(
-                getComponentFromMiniMsg(
+            Universe.get().sendMessage(
+                getMessageFromString(
                     // group_name, group_id, user_nick, message, user_id, user_name
                     plugin.messages.ob2server
                         .replace("%group_name%", bot.getGroupName(event.groupId))
@@ -128,8 +129,8 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 )!!
             ).matchesAt(message, 0)
         ) {
-            plugin.server.sendMessage(
-                getComponentFromMiniMsg(
+            Universe.get().sendMessage(
+                getMessageFromString(
                     plugin.messages.ob2server
                         // group_name, group_id, user_nick, message, user_id, user_name
                         .replace("%group_name%", bot.getGroupName(event.groupId))
@@ -395,12 +396,10 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             }
                             val target = plugin.database!!.getBind(arg)!!
                             plugin.database!!.removeBind(arg)
-                            val player = plugin.server.getPlayer(arg)
-                            if (player.isPresent) player.get().disconnect(
-                                getComponentFromMiniMsg(
+                            val player = Universe.get().getPlayerByUsername(arg, NameMatching.EXACT)
+                            player!!.packetHandler.disconnect(
                                     plugin.messages.kickServer
                                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                                )
                             )
                             var wl = plugin.database!!.getBind(target)
                             if (wl.isNullOrEmpty()) wl = LinkedHashMap()
@@ -445,12 +444,10 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 return
                             }
                             val target = plugin.database!!.removeBindByNum(arg[0].toLong(), arg[1].toInt())
-                            val player = plugin.server.getPlayer(target)
-                            if (player.isPresent) player.get().disconnect(
-                                getComponentFromMiniMsg(
+                            val player = Universe.get().getPlayerByUsername(target!!, NameMatching.EXACT)
+                            player!!.packetHandler.disconnect(
                                     plugin.messages.kickServer
                                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                                )
                             )
                             var wl = plugin.database!!.getBind(arg[0].toLong())
                             if (wl.isNullOrEmpty()) wl = LinkedHashMap()
@@ -470,7 +467,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                         "%user_nick%",
                                         bot.getGroupUserCard(groupId, arg[0].toLong())
                                     )
-                                    .replace("%target_player%", target!!)
+                                    .replace("%target_player%", target)
                                     .replace("%num%", wl.size.toString())
                                     .replace("%current%", wl.keys.toString()),
                                 plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
@@ -482,12 +479,11 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             }
             try {
                 val target = plugin.database!!.removeBindByNum(userId, message.toInt())
-                val player = plugin.server.getPlayer(target)
-                if (player.isPresent) player.get().disconnect(
-                    getComponentFromMiniMsg(
-                        plugin.messages.kickServer
-                            .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                    ))
+                val player = Universe.get().getPlayerByUsername(target!!, NameMatching.EXACT)
+                player!!.packetHandler.disconnect(
+                    plugin.messages.kickServer
+                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
+                )
                 var wl = plugin.database!!.getBind(userId)
                 if (wl.isNullOrEmpty()) wl = LinkedHashMap()
 //                    # user_nick, user_name, user_id, target_player, num, current
@@ -498,7 +494,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%user_id%", userId.toString())
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                        .replace("%target_player%", target!!)
+                        .replace("%target_player%", target)
                         .replace("%num%", wl.size.toString())
                         .replace("%current%", wl.keys.toString()),
                     plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
@@ -517,12 +513,11 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                     return
                 }
                 plugin.database!!.removeBind(message)
-                val player = plugin.server.getPlayer(message)
-                if (player.isPresent) player.get().disconnect(
-                    getComponentFromMiniMsg(
-                        plugin.messages.kickServer
-                            .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                    ))
+                val player = Universe.get().getPlayerByUsername(message, NameMatching.EXACT)
+                player!!.packetHandler.disconnect(
+                    plugin.messages.kickServer
+                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
+                )
                 var wl = plugin.database!!.getBind(userId)
                 if (wl.isNullOrEmpty()) wl = LinkedHashMap()
 //                    # user_nick, user_name, user_id, target_player, num, current
@@ -553,22 +548,15 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
     private fun onPlayerList(message: String, groupId: Long, userId: Long) {
         val newLine = 5
-        val list = plugin.server.allPlayers
-        val playerMap = mutableMapOf<RegisteredServer, List<String>>()
-        plugin.server.allServers.forEach {
-            playerMap[it] = it.playersConnected.map { player -> player.username }
-        }
+        var list = Universe.get().players
         var result = "\n"
-        playerMap.keys.forEach {
-            result += "${it.serverInfo.name}: "
-//            val player = playerMap[it].orEmpty().forEach { player -> result += "${player.username}, " }
-            while(playerMap[it].orEmpty().size > newLine) {
-                result += playerMap[it].orEmpty().slice(0..<newLine).joinToString(postfix = "\n  ")
-                playerMap[it] = playerMap[it].orEmpty().drop(newLine)
-            }
-            result += playerMap[it].orEmpty().joinToString()
-            result += "\n"
+        while(list.size > newLine) {
+            result += list.slice(0..<newLine).joinToString(postfix = "\n  ")
+            list = list.drop(newLine)
         }
+        result += list.joinToString()
+        result += "\n"
+
         bot.sendMsg(true, groupId,
 //            # player_list, player_num, max_player
             plugin.messages.playerList
@@ -578,14 +566,13 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
     }
 
     fun onUserDecrease(event: GroupMemberDecreaseEvent) {
-        runTask {
+        runTaskAsync {
             plugin.database!!.getBind(event.userId)?.keys?.forEach {
-                val player = plugin.server.getPlayer(it)
-                if (player.isPresent) player.get().disconnect(
-                    getComponentFromMiniMsg(
+                val player = Universe.get().getPlayerByUsername(it, NameMatching.EXACT)
+                player?.packetHandler?.disconnect(
                     plugin.messages.kickServer
                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                ))
+                )
             }
             plugin.database!!.removeBind(event.userId)
         }

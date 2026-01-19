@@ -1,26 +1,27 @@
 package me.regadpole.plumbot
 
 import com.hypixel.hytale.server.core.event.events.player.PlayerChatEvent
+import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent
+import com.hypixel.hytale.server.core.event.events.player.PlayerSetupConnectEvent
 import com.hypixel.hytale.server.core.plugin.JavaPlugin
 import com.hypixel.hytale.server.core.plugin.JavaPluginInit
-import com.velocitypowered.api.event.Subscribe
-import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
-import com.velocitypowered.api.scheduler.ScheduledTask
 import me.regadpole.config.DatabaseSource
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.config.ConfigMaker
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.api.database.IDatabase
 import me.regadpole.plumbot.bot.Onebot
+import me.regadpole.plumbot.command.PlumBotCommand
 import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.listener.ServerListener
 import me.regadpole.plumbot.utils.debug
 import me.regadpole.plumbot.utils.info
-import me.regadpole.plumbot.utils.runTask
-import me.regadpole.plumbot.utils.runTaskRepeat
+import me.regadpole.plumbot.utils.runTaskAsync
+import me.regadpole.plumbot.utils.runTaskRepeatAsync
 import taboolib.module.database.Database
 import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
+import java.util.concurrent.ScheduledFuture
 import kotlin.reflect.KMutableProperty
 import kotlin.time.Duration.Companion.minutes
 
@@ -36,8 +37,8 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
         INSTANCE = this
     }
 
-    private var autoReconnectTask: ScheduledTask? = null
-    private var botTask: ScheduledTask? = null
+    private var autoReconnectTask: ScheduledFuture<*>? = null
+    private var botTask: ScheduledFuture<*>? = null
     private var messagesConf: ConfigMaker? = null
     private var datasource: ConfigMaker? = null
     private lateinit var listener: ServerListener
@@ -62,19 +63,29 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
         info("Bot started!")
         registerCommand()
         info("Command registered!")
-        listener = ServerListener(this)
-        eventRegistry.register(PlayerChatEvent::class.java, listener::onChat)
+        registerListener()
         info("Listeners registered!")
     }
 
     override fun shutdown() {
+        HytaleScheduler.cancelAllTasks()
+        HytaleScheduler.shutdownScheduler()
+        HytaleScheduler.shutdownExecutor()
         bot!!.shutdown()
         info("Bot stopped!")
         database!!.close()
         info("Database closed!")
-        server.scheduler.tasksByPlugin(this).forEach {
-            it.cancel()
-        }
+    }
+
+    fun restart() {
+        bot!!.shutdown()
+        info("Bot stopped!")
+        database!!.close()
+        info("Database closed!")
+        HytaleScheduler.cancelAllTasks()
+        loadConfig()
+        loadDatabase()
+        loadBot()
     }
 
     fun loadConfig() {
@@ -113,30 +124,32 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
 
     fun loadBot() {
         bot = null
-        autoReconnectTask?.cancel()
-        botTask?.cancel()
+        autoReconnectTask?.cancel(true)
+        botTask?.cancel(true)
         autoReconnectTask = null
         botTask = null
 
-        botTask = runTask {
+        botTask = runTaskAsync {
             val addr = config!!.getStringFromConfig("bot", "address")
             val token = config!!.getStringFromConfig("bot", "token")
             val client = if (token.isNullOrEmpty()) WebsocketBotClient(addr!!.split(":")[0], addr.split(":")[1].toInt())
             else WebsocketBotClient(addr!!.split(":")[0], addr.split(":")[1].toInt(), token)
             bot = Onebot(config!!, client).start()
-            autoReconnectTask = runTaskRepeat(1.minutes) {
+            autoReconnectTask = runTaskRepeatAsync(1.minutes) {
                 if (!client.isConnected) client.connect()
             }
         }
     }
 
     private fun registerCommand() {
-        val commandManager = server.commandManager
-        val commandMeta = commandManager.metaBuilder("plumbot")
-            .aliases("pb")
-            .plugin(this)
-            .build()
-        val commandToRegister = PlumBotCommand.createBrigadierCommand(server, this)
-        commandManager.register(commandMeta, commandToRegister)
+        commandRegistry.registerCommand(PlumBotCommand(this))
     }
+
+    private fun registerListener() {
+        listener = ServerListener(this)
+        eventRegistry.registerGlobal(PlayerChatEvent::class.java, listener::onChat)
+        eventRegistry.registerGlobal(PlayerSetupConnectEvent::class.java, listener::onPreLogin)
+        eventRegistry.registerGlobal(PlayerDisconnectEvent::class.java, listener::onLeave)
+    }
+
 }

@@ -14,7 +14,7 @@ object Formatter {
 
     fun initialUrl(contents: List<String>) {
         remoteFilter.clear()
-        runTask {
+        runTaskAsync {
             contents.forEach { string ->
                 val pattern = Regex("\\$(regex|filter|replaceTo|url|path):\\{([^ ]+)\\}")
                 val keyValueMap = mutableMapOf<String, String>()

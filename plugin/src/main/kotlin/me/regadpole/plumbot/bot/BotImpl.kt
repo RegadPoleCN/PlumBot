@@ -1,7 +1,7 @@
 package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.utils.runTask
+import me.regadpole.plumbot.utils.runTaskAsync
 
 interface BotImpl: IBot {
 
@@ -13,7 +13,7 @@ interface BotImpl: IBot {
      */
     override fun sendMsg(isGroup: Boolean, targetId: Long, message: String?, isPic: Boolean) {
         if (message.isNullOrEmpty()) return
-        runTask {
+        runTaskAsync {
             if (isGroup) {
                 if (isPic) sendGroupPicWithText(targetId, message)
                 else sendGroupMsg(targetId, message.replace(Regex("&([0-9a-fklmnor])"), "").replace(Regex("§([0-9a-fklmnor])"), ""))
@@ -34,7 +34,7 @@ interface BotImpl: IBot {
      */
     override fun sendPictureWithText(isGroup: Boolean, targetId: Long, message: String?) {
         if (message.isNullOrEmpty()) return
-        runTask {
+        runTaskAsync {
             if (isGroup) sendGroupPicWithText(targetId, message)
             else sendUserPicWithText(targetId, message)
         }
