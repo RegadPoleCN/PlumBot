@@ -139,7 +139,7 @@ object HytaleScheduler {
     }
 
     private fun reportRunningTasks(predicate: Predicate<Thread>) {
-        Thread.getAllStackTraces().forEach { (thread: Thread?, stack: Array<StackTraceElement?>?) ->
+        Thread.getAllStackTraces().forEach { (thread: Thread, stack: Array<StackTraceElement>) ->
             if (predicate.test(thread)) {
                 warn(
                     """Thread ${thread.name} is blocked, and may be the reason for the slow shutdown!
