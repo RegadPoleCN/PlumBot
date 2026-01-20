@@ -188,17 +188,21 @@ class Onebot(private val config: ConfigMaker, override val client: WebsocketBotC
     }
 
     private fun refreshCache(groupId: Long, userId: Long): LinkedHashMap<String, String>{
-        val lock = Object()
-        var map = linkedMapOf("card" to userId.toString(), "name" to userId.toString())
-        client.action(GetGroupMemberInfo(groupId, userId)) {
-            synchronized(lock) {
-                map = linkedMapOf("card" to it.card, "name" to it.member.nickname)
-                lock.notifyAll()
+        try {
+            val lock = Object()
+            var map = linkedMapOf("card" to userId.toString(), "name" to userId.toString())
+            client.action(GetGroupMemberInfo(groupId, userId)) {
+                synchronized(lock) {
+                    map = linkedMapOf("card" to it.card, "name" to it.member.nickname)
+                    lock.notifyAll()
+                }
             }
-        }
-        synchronized(lock) {
-            lock.wait()
-            return map
+            synchronized(lock) {
+                lock.wait()
+                return map
+            }
+        } catch (_: Exception) {
+            return linkedMapOf()
         }
     }
 
