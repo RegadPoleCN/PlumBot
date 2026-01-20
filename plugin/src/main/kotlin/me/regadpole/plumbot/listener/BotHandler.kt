@@ -397,7 +397,6 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             val target = plugin.database!!.getBind(arg)!!
                             plugin.database!!.removeBind(arg)
                             val player = Universe.get().getPlayerByUsername(arg, NameMatching.EXACT)
-                            player?.let { Universe.get().removePlayer(it) }
                             player?.packetHandler?.disconnect(
                                     plugin.messages.kickServer
                                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
