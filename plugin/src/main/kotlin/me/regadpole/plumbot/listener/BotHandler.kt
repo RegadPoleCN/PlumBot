@@ -397,7 +397,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                             val target = plugin.database!!.getBind(arg)!!
                             plugin.database!!.removeBind(arg)
                             val player = Universe.get().getPlayerByUsername(arg, NameMatching.EXACT)
-                            player!!.packetHandler.disconnect(
+                            player?.packetHandler?.disconnect(
                                     plugin.messages.kickServer
                                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
                             )
@@ -497,8 +497,8 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                 return
                             }
                             val target = plugin.database!!.removeBindByNum(arg[0].toLong(), arg[1].toInt())
-                            val player = Universe.get().getPlayerByUsername(target!!, NameMatching.EXACT)
-                            player!!.packetHandler.disconnect(
+                            val player = target?.let { Universe.get().getPlayerByUsername(it, NameMatching.EXACT) }
+                            player?.packetHandler?.disconnect(
                                     plugin.messages.kickServer
                                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
                             )
@@ -520,7 +520,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                                         "%user_nick%",
                                         bot.getGroupUserCard(groupId, arg[0].toLong())
                                     )
-                                    .replace("%target_player%", target)
+                                    .replace("%target_player%", target.orEmpty())
                                     .replace("%num%", wl.size.toString())
                                     .replace("%current%", wl.keys.toString()),
                                 plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
@@ -532,8 +532,8 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             }
             try {
                 val target = plugin.database!!.removeBindByNum(userId, message.toInt())
-                val player = Universe.get().getPlayerByUsername(target!!, NameMatching.EXACT)
-                player!!.packetHandler.disconnect(
+                val player = target?.let { Universe.get().getPlayerByUsername(it, NameMatching.EXACT) }
+                player?.packetHandler?.disconnect(
                     plugin.messages.kickServer
                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
                 )
@@ -547,7 +547,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%user_id%", userId.toString())
                         .replace("%user_name%", bot.getGroupUserName(groupId, userId))
                         .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                        .replace("%target_player%", target)
+                        .replace("%target_player%", target.orEmpty())
                         .replace("%num%", wl.size.toString())
                         .replace("%current%", wl.keys.toString()),
                     plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
@@ -567,7 +567,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 }
                 plugin.database!!.removeBind(message)
                 val player = Universe.get().getPlayerByUsername(message, NameMatching.EXACT)
-                player!!.packetHandler.disconnect(
+                player?.packetHandler?.disconnect(
                     plugin.messages.kickServer
                         .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
                 )

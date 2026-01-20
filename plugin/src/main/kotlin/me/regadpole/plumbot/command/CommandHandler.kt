@@ -175,15 +175,14 @@ object CommandHandler {
             return
         }
         val target = plugin.database!!.removeBindByNum(qqId, args[1].toInt())
-        val player = Universe.get().getPlayerByUsername(target!!, NameMatching.EXACT)
-        player!!.packetHandler.disconnect(
+        val player = target?.let { Universe.get().getPlayerByUsername(it, NameMatching.EXACT) }
+        player?.packetHandler?.disconnect(
             plugin.messages.kickServer
                 .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
         )
-
         val message = plugin.messages.prefix +
                 plugin.messages.commandDeleteBindById
-                    .replace("%player%", target)
+                    .replace("%player%", target.orEmpty())
         source.sendMessage(message)
     }
 
