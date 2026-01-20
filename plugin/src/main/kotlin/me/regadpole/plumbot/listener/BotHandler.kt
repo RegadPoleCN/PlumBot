@@ -602,7 +602,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 
     private fun onPlayerList(message: String, groupId: Long, userId: Long) {
         val newLine = 5
-        var list = Universe.get().players
+        var list = Universe.get().players.stream().map { it.username }.toList()
         var result = "\n"
         while(list.size > newLine) {
             result += list.slice(0..<newLine).joinToString(postfix = "\n  ")
