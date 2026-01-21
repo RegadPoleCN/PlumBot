@@ -1,39 +1,85 @@
+# PlumBot 配置文件
+
 ver: "1.0"
+# 配置文件版本
 
 bot: 
     address: "localhost:8080"
+    # OneBot 服务器地址，格式: 主机名:端口
+    
     token: ""
+    # OneBot 访问令牌，为空表示不使用令牌
+
+# 管理员QQ号列表，可添加多个
 admins: 
     - 10000
+
+# 允许使用Bot的QQ群号，可添加多个
 groups: 
     - 10000
 
 feature: 
     cmdPrefix: "/"
+    # 命令前缀，所有QQ群命令需要以此开头
+    
     load: 
         enable: true
+        # 是否启用加载成功提示
+        
         pic: false
+        # 是否以图片形式发送加载消息
+    
     message: 
         enable: true
+        # 是否启用QQ群消息转发到游戏服务器
+        
         mode: 0
+        # 转发模式: 0=转发所有消息, 1=只转发带前缀的消息
+        
         prefix: "#"
+        # 当mode=1时，需要的前缀
+        
         pic: false
+        # 是否以图片形式发送转发提示
+    
     list: 
         enable: true
+        # 是否启用查询在线玩家
+        
         pic: true
+        # 是否以图片形式发送玩家列表
+    
     bind: 
         enable: true
+        # 是否启用绑定功能
+        
         whitelist: true
+        # 是否实际启用游戏白名单功能
+        
         maxNum: 1
+        # 每个QQ号最多可绑定的玩家数量
+        
         adminBypass: true
+        # 管理员是否不受最大绑定数量限制
+        
         pic: true
+        # 是否以图片形式发送绑定相关消息
+    
     joinAndLeave: 
         pic: false
+        # 是否以图片形式发送加入/离开提示
+        
         joinServer: true
+        # 是否在玩家加入服务器时发送提示
+        
         leaveServer: true
+        # 是否在玩家离开服务器时发送提示
+    
     img:
         file: "%plugin_folder%/MiSans-Normal.ttf"
+        # 字体文件路径，%plugin_folder% 会被替换为插件目录
 
+# 消息过滤配置
 # 特定格式化 不需要开启上面的格式化消息选项即可使用
 # 使用方式: 使用 $filter:{内容} 代表匹配指定内容 使用 $regex:{正则表达式} 代表使用正则表达式匹配内容
 # 使用 $url:{屏蔽词json文件地址} $path:{在json文件内词库列表对应的路径} 代表通过URL地址获取屏蔽词 (如不填写path, 则默认为words)
@@ -49,16 +95,29 @@ filter:
 
 database: 
     mode: "sqlite"
+    # 数据库模式: sqlite 或 mysql
+    
     sqlite:
-        # 数据库保存路径
         path: "%plugin_folder%/database.db"
+        # 数据库保存路径，%plugin_folder% 会被替换为插件目录
+    
     mysql:
         host: localhost
+        # 数据库主机地址
+        
         port: 3306
+        # 数据库端口
+        
         database: plumbot
+        # 数据库名称
+        
         user: plumbot
+        # 数据库用户名
+        
         password: plumbot
+        # 数据库密码
 
+# 别名列表
 keys: 
     list: ["在线人数"]
     addBind: ["申请白名单"]
