@@ -1,7 +1,7 @@
 {
   "Group": "RegadPole",
   "Name": "PlumBot",
-  "Version": "1.0-SNAPSHOT",
+  "Version": "3.0.0",
   "Description": "A bot plugin for QQ and Onebot.",
   "Authors": [
     {

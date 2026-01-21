@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.ext
-
 plugins {
     `maven-publish`
     java
@@ -9,7 +7,7 @@ plugins {
 }
 
 group = "me.regadpole"
-version = "1.0-SNAPSHOT"
+version = "3.0.0"
 
 repositories {
     mavenLocal()

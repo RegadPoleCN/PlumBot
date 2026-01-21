@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "me.regadpole"
-version = "1.0-SNAPSHOT"
+version = "3.0.0"
 
 repositories {
     mavenCentral()
