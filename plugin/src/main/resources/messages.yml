@@ -1,57 +1,104 @@
+
+# 配置文件版本号
 ver: "1.0"
 
+# 所有消息的前缀
 prefix: "[PlumBot] "
 
+# 插件加载完成时显示的消息
 load: "PlumBot enabled"
+
+# 插件卸载时显示的消息
 unload: "PlumBot disabled"
 
-# group_name, group_id, user_nick, message, user_id, user_name
+# QQ群消息转发到游戏服务器的格式
+# 可用变量: %group_name%(群名), %group_id%(群号), %user_nick%(用户群昵称), %message%(消息内容), %user_id%(用户QQ号), %user_name%(用户名)
 ob2server: "[%group_name%] %user_name%: %message%"
-# world, player_name, message
+
+# 游戏服务器消息转发到QQ群的格式
+# 可用变量: %world%(世界名), %player_name%(玩家名), %message%(消息内容)
 server2ob: "[%world%] %player_name%: %message%"
 
-# player_list, player_num
+# 在线玩家列表消息格式
+# 可用变量: %player_list%(玩家列表), %player_num%(在线玩家数量)
 playerList: "Online Players: %player_list% for %player_num% players"
 
-# player_name
+# 玩家加入服务器时的提示消息
+# 可用变量: %player_name%(玩家名)
 joinServer: "%player_name% join the server"
-# player_name
+
+# 玩家离开服务器时的提示消息
+# 可用变量: %player_name%(玩家名)
 leaveServer: "%player_name% leave the server"
 
-# groups
+# 踢出不在白名单的玩家时显示的消息
+# 可用变量: %groups%(QQ群列表)
 kickServer: "请加入qq群:xxx申请白名单"
-# player_name
+
+# 玩家因不在白名单被踢出时的消息
+# 可用变量: %player_name%(玩家名)
 kickPlatform: "%player_name%未在白名单内而被踢出服务器"
 
-# user_nick, user_name, user_id, target_player, num, current
+# 普通用户添加绑定成功的消息格式
+# 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
 playerAddBind: "%user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+
+# 普通用户删除绑定成功的消息格式
+# 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
 playerDeleteBind: "%user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
-# user_nick, user_name, user_id, num, current
+
+# 普通用户查询绑定信息的消息格式
+# 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %num%(绑定数量), %current%(当前绑定列表)
 playerQueryBind: "%user_id% now has %num% bind: %current%"
 
-# player_name, current, user_id, whitelist_limit, user_name, user_nick
+# 绑定数量已达上限时的错误消息
+# 可用变量: %player_name%(玩家名), %current%(当前绑定列表), %user_id%(用户QQ号), %whitelist_limit%(白名单限制数量), %user_name%(用户名), %user_nick%(用户群昵称)
 fullBind: "你能申请的白名单数额已满: %whitelist_limit%"
-# user_id, user_name, user_nick
+
+# 查询QQ号时发现没有绑定的消息
+# 可用变量: %user_id%(用户QQ号), %user_name%(用户名), %user_nick%(用户群昵称)
 qqEmptyBind: "您尚未申请白名单"
-# player
+
+# 查询玩家名时发现没有绑定的消息
+# 可用变量: %player%(玩家名)
 idEmptyBind: "id尚未申请白名单"
-# player_name
+
+# 玩家名已被他人绑定时的错误消息
+# 可用变量: %player_name%(玩家名)
 existsBind: "%player_name% 已被他人绑定!"
+
+# 玩家名尚未被任何人绑定时的消息
+# 可用变量: %player_name%(玩家名)
 notExistsBind: "%player_name% 暂未被人绑定过!"
+
+# 尝试删除不属于自己的绑定时显示的消息
+# 可用变量: %player_name%(玩家名)
 notBelongToYou: "%player_name% 不是由你绑定的!"
+
+# 命令使用错误时的通用提示消息
 wrongUsage: "请正确输入命令"
 
-# origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
+# 管理员为用户添加绑定的消息格式
+# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
 adminAddBind: "%origin_id% has sudo %user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+
+# 管理员为用户删除指定绑定的消息格式
+# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
 adminDeleteBind: "%origin_id% has sudo %user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
-# origin_id, origin_name, user_id, user_name, user_nick
+
+# 管理员删除用户所有绑定的消息格式
+# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称)
 adminDeleteAllBind: "%origin_id% has sudo deleted all the binds of %user_id%"
-# origin_id, origin_name, user_id, user_name, user_nick, num, current
+
+# 管理员查询QQ号绑定信息的消息格式
+# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称), %num%(绑定数量), %current%(当前绑定列表)
 adminQueryQQBind: "%user_id% now has %num% bind: %current%"
-# origin_id, origin_name, user_id, user_name, user_nick, player
+
+# 管理员查询玩家名绑定信息的消息格式
+# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(绑定者QQ号), %user_name%(绑定者用户名), %user_nick%(绑定者群昵称), %player%(玩家名)
 adminQueryIdBind: "%player% now has been bind by %user_id%"
 
-# cmdprefix
+# 帮助信息的配置
 help:
   - "PlumBot 帮助"
   - "%cmdprefix%$list   - 查看在线人数"
@@ -59,9 +106,25 @@ help:
   - "%cmdprefix%$deleteBind <游戏名>   - 移除白名单"
   - "%cmdprefix%$queryBind   - 查询自己申请的所有白名单"
 
+# 找不到命令时的错误消息
 noCommandFound: "请正确输入命令"
+
+# 游戏内命令添加绑定成功的消息
+# 可用变量: %player%(玩家名), %target_id%(目标QQ号)
 commandAddBind: "已将%player%添加至%target_id%的白名单"
+
+# 游戏内命令通过玩家名删除绑定的消息
+# 可用变量: %player%(玩家名)
 commandDeleteBindById: "已将%player%从白名单中移除"
+
+# 游戏内命令通过QQ号删除所有绑定的消息
+# 可用变量: %target_id%(目标QQ号)
 commandDeleteBindByQQ: "已将%target_id%的所有白名单中移除"
+
+# 游戏内命令通过玩家名查询绑定的消息
+# 可用变量: %player%(玩家名), %target_id%(绑定QQ号)
 commandQueryBindById: "%player%的白名单为%target_id%"
+
+# 游戏内命令通过QQ号查询绑定的消息
+# 可用变量: %target_id%(目标QQ号), %player%(玩家名列表)
 commandQueryBindByQQ: "%target_id%拥有白名单: %player%"
