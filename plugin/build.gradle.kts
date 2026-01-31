@@ -24,7 +24,9 @@ repositories {
     maven("https://repo.opencollab.dev/main/") {
         name = "opencollab-snapshot"
     }
-    maven ("https://nexus.lucko.me/repository/maven-hytale/")
+    maven("https://maven.hytale.com/release/") {
+        name = "hytale"    
+    }
 }
 
 dependencies {
