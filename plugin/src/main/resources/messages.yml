@@ -98,6 +98,7 @@ adminQueryQQBind: "%user_id% now has %num% bind: %current%"
 # 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(绑定者QQ号), %user_name%(绑定者用户名), %user_nick%(绑定者群昵称), %player%(玩家名)
 adminQueryIdBind: "%player% now has been bind by %user_id%"
 
+# 远程执行命令返回值为空时向群内发送的消息
 remoteCommandEmptyResult: "Empty result"
 
 # 帮助信息的配置
