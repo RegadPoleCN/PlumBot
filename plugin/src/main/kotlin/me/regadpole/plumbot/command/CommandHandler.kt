@@ -3,6 +3,7 @@ package me.regadpole.plumbot.command
 import com.hypixel.hytale.server.core.NameMatching
 import com.hypixel.hytale.server.core.universe.Universe
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.internal.PlumBotCommandSource
 import me.regadpole.plumbot.utils.WhitelistHelper
 
 object CommandHandler {

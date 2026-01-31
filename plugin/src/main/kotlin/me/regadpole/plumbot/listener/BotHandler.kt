@@ -4,6 +4,7 @@ import com.hypixel.hytale.server.core.NameMatching
 import com.hypixel.hytale.server.core.universe.Universe
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.bot.IBot
+import me.regadpole.plumbot.internal.dispatcher.CommandDispatcher
 import me.regadpole.plumbot.utils.WhitelistHelper
 import me.regadpole.plumbot.utils.getMessageFromString
 import me.regadpole.plumbot.utils.runTaskAsync
@@ -97,6 +98,18 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 )
             ) {
                 onWhitelistQuery(message.replace("$prefix$it", ""), event.groupId, event.senderId)
+                return
+            }
+        }
+        keys.getStringListFromConfig("cmd").forEach {
+            val regexString = """$prefix$it (.+)"""
+            if (regexString.toRegex().matches(message) && plugin.config!!.getBooleanFromConfig(
+                    "feature",
+                    "cmd",
+                    "enable"
+                )
+            ) {
+                onRemoteCommand(message.replace("$prefix$it ", ""), event.groupId, event.senderId)
                 return
             }
         }
@@ -615,6 +628,14 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
             plugin.messages.playerList
                 .replace("%player_list%", result)
                 .replace("%player_num%", list.size.toString()), plugin.config!!.getBooleanFromConfig("feature", "list", "pic"))
+        return
+    }
+
+    private fun onRemoteCommand(message: String, groupId: Long, userId: Long) {
+        runTaskAsync{
+            val result = CommandDispatcher().dispatch(message)
+            bot.sendMsg(true, groupId, result, plugin.config!!.getBooleanFromConfig("feature", "cmd", "pic"))
+        }
         return
     }
 

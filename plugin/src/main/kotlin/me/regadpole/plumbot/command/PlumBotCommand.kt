@@ -3,6 +3,7 @@ package me.regadpole.plumbot.command
 import com.hypixel.hytale.server.core.command.system.AbstractCommand
 import com.hypixel.hytale.server.core.command.system.CommandContext
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.internal.PlumBotCommandSource
 import me.regadpole.plumbot.utils.getMessageFromString
 import java.util.*
 import java.util.concurrent.CompletableFuture

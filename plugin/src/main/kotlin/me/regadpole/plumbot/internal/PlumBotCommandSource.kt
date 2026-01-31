@@ -1,4 +1,4 @@
-package me.regadpole.plumbot.command
+package me.regadpole.plumbot.internal
 
 /**
  * 命令发送者接口

@@ -74,7 +74,9 @@ feature:
         
         leaveServer: true
         # 是否在玩家离开服务器时发送提示
-    
+    cmd:
+        enable: true
+        pic: true
     img:
         file: "%plugin_folder%/MiSans-Normal.ttf"
         # 字体文件路径，%plugin_folder% 会被替换为插件目录
@@ -123,3 +125,4 @@ keys:
     addBind: ["申请白名单"]
     deleteBind: ["删除白名单"]
     queryBind: ["查询白名单"]
+    cmd: ["cmd"]

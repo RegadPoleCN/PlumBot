@@ -14,6 +14,7 @@ import me.regadpole.plumbot.bot.Onebot
 import me.regadpole.plumbot.command.PlumBotCommand
 import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
+import me.regadpole.plumbot.internal.dispatcher.CommandDispatcher
 import me.regadpole.plumbot.listener.ServerListener
 import me.regadpole.plumbot.utils.debug
 import me.regadpole.plumbot.utils.info
@@ -71,6 +72,7 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
         HytaleScheduler.cancelAllTasks()
         HytaleScheduler.shutdownScheduler()
         HytaleScheduler.shutdownExecutor()
+        CommandDispatcher.clear()
         bot!!.shutdown()
         info("Bot stopped!")
         database!!.close()
@@ -83,6 +85,7 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
         database!!.close()
         info("Database closed!")
         HytaleScheduler.cancelAllTasks()
+        CommandDispatcher.clear()
         loadConfig()
         loadDatabase()
         loadBot()

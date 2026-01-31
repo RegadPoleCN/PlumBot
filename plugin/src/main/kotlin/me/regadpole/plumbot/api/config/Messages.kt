@@ -34,6 +34,7 @@ class Messages: Cloneable {
     lateinit var adminDeleteAllBind: String
     lateinit var adminQueryIdBind: String
     lateinit var adminQueryQQBind: String
+    lateinit var remoteCommandEmptyResult: String
 
     lateinit var help: List<String>
 
