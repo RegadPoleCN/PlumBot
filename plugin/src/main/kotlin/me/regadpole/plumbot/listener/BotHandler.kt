@@ -637,6 +637,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
     }
 
     private fun onRemoteCommand(message: String, groupId: Long, userId: Long) {
+        if (!plugin.config!!.getLongListFromConfig("admins").contains(userId)) return
         runTaskAsync{
             val result = CommandDispatcher().dispatch(message)
             bot.sendMsg(true, groupId, result, plugin.config!!.getBooleanFromConfig("feature", "cmd", "pic"))
