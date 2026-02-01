@@ -5,6 +5,7 @@ import com.hypixel.hytale.server.core.event.events.player.PlayerDisconnectEvent
 import com.hypixel.hytale.server.core.event.events.player.PlayerSetupConnectEvent
 import com.hypixel.hytale.server.core.universe.Universe
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.utils.Formatter
 import me.regadpole.plumbot.utils.runTaskAsync
 
 
@@ -15,9 +16,10 @@ class ServerListener(private val plugin: PlumBot) {
         if (event.isCancelled) return
         if (!plugin.config!!.getBooleanFromConfig("feature", "message", "enable")) return
 
-        val message = event.content.replace(Regex("&([0-9a-fklmnor])")) { matchResult ->
+        var message = event.content.replace(Regex("&([0-9a-fklmnor])")) { matchResult ->
             "§" + matchResult.groupValues[1]
         }.replace(Regex("#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})"), "")
+        message = Formatter.regexFilter(message)
         if (plugin.config!!.getIntegerFromConfig("feature", "message", "mode") == 0) {
 //          # server, player_name, message
             plugin.config!!.getLongListFromConfig("groups").forEach {

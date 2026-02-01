@@ -11,11 +11,20 @@ import javax.net.ssl.HttpsURLConnection
 object Formatter {
 
     private val remoteFilter = mutableMapOf<String, List<String>>()
+    private val filter = mutableListOf<String>()
 
-    fun initialUrl(contents: List<String>) {
+    fun addFilter(contents: List<String?>) {
+        filter.clear()
+        if (contents.isEmpty()) return
+        contents.forEach { string -> if (!string.isNullOrBlank()) filter.add(string)}
+    }
+
+    fun initialUrl(contents: List<String?>) {
+        if (contents.isEmpty()) return
         remoteFilter.clear()
         runTaskAsync {
             contents.forEach { string ->
+                if (string.isNullOrBlank()) return@forEach
                 val pattern = Regex("\\$(regex|filter|replaceTo|url|path):\\{([^ ]+)\\}")
                 val keyValueMap = mutableMapOf<String, String>()
                 for (match in pattern.findAll(string)) {
@@ -99,6 +108,10 @@ object Formatter {
             newString = regexFilter(it, newString)
         }
         return newString
+    }
+
+    fun regexFilter(string: String): String {
+        return regexFilter(filter, string)
     }
 
     fun pluginClear(string: String): String {

@@ -16,13 +16,11 @@ import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.dispatcher.CommandDispatcher
 import me.regadpole.plumbot.listener.ServerListener
-import me.regadpole.plumbot.utils.debug
-import me.regadpole.plumbot.utils.info
-import me.regadpole.plumbot.utils.runTaskAsync
-import me.regadpole.plumbot.utils.runTaskRepeatAsync
+import me.regadpole.plumbot.utils.*
 import taboolib.module.database.Database
 import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
 import java.util.concurrent.ScheduledFuture
+import kotlin.error
 import kotlin.reflect.KMutableProperty
 import kotlin.time.Duration.Companion.minutes
 
@@ -66,6 +64,9 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
         info("Command registered!")
         registerListener()
         info("Listeners registered!")
+        Formatter.addFilter(config!!.getStringListFromConfig("filter"))
+        Formatter.initialUrl(config!!.getStringListFromConfig("filter"))
+        info("formatter loaded")
     }
 
     override fun shutdown() {
@@ -89,6 +90,9 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
         loadConfig()
         loadDatabase()
         loadBot()
+        Formatter.addFilter(config!!.getStringListFromConfig("filter"))
+        Formatter.initialUrl(config!!.getStringListFromConfig("filter"))
+        info("formatter loaded")
     }
 
     fun loadConfig() {

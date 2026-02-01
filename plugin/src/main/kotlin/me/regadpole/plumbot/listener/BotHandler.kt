@@ -5,6 +5,7 @@ import com.hypixel.hytale.server.core.universe.Universe
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.internal.dispatcher.CommandDispatcher
+import me.regadpole.plumbot.utils.Formatter
 import me.regadpole.plumbot.utils.WhitelistHelper
 import me.regadpole.plumbot.utils.getMessageFromString
 import me.regadpole.plumbot.utils.runTaskAsync
@@ -117,6 +118,8 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
         if (!plugin.config!!.getBooleanFromConfig("feature", "message", "enable")) return
 
         if (plugin.config!!.getIntegerFromConfig("feature", "message", "mode") == 0) {
+            message = Formatter.regexFilter(message)
+            if (message == "!CANCEL") return
             Universe.get().sendMessage(
                 getMessageFromString(
                     // group_name, group_id, user_nick, message, user_id, user_name
@@ -142,6 +145,8 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 )!!
             ).matchesAt(message, 0)
         ) {
+            message = Formatter.regexFilter(message.replace(plugin.config!!.getStringFromConfig("feature", "message", "prefix")!!, ""))
+            if (message == "!CANCEL") return
             Universe.get().sendMessage(
                 getMessageFromString(
                     plugin.messages.ob2server
@@ -149,7 +154,7 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                         .replace("%group_name%", bot.getGroupName(event.groupId))
                         .replace("%group_id%", event.groupId.toString())
                         .replace("%user_nick%", bot.getGroupUserCard(event.groupId, event.senderId))
-                        .replace("%message%", message.replace(plugin.config!!.getStringFromConfig("feature", "message", "prefix")!!, ""))
+                        .replace("%message%", message)
                         .replace("%user_id%", event.senderId.toString())
                         .replace(
                             "%user_name%",
