@@ -20,7 +20,6 @@ import me.regadpole.plumbot.utils.*
 import taboolib.module.database.Database
 import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
 import java.util.concurrent.ScheduledFuture
-import kotlin.error
 import kotlin.reflect.KMutableProperty
 import kotlin.time.Duration.Companion.minutes
 
@@ -122,7 +121,10 @@ class PlumBot(init: JavaPluginInit) : JavaPlugin(init) {
         database = when (mode) {
             "sqlite" -> SQLite()
             "mysql" -> MySQL()
-            else -> error("Unknown database type.")
+            else -> {
+                error("Unknown database type.")
+                null
+            }
         }
         debug("database -> $database")
 
