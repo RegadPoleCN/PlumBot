@@ -2,6 +2,9 @@ package me.regadpole.plumbot.internal.dispatcher
 
 import com.hypixel.hytale.server.core.Message
 import com.hypixel.hytale.server.core.command.system.CommandSender
+import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.api.PlumBotAPI
+import me.regadpole.plumbot.api.config.Messages
 import java.util.*
 
 class PlumBotCommandSender internal constructor(private val num: Int): CommandSender {
@@ -9,6 +12,8 @@ class PlumBotCommandSender internal constructor(private val num: Int): CommandSe
 
     override fun sendMessage(message: Message) {
         message.rawText?.let { CommandDispatcher.result.put(num, it) }
+            ?: message.formattedMessage.rawText?.let { CommandDispatcher.result.put(num, it) }
+            ?: CommandDispatcher.result.put(num, PlumBot.INSTANCE.messages.remoteCommandEmptyResult)
     }
 
     override fun hasPermission(p0: String): Boolean {

@@ -33,10 +33,9 @@ class CommandDispatcher {
         tasks[num] = task
         task.join()
         tasks.remove(num)
-        var r = result[num]
-        if (r.isNullOrEmpty()) r= PlumBot.INSTANCE.messages.remoteCommandEmptyResult
-        else result.remove(num)
+        val r = result[num]
+        result.remove(num)
         availableNum.add(num)
-        return r
+        return r ?: PlumBot.INSTANCE.messages.remoteCommandEmptyResult
     }
 }
