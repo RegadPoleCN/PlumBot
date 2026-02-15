@@ -6,7 +6,7 @@
 name: PlumBot-hytale build
 on:
   push:
-    branches: [ "hytale" ]
+    branches: [ "hytale", "dev" ]
   workflow_dispatch:
 
 jobs:
