@@ -1,3 +1,6 @@
 # Project exclude paths
 /.gradle/
 /build/
+.trae/documents/*
+.vscode/*
+!.vscode/extensions.json
