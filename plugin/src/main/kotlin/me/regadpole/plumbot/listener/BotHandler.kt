@@ -15,7 +15,7 @@ import top.alazeprt.aonebot.event.notice.GroupMemberDecreaseEvent
 class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
     fun onGroupMessage(event: GroupMessageEvent) {
 //        val lock = Object()
-        var message = ""
+        val message = parseGroupMessage(event)
 
 //        (bot as Onebot).client.action(GetGroupMemberList(event.groupId)) { memberList ->
 //            synchronized(lock) {
@@ -34,6 +34,17 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
 //                lock.notifyAll()
 //            }
 //        }
+
+//        synchronized(lock) {
+//            lock.wait()
+        if (handleBotCommands(message, event.groupId, event.senderId)) return
+
+        forwardToGameServer(message, event)
+//        }
+    }
+
+    private fun parseGroupMessage(event: GroupMessageEvent): String {
+        var message = ""
         event.jsonMessage.forEach {
             val jsonObject = it.asJsonObject ?: return@forEach
             when (jsonObject.get("type").asString) {
@@ -49,571 +60,353 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
                 }
             }
         }
+        return message
+    }
 
-//        synchronized(lock) {
-//            lock.wait()
+    private fun handleBotCommands(message: String, groupId: Long, userId: Long): Boolean {
         val keys = plugin.config!!.getConfigMaker("keys")
         val prefix = plugin.config!!.getStringFromConfig("feature", "cmdPrefix")
-        keys.getStringListFromConfig("list").forEach {
-            val regexString = """$prefix$it"""
-            if (regexString.toRegex().matches(message) && plugin.config!!.getBooleanFromConfig(
-                    "feature",
-                    "list",
-                    "enable"
-                )
-            ) {
-                onPlayerList(message.replace("$prefix$it", ""), event.groupId, event.senderId)
-                return
-            }
-        }
-        keys.getStringListFromConfig("addBind").forEach {
-            val regexString = """$prefix$it (.+)"""
-            if (regexString.toRegex().matches(message) && plugin.config!!.getBooleanFromConfig(
-                    "feature",
-                    "bind",
-                    "enable"
-                )
-            ) {
-                onWhitelistApply(message.replace("$prefix$it ", ""), event.groupId, event.senderId)
-                return
-            }
-        }
-        keys.getStringListFromConfig("deleteBind").forEach {
-            val regexString = """$prefix$it (.+)"""
-            if (regexString.toRegex().matches(message) && plugin.config!!.getBooleanFromConfig(
-                    "feature",
-                    "bind",
-                    "enable"
-                )
-            ) {
-                onWhitelistRemove(message.replace("$prefix$it ", ""), event.groupId, event.senderId)
-                return
-            }
-        }
-        keys.getStringListFromConfig("queryBind").forEach {
-            val regexString = """$prefix$it(.*)"""
-            if (regexString.toRegex().matches(message) && plugin.config!!.getBooleanFromConfig(
-                    "feature",
-                    "bind",
-                    "enable"
-                )
-            ) {
-                onWhitelistQuery(message.replace("$prefix$it", ""), event.groupId, event.senderId)
-                return
-            }
-        }
-        keys.getStringListFromConfig("cmd").forEach {
-            val regexString = """$prefix$it (.+)"""
-            if (regexString.toRegex().matches(message) && plugin.config!!.getBooleanFromConfig(
-                    "feature",
-                    "cmd",
-                    "enable"
-                )
-            ) {
-                onRemoteCommand(message.replace("$prefix$it ", ""), event.groupId, event.senderId)
-                return
-            }
-        }
 
+        val commandMatchers = listOf(
+            "list" to { msg: String -> onPlayerList(msg, groupId, userId) },
+            "addBind" to { msg: String -> onWhitelistApply(msg, groupId, userId) },
+            "deleteBind" to { msg: String -> onWhitelistRemove(msg, groupId, userId) },
+            "queryBind" to { msg: String -> onWhitelistQuery(msg, groupId, userId) },
+            "cmd" to { msg: String -> onRemoteCommand(msg, groupId, userId) }
+        )
+
+        for ((key, action) in commandMatchers) {
+            val featureKey = if (key == "addBind" || key == "deleteBind" || key == "queryBind") "bind" else key
+            if (!plugin.config!!.getBooleanFromConfig("feature", featureKey, "enable")) continue
+
+            keys.getStringListFromConfig(key).forEach {
+                val regex = when (key) {
+                    "list" -> """$prefix$it"""
+                    "queryBind" -> """$prefix$it(.*)"""
+                    else -> """$prefix$it (.+)"""
+                }.toRegex()
+
+                if (regex.matches(message)) {
+                    val args = message.replace(Regex("""$prefix$it\s*"""), "")
+                    action(args)
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private fun forwardToGameServer(message: String, event: GroupMessageEvent) {
         if (!plugin.config!!.getBooleanFromConfig("feature", "message", "enable")) return
 
-        if (plugin.config!!.getIntegerFromConfig("feature", "message", "mode") == 0) {
-            message = Formatter.regexFilter(message)
-            if (message == "!CANCEL") return
-            Universe.get().sendMessage(
-                getMessageFromString(
-                    // group_name, group_id, user_nick, message, user_id, user_name
-                    plugin.messages.ob2server
-                        .replace("%group_name%", bot.getGroupName(event.groupId))
-                        .replace("%group_id%", event.groupId.toString())
-                        .replace("%user_nick%", bot.getGroupUserCard(event.groupId, event.senderId))
-                        .replace("%message%", message)
-                        .replace("%user_id%", event.senderId.toString())
-                        .replace(
-                            "%user_name%",
-                            bot.getGroupUserName(event.groupId, event.senderId)
-                        )
-                )
-            )
-            return
-        } else if (plugin.config!!.getIntegerFromConfig("feature", "message", "mode") == 1 &&
-            Regex(
-                plugin.config!!.getStringFromConfig(
-                    "feature",
-                    "message",
-                    "prefix"
-                )!!
-            ).matchesAt(message, 0)
-        ) {
-            message = Formatter.regexFilter(message.replace(plugin.config!!.getStringFromConfig("feature", "message", "prefix")!!, ""))
-            if (message == "!CANCEL") return
-            Universe.get().sendMessage(
-                getMessageFromString(
-                    plugin.messages.ob2server
-                        // group_name, group_id, user_nick, message, user_id, user_name
-                        .replace("%group_name%", bot.getGroupName(event.groupId))
-                        .replace("%group_id%", event.groupId.toString())
-                        .replace("%user_nick%", bot.getGroupUserCard(event.groupId, event.senderId))
-                        .replace("%message%", message)
-                        .replace("%user_id%", event.senderId.toString())
-                        .replace(
-                            "%user_name%",
-                            bot.getGroupUserName(event.groupId, event.senderId)
-                        )
-                )
-            )
-            return
+        val mode = plugin.config!!.getIntegerFromConfig("feature", "message", "mode")
+        val prefix = plugin.config!!.getStringFromConfig("feature", "message", "prefix") ?: ""
+        
+        val shouldForward = when (mode) {
+            0 -> true
+            1 -> Regex(prefix).matchesAt(message, 0)
+            else -> false
         }
-//        }
+
+        if (shouldForward) {
+            val content = if (mode == 1) message.replace(prefix, "") else message
+            val filteredMsg = Formatter.regexFilter(content)
+            if (filteredMsg == "!CANCEL") return
+
+            val finalMsg = replacePlaceholders(
+                plugin.messages.ob2server,
+                groupId = event.groupId,
+                userId = event.senderId,
+                message = filteredMsg
+            )
+            Universe.get().sendMessage(getMessageFromString(finalMsg))
+        }
+    }
+
+    private fun replacePlaceholders(
+        template: String,
+        groupId: Long? = null,
+        userId: Long? = null,
+        originId: Long? = null,
+        message: String? = null,
+        player: String? = null,
+        num: Int? = null,
+        current: String? = null,
+        whitelistLimit: Int? = null,
+        playerNum: Int? = null,
+        playerList: String? = null
+    ): String {
+        var result = template
+        groupId?.let {
+            result = result.replace("%group_id%", it.toString())
+            result = result.replace("%group_name%", bot.getGroupName(it))
+        }
+        userId?.let {
+            result = result.replace("%user_id%", it.toString())
+            result = result.replace("%user_name%", bot.getGroupUserName(groupId ?: 0, it))
+            result = result.replace("%user_nick%", bot.getGroupUserCard(groupId ?: 0, it))
+        }
+        originId?.let {
+            result = result.replace("%origin_id%", it.toString())
+            result = result.replace("%origin_name%", bot.getGroupUserCard(groupId ?: 0, it))
+        }
+        message?.let { result = result.replace("%message%", it) }
+        player?.let { result = result.replace("%player%", it).replace("%player_name%", it) }
+        num?.let { result = result.replace("%num%", it.toString()) }
+        current?.let { result = result.replace("%current%", it) }
+        whitelistLimit?.let { result = result.replace("%whitelist_limit%", it.toString()) }
+        playerNum?.let { result = result.replace("%player_num%", it.toString()) }
+        playerList?.let { result = result.replace("%player_list%", it) }
+
+        return result
+    }
+
+    private fun isAdmin(userId: Long): Boolean = plugin.config!!.getLongListFromConfig("admins").contains(userId)
+
+    private fun sendBotMsg(groupId: Long, msg: String, feature: String = "bind") {
+        bot.sendMsg(true, groupId, msg, plugin.config!!.getBooleanFromConfig("feature", feature, "pic"))
+    }
+
+    private fun kickPlayer(playerName: String) {
+        val player = Universe.get().getPlayerByUsername(playerName, NameMatching.EXACT)
+        player?.packetHandler?.disconnect(
+            plugin.messages.kickServer.replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
+        )
     }
 
     private fun onWhitelistApply(message: String, groupId: Long, userId: Long) {
         try {
-            if (plugin.config!!.getLongListFromConfig("admins").contains(userId)) {
+            if (isAdmin(userId)) {
                 val args = message.split(" ")
-                when (args.size) {
-                    1 -> {
-                        if (WhitelistHelper.getInstance(plugin).checkPlayerExists(message)) {
-                            val msg = plugin.messages.existsBind
-//                        # player_name
-                                .replace("%player_name%", message)
-                            bot.sendMsg(
-                                true,
-                                groupId,
-                                msg,
-                                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                            )
-                            return
-                        }
-                        plugin.database!!.addBind(userId, message)
-                        val wl = plugin.database!!.getBind(userId)!!
-//                    # user_nick, user_name, user_id, target_player, num, current
-                        bot.sendMsg(
-                            true,
-                            groupId,
-                            plugin.messages.playerAddBind
-                                .replace("%user_id%", userId.toString())
-                                .replace("%user_name%", bot.getGroupUserName(groupId, userId))
-                                .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                                .replace("%target_player%", message)
-                                .replace("%num%", wl.size.toString())
-                                .replace("%current%", wl.keys.toString()),
-                            plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                        )
-                        return
-                    }
-
-                    2 -> {
-                        if (WhitelistHelper.getInstance(plugin).checkPlayerExists(args[1])) {
-                            val msg = plugin.messages.existsBind
-//                        # player_name
-                                .replace("%player_name%", args[1])
-                            bot.sendMsg(
-                                true,
-                                groupId,
-                                msg,
-                                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                            )
-                            return
-                        }
-                        plugin.database!!.addBind(args[0].toLong(), args[1])
-                        val wl = plugin.database!!.getBind(args[0].toLong())!!
-                        bot.sendMsg(
-                            true,
-                            groupId,
-//                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                            plugin.messages.adminAddBind
-                                .replace("%origin_id%", userId.toString())
-                                .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
-                                .replace("%user_id%", args[0])
-                                .replace("%user_name%", bot.getGroupUserName(groupId, args[0].toLong()))
-                                .replace("%user_nick%", bot.getGroupUserCard(groupId, args[0].toLong()))
-                                .replace("%target_player%", args[1])
-                                .replace("%num%", wl.size.toString())
-                                .replace("%current%", wl.keys.toString()),
-                            plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                        )
-                        return
-                    }
+                val (targetId, playerName) = if (args.size == 1) userId to message else args[0].toLong() to args[1]
+                
+                if (WhitelistHelper.getInstance(plugin).checkPlayerExists(playerName)) {
+                    val msg = replacePlaceholders(plugin.messages.existsBind, player = playerName)
+                    sendBotMsg(groupId, msg)
+                    return
                 }
+
+                plugin.database!!.addBind(targetId, playerName)
+                val wl = plugin.database!!.getBind(targetId)!!
+                val template = if (args.size == 1) plugin.messages.playerAddBind else plugin.messages.adminAddBind
+                val msg = replacePlaceholders(
+                    template,
+                    groupId = groupId,
+                    userId = if (args.size == 2) targetId else userId,
+                    originId = if (args.size == 2) userId else null,
+                    player = playerName,
+                    num = wl.size,
+                    current = wl.keys.toString()
+                )
+                
+                sendBotMsg(groupId, msg)
             } else {
                 if (WhitelistHelper.getInstance(plugin).checkUserBindingFull(userId)) {
                     val wl = plugin.database!!.getBind(userId)!!
-                    val msg = plugin.messages.fullBind
-//                        # player_name, current, user_id, whitelist_limit, user_name, user_nick
-                        .replace("%player_name%", wl.keys.toString())
-                        .replace("%current%", wl.size.toString())
-                        .replace("%user_id%", userId.toString())
-                        .replace(
-                            "%whitelist_limit%",
-                            plugin.config!!.getIntegerFromConfig("feature", "bind", "maxNum").toString()
-                        )
-                        .replace("%user_name%", bot.getGroupUserName(groupId, userId))
-                        .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                    bot.sendMsg(true, groupId, msg, plugin.config!!.getBooleanFromConfig("feature", "bind", "pic"))
+                    val msg = replacePlaceholders(
+                        plugin.messages.fullBind,
+                        groupId = groupId,
+                        userId = userId,
+                        player = wl.keys.toString(),
+                        num = wl.size,
+                        whitelistLimit = plugin.config!!.getIntegerFromConfig("feature", "bind", "maxNum")
+                    )
+                    sendBotMsg(groupId, msg)
                     return
                 }
+                
                 if (WhitelistHelper.getInstance(plugin).checkPlayerExists(message)) {
-                    val msg = plugin.messages.existsBind
-//                        # player_name
-                        .replace("%player_name%", message)
-                    bot.sendMsg(true, groupId, msg, plugin.config!!.getBooleanFromConfig("feature", "bind", "pic"))
+                    val msg = replacePlaceholders(plugin.messages.existsBind, player = message)
+                    sendBotMsg(groupId, msg)
                     return
                 }
+
                 plugin.database!!.addBind(userId, message)
                 val wl = plugin.database!!.getBind(userId)!!
-//                    # user_nick, user_name, user_id, target_player, num, current
-                bot.sendMsg(
-                    true,
-                    groupId,
-                    plugin.messages.playerAddBind
-                        .replace("%user_id%", userId.toString())
-                        .replace("%user_name%", bot.getGroupUserName(groupId, userId))
-                        .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                        .replace("%target_player%", message)
-                        .replace("%num%", wl.size.toString())
-                        .replace("%current%", wl.keys.toString()),
-                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
+                val msg = replacePlaceholders(
+                    plugin.messages.playerAddBind,
+                    groupId = groupId,
+                    userId = userId,
+                    player = message,
+                    num = wl.size,
+                    current = wl.keys.toString()
                 )
-                return
+                sendBotMsg(groupId, msg)
             }
         } catch (exception: Exception) {
-            bot.sendMsg(
-                true,
-                groupId,
-                plugin.messages.wrongUsage,
-                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-            )
-            return
+            sendBotMsg(groupId, plugin.messages.wrongUsage)
         }
     }
 
     private fun onWhitelistQuery(message: String, groupId: Long, userId: Long) {
         try {
-            if (message.findAnyOf(listOf(" ")) != null && plugin.config!!.getLongListFromConfig("admins")
-                    .contains(userId)
-            ) {
-                val msg = message.substring(1)
-                when (msg.substring(0..2)) {
-                    "id:" -> {
-                        val arg = msg.substring(3)
-                        val wl = plugin.database!!.getBind(arg)
-                        if (wl == null) {
-                            bot.sendMsg(
-                                true,
-                                groupId,
-                                plugin.messages.idEmptyBind
-                                    .replace("%player%", arg),
-                                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                            )
+            if (message.startsWith(" ") && isAdmin(userId)) {
+                val subMsg = message.trim()
+                when {
+                    subMsg.startsWith("id:") -> {
+                        val playerName = subMsg.substring(3).trim()
+                        val boundUserId = plugin.database!!.getBind(playerName)
+                        if (boundUserId == null) {
+                            sendBotMsg(groupId, replacePlaceholders(plugin.messages.idEmptyBind, player = playerName))
                             return
                         }
-                        bot.sendMsg(
-                            true,
-                            groupId,
-//                        # origin_id, origin_name, user_id, user_name, user_nick, player
-                            plugin.messages.adminQueryIdBind
-                                .replace("%origin_id%", userId.toString())
-                                .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
-                                .replace("%user_id%", wl.toString())
-                                .replace("%user_name%", bot.getGroupUserName(groupId, wl.toLong()))
-                                .replace("%user_nick%", bot.getGroupUserCard(groupId, wl.toLong()))
-                                .replace("%player%", arg),
-                            plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
+                        val msg = replacePlaceholders(
+                            plugin.messages.adminQueryIdBind,
+                            groupId = groupId,
+                            originId = userId,
+                            userId = boundUserId,
+                            player = playerName
                         )
+                        sendBotMsg(groupId, msg)
                         return
                     }
-
-                    "qq:" -> {
-                        val arg = msg.substring(3).toLong()
-                        val wl = plugin.database!!.getBind(arg)
+                    subMsg.startsWith("qq:") -> {
+                        val targetId = subMsg.substring(3).trim().toLong()
+                        val wl = plugin.database!!.getBind(targetId)
                         if (wl.isNullOrEmpty()) {
-                            bot.sendMsg(
-                                true,
-                                groupId,
-//                            # user_id, user_name, user_nick
-                                plugin.messages.qqEmptyBind
-                                    .replace("%user_id%", arg.toString())
-                                    .replace("%user_name%", bot.getGroupUserName(groupId, arg))
-                                    .replace("%user_nick%", bot.getGroupUserCard(groupId, arg)),
-                                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                            )
+                            sendBotMsg(groupId, replacePlaceholders(plugin.messages.qqEmptyBind, groupId = groupId, userId = targetId))
                             return
                         }
-                        bot.sendMsg(
-                            true,
-                            groupId,
-//                        # origin_id, origin_name, user_id, user_name, user_nick, num, current
-                            plugin.messages.adminQueryQQBind
-                                .replace("%origin_id%", userId.toString())
-                                .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
-                                .replace("%user_id%", arg.toString())
-                                .replace("%user_name%", bot.getGroupUserName(groupId, arg))
-                                .replace("%user_nick%", bot.getGroupUserCard(groupId, arg))
-                                .replace("%num%", wl.size.toString())
-                                .replace("%current%", wl.toString()),
-                            plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
+                        val msg = replacePlaceholders(
+                            plugin.messages.adminQueryQQBind,
+                            groupId = groupId,
+                            originId = userId,
+                            userId = targetId,
+                            num = wl.size,
+                            current = wl.toString()
                         )
+                        sendBotMsg(groupId, msg)
                         return
                     }
                 }
             }
+            
             val wl = plugin.database!!.getBind(userId)
             if (wl.isNullOrEmpty()) {
-                bot.sendMsg(
-                    true,
-                    groupId,
-                    plugin.messages.qqEmptyBind
-                        .replace("%user_id%", userId.toString())
-                        .replace("%user_name%", bot.getGroupUserName(groupId, userId))
-                        .replace("%user_nick%", bot.getGroupUserCard(groupId, userId)),
-                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                )
+                sendBotMsg(groupId, replacePlaceholders(plugin.messages.qqEmptyBind, groupId = groupId, userId = userId))
                 return
             }
-            bot.sendMsg(
-                true, groupId,
-//            # user_nick, user_name, user_id, num, current
-                plugin.messages.playerQueryBind
-                    .replace("%user_id%", userId.toString())
-                    .replace("%user_name%", bot.getGroupUserName(groupId, userId))
-                    .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                    .replace("%num%", wl.size.toString())
-                    .replace("%current%", wl.toString()), plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
+            
+            val msg = replacePlaceholders(
+                plugin.messages.playerQueryBind,
+                groupId = groupId,
+                userId = userId,
+                num = wl.size,
+                current = wl.toString()
             )
-            return
+            sendBotMsg(groupId, msg)
         } catch (exception: Exception) {
-            bot.sendMsg(
-                true,
-                groupId,
-                plugin.messages.wrongUsage,
-                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-            )
-            return
+            sendBotMsg(groupId, plugin.messages.wrongUsage)
         }
     }
 
     private fun onWhitelistRemove(message: String, groupId: Long, userId: Long) {
         try {
-            if (plugin.config!!.getLongListFromConfig("admins").contains(userId)) {
-                try {
-                    when (message.substring(0..2)) {
-                        "id:" -> {
-                            val arg = message.substring(3)
-                            if (!WhitelistHelper.getInstance(plugin).checkPlayerExists(arg)) {
-                                val msg = plugin.messages.notExistsBind
-//                        # player_name
-                                    .replace("%player_name%", arg)
-                                bot.sendMsg(
-                                    true,
-                                    groupId,
-                                    msg,
-                                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                                )
-                                return
-                            }
-                            val target = plugin.database!!.getBind(arg)!!
-                            plugin.database!!.removeBind(arg)
-                            val player = Universe.get().getPlayerByUsername(arg, NameMatching.EXACT)
-                            player?.packetHandler?.disconnect(
-                                    plugin.messages.kickServer
-                                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                            )
-                            var wl = plugin.database!!.getBind(target)
-                            if (wl.isNullOrEmpty()) wl = LinkedHashMap()
-//                    # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                            bot.sendMsg(
-                                true,
-                                groupId,
-                                plugin.messages.adminDeleteBind
-                                    .replace("%origin_id%", userId.toString())
-                                    .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
-                                    .replace("%user_id%", target.toString())
-                                    .replace("%user_name%", bot.getGroupUserName(groupId, target))
-                                    .replace("%user_nick%", bot.getGroupUserCard(groupId, target))
-                                    .replace("%target_player%", arg)
-                                    .replace("%num%", wl.size.toString())
-                                    .replace("%current%", wl.keys.toString()),
-                                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                            )
+            if (isAdmin(userId)) {
+                val subMsg = message.trim()
+                when {
+                    subMsg.startsWith("id:") -> {
+                        val playerName = subMsg.substring(3).trim()
+                        if (!WhitelistHelper.getInstance(plugin).checkPlayerExists(playerName)) {
+                            sendBotMsg(groupId, replacePlaceholders(plugin.messages.notExistsBind, player = playerName))
                             return
                         }
-
-                        "qq:" -> {
-                            val arg = message.substring(3).split(" ")
-                            if (arg.size == 1) {
-                                val bindings = plugin.database?.getBind(arg[0].toLong())
-                                if (bindings.isNullOrEmpty()) {
-                                    val msg = plugin.messages.qqEmptyBind
-//                        # user_id, user_name, user_nick
-                                        .replace("%user_id%", arg[0])
-                                        .replace(
-                                            "%user_name%",
-                                            bot.getGroupUserName(groupId, arg[0].toLong())
-                                        )
-                                        .replace(
-                                            "%user_nick%",
-                                            bot.getGroupUserCard(groupId, arg[0].toLong())
-                                        )
-                                    bot.sendMsg(
-                                        true,
-                                        groupId,
-                                        msg,
-                                        plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                                    )
-                                    return
-                                }
-
-                                plugin.database?.removeBind(arg[0].toLong())
-
-                                // 踢出所有绑定的在线玩家
-                                bindings.forEach { (playerName, _) ->
-                                    val player = Universe.get().getPlayerByUsername(playerName, NameMatching.EXACT)
-                                    val kickMessage = plugin.messages.kickServer
-                                        .replace("%groups%", plugin.config?.getLongListFromConfig("groups").toString())
-                                    player?.packetHandler?.disconnect(kickMessage)
-                                }
-
-                                bot.sendMsg(
-                                    true,
-                                    groupId,
-//                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                                    plugin.messages.adminDeleteAllBind
-                                        .replace("%origin_id%", userId.toString())
-                                        .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
-                                        .replace("%user_id%", arg[0])
-                                        .replace(
-                                            "%user_name%",
-                                            bot.getGroupUserName(groupId, arg[0].toLong())
-                                        )
-                                        .replace(
-                                            "%user_nick%",
-                                            bot.getGroupUserCard(groupId, arg[0].toLong())
-                                        ),
-                                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                                )
-                                return
-                            }
-                            if (plugin.database!!.getBind(arg[0].toLong()).isNullOrEmpty()) {
-                                val msg = plugin.messages.qqEmptyBind
-//                        # user_id, user_name, user_nick
-                                    .replace("%user_id%", arg[0])
-                                    .replace(
-                                        "%user_name%",
-                                        bot.getGroupUserName(groupId, arg[0].toLong())
-                                    )
-                                    .replace(
-                                        "%user_nick%",
-                                        bot.getGroupUserCard(groupId, arg[0].toLong())
-                                    )
-                                bot.sendMsg(
-                                    true,
-                                    groupId,
-                                    msg,
-                                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                                )
-                                return
-                            }
-                            val target = plugin.database!!.removeBindByNum(arg[0].toLong(), arg[1].toInt())
-                            val player = target?.let { Universe.get().getPlayerByUsername(it, NameMatching.EXACT) }
-                            player?.packetHandler?.disconnect(
-                                    plugin.messages.kickServer
-                                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                            )
-                            var wl = plugin.database!!.getBind(arg[0].toLong())
-                            if (wl.isNullOrEmpty()) wl = LinkedHashMap()
-                            bot.sendMsg(
-                                true,
-                                groupId,
-//                        # origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
-                                plugin.messages.adminDeleteBind
-                                    .replace("%origin_id%", userId.toString())
-                                    .replace("%origin_name%", bot.getGroupUserCard(groupId, userId))
-                                    .replace("%user_id%", arg[0])
-                                    .replace(
-                                        "%user_name%",
-                                        bot.getGroupUserName(groupId, arg[0].toLong())
-                                    )
-                                    .replace(
-                                        "%user_nick%",
-                                        bot.getGroupUserCard(groupId, arg[0].toLong())
-                                    )
-                                    .replace("%target_player%", target.orEmpty())
-                                    .replace("%num%", wl.size.toString())
-                                    .replace("%current%", wl.keys.toString()),
-                                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                            )
-                            return
-                        }
+                        val boundUserId = plugin.database!!.getBind(playerName)!!
+                        plugin.database!!.removeBind(playerName)
+                        kickPlayer(playerName)
+                        
+                        val wl = plugin.database!!.getBind(boundUserId) ?: LinkedHashMap()
+                        val msg = replacePlaceholders(
+                            plugin.messages.adminDeleteBind,
+                            groupId = groupId,
+                            originId = userId,
+                            userId = boundUserId,
+                            player = playerName,
+                            num = wl.size,
+                            current = wl.keys.toString()
+                        )
+                        sendBotMsg(groupId, msg)
+                        return
                     }
-                } catch (_: Exception) {}
+                    subMsg.startsWith("qq:") -> {
+                        val args = subMsg.substring(3).trim().split(" ")
+                        val targetId = args[0].toLong()
+                        val bindings = plugin.database?.getBind(targetId)
+                        
+                        if (bindings.isNullOrEmpty()) {
+                            sendBotMsg(groupId, replacePlaceholders(plugin.messages.qqEmptyBind, groupId = groupId, userId = targetId))
+                            return
+                        }
+
+                        if (args.size == 1) {
+                            plugin.database?.removeBind(targetId)
+                            bindings.forEach { (playerName, _) -> kickPlayer(playerName) }
+                            
+                            val msg = replacePlaceholders(
+                                plugin.messages.adminDeleteAllBind,
+                                groupId = groupId,
+                                originId = userId,
+                                userId = targetId
+                            )
+                            sendBotMsg(groupId, msg)
+                        } else {
+                            val targetPlayer = plugin.database!!.removeBindByNum(targetId, args[1].toInt())
+                            targetPlayer?.let { kickPlayer(it) }
+                            
+                            val wl = plugin.database!!.getBind(targetId) ?: LinkedHashMap()
+                            val msg = replacePlaceholders(
+                                plugin.messages.adminDeleteBind,
+                                groupId = groupId,
+                                originId = userId,
+                                userId = targetId,
+                                player = targetPlayer.orEmpty(),
+                                num = wl.size,
+                                current = wl.keys.toString()
+                            )
+                            sendBotMsg(groupId, msg)
+                        }
+                        return
+                    }
+                }
             }
+
+            // User logic
             try {
-                val target = plugin.database!!.removeBindByNum(userId, message.toInt())
-                val player = target?.let { Universe.get().getPlayerByUsername(it, NameMatching.EXACT) }
-                player?.packetHandler?.disconnect(
-                    plugin.messages.kickServer
-                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
+                val index = message.toInt()
+                val targetPlayer = plugin.database!!.removeBindByNum(userId, index)
+                targetPlayer?.let { kickPlayer(it) }
+                
+                val wl = plugin.database!!.getBind(userId) ?: LinkedHashMap()
+                val msg = replacePlaceholders(
+                    plugin.messages.playerDeleteBind,
+                    groupId = groupId,
+                    userId = userId,
+                    player = targetPlayer.orEmpty(),
+                    num = wl.size,
+                    current = wl.keys.toString()
                 )
-                var wl = plugin.database!!.getBind(userId)
-                if (wl.isNullOrEmpty()) wl = LinkedHashMap()
-//                    # user_nick, user_name, user_id, target_player, num, current
-                bot.sendMsg(
-                    true,
-                    groupId,
-                    plugin.messages.playerDeleteBind
-                        .replace("%user_id%", userId.toString())
-                        .replace("%user_name%", bot.getGroupUserName(groupId, userId))
-                        .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                        .replace("%target_player%", target.orEmpty())
-                        .replace("%num%", wl.size.toString())
-                        .replace("%current%", wl.keys.toString()),
-                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                )
+                sendBotMsg(groupId, msg)
             } catch (_: NumberFormatException) {
                 if (!WhitelistHelper.getInstance(plugin).checkPlayerBelongToUser(message, userId)) {
-                    val msg = plugin.messages.notBelongToYou
-//                        # player_name
-                        .replace("%player_name%", message)
-                    bot.sendMsg(
-                        true,
-                        groupId,
-                        msg,
-                        plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                    )
+                    sendBotMsg(groupId, replacePlaceholders(plugin.messages.notBelongToYou, player = message))
                     return
                 }
                 plugin.database!!.removeBind(message)
-                val player = Universe.get().getPlayerByUsername(message, NameMatching.EXACT)
-                player?.packetHandler?.disconnect(
-                    plugin.messages.kickServer
-                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
+                kickPlayer(message)
+                
+                val wl = plugin.database!!.getBind(userId) ?: LinkedHashMap()
+                val msg = replacePlaceholders(
+                    plugin.messages.playerDeleteBind,
+                    groupId = groupId,
+                    userId = userId,
+                    player = message,
+                    num = wl.size,
+                    current = wl.keys.toString()
                 )
-                var wl = plugin.database!!.getBind(userId)
-                if (wl.isNullOrEmpty()) wl = LinkedHashMap()
-//                    # user_nick, user_name, user_id, target_player, num, current
-                bot.sendMsg(
-                    true,
-                    groupId,
-                    plugin.messages.playerDeleteBind
-                        .replace("%user_id%", userId.toString())
-                        .replace("%user_name%", bot.getGroupUserName(groupId, userId))
-                        .replace("%user_nick%", bot.getGroupUserCard(groupId, userId))
-                        .replace("%target_player%", message)
-                        .replace("%num%", wl.size.toString())
-                        .replace("%current%", wl.keys.toString()),
-                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-                )
+                sendBotMsg(groupId, msg)
             }
-            return
         } catch (exception: Exception) {
-            bot.sendMsg(
-                true,
-                groupId,
-                plugin.messages.wrongUsage,
-                plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-            )
-            return
+            sendBotMsg(groupId, plugin.messages.wrongUsage)
         }
     }
 
@@ -621,38 +414,33 @@ class BotHandler(private val plugin: PlumBot, private val bot: IBot) {
         val newLine = 5
         var list = Universe.get().players.stream().map { it.username }.toList()
         var result = "\n"
-        while(list.size > newLine) {
+        while (list.size > newLine) {
             result += list.slice(0..<newLine).joinToString(postfix = "\n  ")
             list = list.drop(newLine)
         }
         result += list.joinToString()
         result += "\n"
 
-        bot.sendMsg(true, groupId,
-//            # player_list, player_num, max_player
-            plugin.messages.playerList
-                .replace("%player_list%", result)
-                .replace("%player_num%", list.size.toString()), plugin.config!!.getBooleanFromConfig("feature", "list", "pic"))
-        return
+        val msg = replacePlaceholders(
+            plugin.messages.playerList,
+            playerList = result,
+            playerNum = list.size
+        )
+        sendBotMsg(groupId, msg, "list")
     }
 
     private fun onRemoteCommand(message: String, groupId: Long, userId: Long) {
-        if (!plugin.config!!.getLongListFromConfig("admins").contains(userId)) return
-        runTaskAsync{
+        if (!isAdmin(userId)) return
+        runTaskAsync {
             val result = CommandDispatcher().dispatch(message)
-            bot.sendMsg(true, groupId, result, plugin.config!!.getBooleanFromConfig("feature", "cmd", "pic"))
+            sendBotMsg(groupId, result, "cmd")
         }
-        return
     }
 
     fun onUserDecrease(event: GroupMemberDecreaseEvent) {
         runTaskAsync {
-            plugin.database!!.getBind(event.userId)?.keys?.forEach {
-                val player = Universe.get().getPlayerByUsername(it, NameMatching.EXACT)
-                player?.packetHandler?.disconnect(
-                    plugin.messages.kickServer
-                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-                )
+            plugin.database!!.getBind(event.userId)?.keys?.forEach { playerName ->
+                kickPlayer(playerName)
             }
             plugin.database!!.removeBind(event.userId)
         }

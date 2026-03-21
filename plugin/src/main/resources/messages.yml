@@ -40,12 +40,12 @@ kickServer: "请加入qq群:xxx申请白名单"
 kickPlatform: "%player_name%未在白名单内而被踢出服务器"
 
 # 普通用户添加绑定成功的消息格式
-# 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
-playerAddBind: "%user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+# 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
+playerAddBind: "%user_id% added %player% for the bind\n%user_id% now has %num% bind: %current%"
 
 # 普通用户删除绑定成功的消息格式
-# 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
-playerDeleteBind: "%user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+# 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
+playerDeleteBind: "%user_id% deleted %player% for the bind\n%user_id% now has %num% bind: %current%"
 
 # 普通用户查询绑定信息的消息格式
 # 可用变量: %user_nick%(用户群昵称), %user_name%(用户名), %user_id%(用户QQ号), %num%(绑定数量), %current%(当前绑定列表)
@@ -79,12 +79,12 @@ notBelongToYou: "%player_name% 不是由你绑定的!"
 wrongUsage: "请正确输入命令"
 
 # 管理员为用户添加绑定的消息格式
-# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
-adminAddBind: "%origin_id% has sudo %user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称), %player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
+adminAddBind: "%origin_id% has sudo %user_id% added %player% for the bind\n%user_id% now has %num% bind: %current%"
 
 # 管理员为用户删除指定绑定的消息格式
-# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称), %target_player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
-adminDeleteBind: "%origin_id% has sudo %user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
+# 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称), %player%(目标玩家名), %num%(绑定数量), %current%(当前绑定列表)
+adminDeleteBind: "%origin_id% has sudo %user_id% deleted %player% for the bind\n%user_id% now has %num% bind: %current%"
 
 # 管理员删除用户所有绑定的消息格式
 # 可用变量: %origin_id%(管理员QQ号), %origin_name%(管理员昵称), %user_id%(目标用户QQ号), %user_name%(目标用户名), %user_nick%(目标用户群昵称)
@@ -113,21 +113,21 @@ help:
 noCommandFound: "请正确输入命令"
 
 # 游戏内命令添加绑定成功的消息
-# 可用变量: %player%(玩家名), %target_id%(目标QQ号)
-commandAddBind: "已将%player%添加至%target_id%的白名单"
+# 可用变量: %player%(玩家名), %user_id%(目标QQ号)
+commandAddBind: "已将%player%添加至%user_id%的白名单"
 
 # 游戏内命令通过玩家名删除绑定的消息
 # 可用变量: %player%(玩家名)
 commandDeleteBindById: "已将%player%从白名单中移除"
 
 # 游戏内命令通过QQ号删除所有绑定的消息
-# 可用变量: %target_id%(目标QQ号)
-commandDeleteBindByQQ: "已将%target_id%的所有白名单中移除"
+# 可用变量: %user_id%(目标QQ号)
+commandDeleteBindByQQ: "已将%user_id%的所有白名单中移除"
 
 # 游戏内命令通过玩家名查询绑定的消息
-# 可用变量: %player%(玩家名), %target_id%(绑定QQ号)
-commandQueryBindById: "%player%的白名单为%target_id%"
+# 可用变量: %player%(玩家名), %user_id%(绑定QQ号)
+commandQueryBindById: "%player%的白名单为%user_id%"
 
 # 游戏内命令通过QQ号查询绑定的消息
-# 可用变量: %target_id%(目标QQ号), %player%(玩家名列表)
-commandQueryBindByQQ: "%target_id%拥有白名单: %player%"
+# 可用变量: %user_id%(目标QQ号), %player%(玩家名列表)
+commandQueryBindByQQ: "%user_id%拥有白名单: %player%"
