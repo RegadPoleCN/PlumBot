@@ -32,7 +32,7 @@ repositories {
 dependencies {
     // hytale
 //    compileOnly("com.hypixel.hytale:HytaleServer:2026.01.13-dcad8778f-SNAPSHOT")
-    compileOnly ("com.hypixel.hytale:Server:2026.01.24-6e2d4fc36")
+    compileOnly ("com.hypixel.hytale:Server:2026.02.17-255364b8e")
     // cache
 //    implementation("com.github.ben-manes.caffeine:caffeine:3.2.0")
     implementation("com.sksamuel.aedile:aedile-core:2.0.3")
