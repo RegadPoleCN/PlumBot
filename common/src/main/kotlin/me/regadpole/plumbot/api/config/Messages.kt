@@ -29,6 +29,7 @@ object Messages: Cloneable {
     lateinit var notExistsBind: String
     lateinit var notBelongToYou: String
     lateinit var wrongUsage: String
+    lateinit var internalError: String
 
     lateinit var adminAddBind: String
     lateinit var adminDeleteBind: String

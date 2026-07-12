@@ -16,8 +16,13 @@ class YamlConfigurator(private val config: ConfigurationNode): Cloneable {
         return config
     }
 
+    private fun resolveNode(vararg nodePath: String?): ConfigurationNode {
+        val resolvedPath = nodePath.flatMap { path -> path?.split('.') ?: listOf(null) }.toTypedArray()
+        return config.node(*resolvedPath)
+    }
+
     fun getNode(vararg nodePath: String?): ConfigurationNode {
-        return config.node(*nodePath)
+        return resolveNode(*nodePath)
     }
 
     fun getConfigMaker(vararg nodePath: String?): YamlConfigurator {
@@ -26,78 +31,32 @@ class YamlConfigurator(private val config: ConfigurationNode): Cloneable {
 
     /*method to obtain a string list from the yml file */
     fun getStringList(vararg nodePath: String?): List<String?> {
-        if (nodePath.toString().split(".").size > 1) {
-            val resultList: MutableList<String?> = ArrayList()
-            val subNode = config.node(nodePath.toString().split("."))
-            if (subNode.isList) {
-                val list = subNode.childrenList()
-                for (item in list) {
-                    resultList.add(item.string)
-                }
-            }
-            return resultList
-        }
-        val resultList: MutableList<String?> = ArrayList()
-        val subNode = config.node(*nodePath)
-        if (subNode.isList) {
-            val list = subNode.childrenList()
-            for (item in list) {
-                resultList.add(item.string)
-            }
-        }
-        return resultList
+        return resolveNode(*nodePath).childrenList().map { it.string }
     }
 
     /*method to obtain a long list from the yml file */
     fun getLongList(vararg nodePath: String?): List<Long> {
-        if (nodePath.toString().split(".").size > 1) {
-            val resultList: MutableList<Long> = ArrayList()
-            val subNode = config.node(nodePath.toString().split("."))
-            if (subNode.isList) {
-                val list = subNode.childrenList()
-                for (item in list) {
-                    resultList.add(item.long)
-                }
-            }
-            return resultList
-        }
-        val resultList: MutableList<Long> = ArrayList()
-        val subNode = config.node(*nodePath)
-        if (subNode.isList) {
-            val list = subNode.childrenList()
-            for (item in list) {
-                resultList.add(item.long)
-            }
-        }
-        return resultList
+        return resolveNode(*nodePath).childrenList().map { it.long }
     }
 
     /*method to get boolean value from yml file*/
     fun getBoolean(vararg nodePath: String?): Boolean {
-        if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).boolean
-        val aBoolean = config.node(*nodePath).boolean
-        return aBoolean
+        return resolveNode(*nodePath).boolean
     }
 
     /*method to get integer value from yml file*/
     fun getInteger(vararg nodePath: String?): Int {
-        if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).int
-        val integer = config.node(*nodePath).int
-        return integer
+        return resolveNode(*nodePath).int
     }
 
     /*method to get string from yml file*/
     fun getString(vararg nodePath: String?): String? {
-        if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).string
-        val string = config.node(*nodePath).string
-        return string
+        return resolveNode(*nodePath).string
     }
 
     /*method to get long value from yml file*/
     fun getLong(vararg nodePath: String?): Long {
-        if (nodePath.toString().split(".").size > 1) return config.node(nodePath.toString().split(".")).long
-        val long = config.node(*nodePath).long
-        return long
+        return resolveNode(*nodePath).long
     }
 
     /*method to copy the data of the configuration node into the actual yml file
