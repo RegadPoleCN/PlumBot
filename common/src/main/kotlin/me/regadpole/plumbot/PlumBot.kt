@@ -8,13 +8,19 @@ import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.LogLevel
+import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.platform.PlatformLogger
+import me.regadpole.plumbot.platform.PlatformMessenger
+import me.regadpole.plumbot.platform.PlatformPlayerService
+import me.regadpole.plumbot.platform.PlatformScheduler
+import me.regadpole.plumbot.platform.PlatformTaskHandle
+import me.regadpole.plumbot.platform.PlatformType
 import me.regadpole.plumbot.task.TaskProvider
 import me.regadpole.plumbot.task.TaskProviderImpl
 import me.regadpole.plumbot.utils.TextToImg
 import net.kyori.adventure.text.Component
 import taboolib.module.database.Database
 import java.io.File
-import java.net.URI
 import java.nio.file.Path
 import kotlin.io.path.pathString
 import kotlin.reflect.KMutableProperty
@@ -32,6 +38,51 @@ interface PlumBot: TaskProvider {
     fun listPlayers(): List<String>
     fun listPlayerString(): String
     fun loadDependencies()
+
+    val platform: PlatformContext
+        get() = object : PlatformContext {
+            override val config: YamlConfigurator
+                get() = this@PlumBot.config
+            override val datasource: YamlConfigurator
+                get() = this@PlumBot.datasource
+            override val dataDirectory: Path
+                get() = this@PlumBot.dataDirectory
+            override val logger: PlatformLogger = PlatformLogger { level, message ->
+                this@PlumBot.log(level, message)
+            }
+            override val scheduler: PlatformScheduler = object : PlatformScheduler {
+                override fun run(task: Runnable): PlatformTaskHandle = this@PlumBot.submit(task).asPlatformTaskHandle()
+
+                override fun runAsync(task: Runnable): PlatformTaskHandle = this@PlumBot.submitAsync(task).asPlatformTaskHandle()
+
+                override fun runLater(delay: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitLater(delay, task).asPlatformTaskHandle()
+
+                override fun runLaterAsync(delay: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitLaterAsync(delay, task).asPlatformTaskHandle()
+
+                override fun runTimer(delay: Long, period: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitTimer(delay, period, task).asPlatformTaskHandle()
+
+                override fun runTimerAsync(delay: Long, period: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitTimerAsync(delay, period, task).asPlatformTaskHandle()
+            }
+            override val playerService: PlatformPlayerService = object : PlatformPlayerService {
+                override fun kickPlayer(name: String) = this@PlumBot.kickPlayer(name)
+
+                override fun listPlayers(): List<String> = this@PlumBot.listPlayers()
+
+                override fun listPlayerString(): String = this@PlumBot.listPlayerString()
+            }
+            override val messenger: PlatformMessenger = PlatformMessenger { message ->
+                this@PlumBot.sendMessage(message)
+            }
+            override val platformType: PlatformType = PlatformType.BUKKIT
+
+            override fun isPluginAvailable(name: String): Boolean = false
+        }
+
+    private fun java.util.concurrent.Future<*>.asPlatformTaskHandle(): PlatformTaskHandle {
+        return object : PlatformTaskHandle {
+            override fun cancel(): Boolean = this@asPlatformTaskHandle.cancel(false)
+        }
+    }
 
     fun enable() {
         loadConfig()
@@ -58,21 +109,7 @@ interface PlumBot: TaskProvider {
 
     fun loadBot() {
         TaskProviderImpl.submitAsync {
-            when(config.getString("bot", "type")?.lowercase()) {
-                "mirai" -> {
-                    BotProvider.loadMiraiMCBot(this)
-                }
-                "onebot" -> {
-                    val addr = URI.create("ws://" + config.getString("bot", "onebot", "address"))
-                    val token = config.getString("bot", "onebot", "token")
-                    if (token.isNullOrEmpty()) BotProvider.loadOneBot(this, addr)
-                    else BotProvider.loadOneBot(this, addr, token)
-                }
-                else -> {
-                    log(LogLevel.ERROR, "Unknown bot type! Using OneBot...")
-                    BotProvider.loadBot(this, "onebot")
-                }
-            }
+            BotProvider.loadBot(platform, config.getString("bot", "type"))
         }
     }
 

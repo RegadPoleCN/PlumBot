@@ -1,0 +1,11 @@
+package me.regadpole.plumbot.bot
+
+enum class BotCapability {
+    GROUP_MESSAGE_SEND,
+    USER_MESSAGE_SEND,
+    IMAGE_SEND,
+    GROUP_MEMBER_QUERY,
+    GROUP_MEMBER_CHECK,
+    GROUP_MESSAGE_RECEIVE,
+    GROUP_MEMBER_DECREASE_RECEIVE
+}

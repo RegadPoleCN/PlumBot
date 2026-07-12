@@ -1,9 +1,15 @@
 package me.regadpole.plumbot.api.bot
 
+import me.regadpole.plumbot.bot.BotAdapterMetadata
 import me.regadpole.plumbot.listener.BotHandler
 
 interface IBot: Cloneable {
     var handler: BotHandler?
+
+    /**
+     * Metadata of the adapter that created this bot.
+     */
+    val metadata: BotAdapterMetadata
 
     /**
      * Start a bot
