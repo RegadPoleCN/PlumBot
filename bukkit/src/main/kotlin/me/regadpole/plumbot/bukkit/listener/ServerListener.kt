@@ -1,11 +1,9 @@
 package me.regadpole.plumbot.bukkit.listener
 
 import me.regadpole.plumbot.PlumBot
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.bot.BotProvider
-import me.regadpole.plumbot.database.DatabaseProvider
-import me.regadpole.plumbot.utils.getComponentFromMiniMsg
-import me.regadpole.plumbot.utils.getLegacyFromComponent
+import me.regadpole.plumbot.server.PlayerJoinLeaveService
+import me.regadpole.plumbot.server.PlayerLoginService
+import me.regadpole.plumbot.server.ServerChatService
 import org.bukkit.Bukkit
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -17,176 +15,35 @@ class ServerListener(private val plugin: PlumBot): Listener {
     @EventHandler
     fun onChat(event: AsyncPlayerChatEvent) {
         if (event.isCancelled) return
-        if (!plugin.config.getBoolean("feature", "message", "enable")) return
 
-        val message = event.message.replace(Regex("&([0-9a-fklmnor])")) { matchResult ->
-            "§" + matchResult.groupValues[1]
-        }.replace(Regex("#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})"), "")
-        if (plugin.config.getInteger("feature", "message", "mode") == 0) {
-//          # server, player_name, message
-            plugin.config.getLongList("groups").forEach {
-                BotProvider.getBot()?.sendMsg(true, it,
-                    Messages.server2ob
-                    .replace("%server%", Bukkit.getServer().name)
-                    .replace("%player_name%", event.player.name)
-                    .replace("%message%", message), plugin.config.getBoolean("feature", "message", "pic"))
-            }
-            return
-        } else if (plugin.config.getInteger("feature", "message", "mode") == 1 &&
-            Regex(plugin.config.getString("feature", "message", "prefix")!!).matchesAt(event.message, 0)
-        ) {
-//          # server, player_name, message
-            plugin.config.getLongList("groups").forEach {
-                BotProvider.getBot()?.sendMsg(true, it,
-                    Messages.server2ob
-                        .replace("%server%", Bukkit.getServer().name)
-                        .replace("%player_name%", event.player.name)
-                        .replace("%message%", message.replace(plugin.config.getString("feature", "message", "prefix")!!, ""))
-                    , plugin.config.getBoolean("feature", "message", "pic"))
-            }
-            return
-        }
+        ServerChatService(plugin.config).handleChat(
+            event.player.name,
+            Bukkit.getServer().name,
+            event.message
+        )
     }
 
     @EventHandler
     fun onPreLogin(event: AsyncPlayerPreLoginEvent) {
         if (event.loginResult != AsyncPlayerPreLoginEvent.Result.ALLOWED) return
-        val lock = Object()
-        val name = event.name
 
-//        if (FloodgateHook.hasFloodgate) {
-//            if (FloodgateHook.floodgateApi!!.isFloodgatePlayer(event.uniqueId)) {
-//                if (FloodgateHook.floodgateApi!!.getPlayer(event.uniqueId).isLinked) {
-//                    name = FloodgateHook.floodgateApi!!.getPlayer(event.uniqueId).linkedPlayer.javaUsername
-//                }
-//            }
-//        }
-
-        if (plugin.config.getBoolean("feature", "bind", "whitelist")) {
-            plugin.submitAsync {
-                synchronized(lock) {
-                    val qq = (DatabaseProvider.getBindByName(name))
-                    if (qq.isNullOrEmpty()) {
-                        event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
-                            getLegacyFromComponent(getComponentFromMiniMsg(
-                                Messages.kickServer
-                                    .replace("%groups%", plugin.config.getLongList("groups").toString())
-                            ))
-                        )
-                        plugin.config.getLongList("groups").forEach {
-                            BotProvider.getBot()?.sendMsg(
-                                true,
-                                it,
-                                Messages.kickPlatform
-                                    .replace("%player_name%", name),
-                                plugin.config.getBoolean("feature", "bind", "pic")
-                            )
-                        }
-                        lock.notifyAll()
-                        return@submitAsync
-                    }
-                    if (!plugin.config.getBoolean("feature", "joinAndLeave", "joinProxy")) {
-                        lock.notifyAll()
-                        return@submitAsync
-                    }
-//                    var isInGroup = false
-//                    val grouplock = Object()
-//                    plugin.config!!.getLongListFromConfig("groups").forEach {
-//                        if (plugin.bot!!.checkUserInGroup(qq, it, plugin.config!!.getLongListFromConfig("groups").last() == it, grouplock)) {
-//                            isInGroup = true
-//                        }
-//                    }
-//                    synchronized(grouplock) {
-//                        grouplock.wait()
-//                        if (isInGroup) {
-//                            event.result = PreLoginEvent.PreLoginComponentResult.allowed()
-//                            plugin.config!!.getLongListFromConfig("groups").forEach {
-//                                plugin.bot!!.sendMsg(
-//                                    true,
-//                                    it,
-//                                    _root_ide_package_.me.regadpole.plumbot.api.config.Messages.joinProxy
-//                                        .replace("%player_name%", name),
-//                                    plugin.config!!.getBooleanFromConfig("feature", "joinAndLeave", "pic")
-//                                )
-//                            }
-//                            lock.notifyAll()
-//                            return@runTask
-//                        } else {
-//                            event.result = PreLoginEvent.PreLoginComponentResult.denied(
-//                                getComponentFromMiniMsg(
-//                                    _root_ide_package_.me.regadpole.plumbot.api.config.Messages.kickServer
-//                                        .replace("%groups%", plugin.config!!.getLongListFromConfig("groups").toString())
-//                                )
-//                            )
-//                            plugin.config!!.getLongListFromConfig("groups").forEach {
-//                                plugin.bot!!.sendMsg(
-//                                    true,
-//                                    it,
-//                                    _root_ide_package_.me.regadpole.plumbot.api.config.Messages.kickPlatform
-//                                        .replace("%player_name%", name),
-//                                    plugin.config!!.getBooleanFromConfig("feature", "bind", "pic")
-//                                )
-//                            }
-//                            lock.notifyAll()
-//                            return@runTask
-//                        }
-//                    }
-                    event.allow()
-                    plugin.config.getLongList("groups").forEach {
-                        BotProvider.getBot()?.sendMsg(
-                            true,
-                            it,
-                            Messages.joinProxy
-                                .replace("%player_name%", name),
-                            plugin.config.getBoolean("feature", "joinAndLeave", "pic")
-                        )
-                    }
-                    lock.notifyAll()
-                    return@submitAsync
-                }
-            }
-            synchronized(lock){
-                lock.wait()
-            }
+        val result = PlayerLoginService(plugin.config).check(event.name)
+        if (result.allowed) {
+            event.allow()
         } else {
-            if (plugin.config.getBoolean("feature", "joinAndLeave", "joinProxy")) {
-                plugin.config.getLongList("groups").forEach {
-                    BotProvider.getBot()?.sendMsg(true, it,
-                        Messages.joinProxy
-                            .replace("%player_name%", name)
-                        , plugin.config.getBoolean("feature", "joinAndLeave", "pic"))
-                }
-            }
+            event.disallow(
+                AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
+                result.kickMessage
+            )
         }
-//        var dataName = name
-//        if (FloodgateHook.hasFloodgate) {
-//            if (FloodgateHook.floodgateApi!!.isFloodgatePlayer(event.uniqueId)) {
-//                dataName = if (FloodgateHook.floodgateApi!!.getPlayer(event.uniqueId).isLinked) {
-//                    FloodgateHook.floodgateApi!!.getPlayer(event.uniqueId).linkedPlayer.javaUsername
-//                } else {
-//                    FloodgateHook.floodgateApi!!.getPlayer(event.uniqueId).javaUsername
-//                }
-//            }
-//        }
-//        plugin.database!!.setUUID(dataName, event.uniqueId!!)
     }
 
     @EventHandler
     fun onLeave(event: PlayerQuitEvent) {
+        val playerName = event.player.name
+        val serverName = Bukkit.getServer().name
         plugin.submitAsync {
-            if (plugin.config.getBoolean("feature", "joinAndLeave", "leaveProxy")) {
-                plugin.config.getLongList("groups").forEach {
-                    BotProvider.getBot()?.sendMsg(
-                        true,
-                        it,
-                        Messages.leaveProxy
-                            .replace("%player_name%", event.player.name)
-                            .replace("%server%", Bukkit.getServer().name),
-                        plugin.config.getBoolean("feature", "joinAndLeave", "pic")
-                    )
-                }
-            }
+            PlayerJoinLeaveService(plugin.config).notifyLeave(playerName, serverName)
         }
     }
-
 }
