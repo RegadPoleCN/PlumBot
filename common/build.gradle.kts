@@ -11,14 +11,11 @@ dependencies {
     compileOnly("org.spongepowered:configurate-hocon:4.2.0")
     compileOnly("org.spongepowered:configurate-extra-kotlin:4.2.0")
     // cache
-//    implementation("com.github.ben-manes.caffeine:caffeine:3.2.0")
-    compileOnly("com.sksamuel.aedile:aedile-core:2.0.3")
-    // OneBot
-    compileOnly("com.github.alazeprt:AOneBot:1.0.11-beta")
+    // 已统一使用 common 内置的 ConcurrentHashMap 缓存，无外部缓存库依赖
     // database
     compileOnly("com.github.RegadPoleCN:taboolib-database:1.0.2")
-    compileOnly("com.mysql:mysql-connector-j:8.2.0")
-    compileOnly("org.xerial:sqlite-jdbc:3.42.0.0")
+    compileOnly(libs.mysql)
+    compileOnly(libs.sqlite)
     // kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation(kotlin("reflect"))
@@ -34,6 +31,4 @@ dependencies {
     compileOnly("net.kyori:adventure-text-serializer-legacy:4.21.0")
     // libby
     implementation("com.alessiodp.libby:libby-core:2.0.0-SNAPSHOT")
-    // miraimc
-    compileOnly("io.github.dreamvoid:MiraiMC-Integration:1.9")
 }

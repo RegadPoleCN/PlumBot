@@ -19,6 +19,9 @@ dependencyResolutionManagement {
         maven("https://repo.alessiodp.com/releases/") {
             name = "AlessioDP"
         }
+        maven("https://repo.alessiodp.com/snapshots/") {
+            name = "AlessioDP Snapshots"
+        }
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") {
             name = "maven-snapshots"
         }
@@ -26,11 +29,13 @@ dependencyResolutionManagement {
 }
 
 plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 // 只保留需要的模块
 include(":common") 
 include(":bukkit")
+include(":adapter-onebot")
+include(":adapter-miraimc")
 
 rootProject.name = "PlumBot-V3"
