@@ -1,0 +1,88 @@
+package me.regadpole.plumbot.bukkit.platform
+
+import com.alessiodp.libby.BukkitLibraryManager
+import com.alessiodp.libby.Library
+import me.regadpole.plumbot.internal.RuntimeLibraryVersions
+import org.bukkit.plugin.java.JavaPlugin
+
+class BukkitDependencyLoader(
+    plugin: JavaPlugin,
+) {
+    private val libraryManager: BukkitLibraryManager by lazy { BukkitLibraryManager(plugin) }
+
+    fun loadDependencies() {
+//        val adventureBukkitLib = Library.builder()
+//            .groupId("net{}kyori")
+//            .artifactId("adventure-platform-bukkit")
+//            .version("4.3.4")
+//            .resolveTransitiveDependencies(true)
+//            .build()
+        val databaseLib = Library.builder()
+            .groupId("com{}github{}RegadPoleCN")
+            .artifactId("taboolib-database")
+            .version(RuntimeLibraryVersions.TABOOLIB_DATABASE)
+            .relocate("com{}google{}common", "top{}alazeprt{}aqqbot{}lib{}com{}google{}common")
+            .build()
+        val hikaricpLib = Library.builder()
+            .groupId("com{}zaxxer")
+            .artifactId("HikariCP")
+            .version(RuntimeLibraryVersions.HIKARI_CP)
+            .resolveTransitiveDependencies(true)
+            .build()
+        val guavaLib = Library.builder()
+            .groupId("com{}google{}guava")
+            .artifactId("guava")
+            .version(RuntimeLibraryVersions.GUAVA)
+            .relocate("com{}google{}common", "top{}alazeprt{}aqqbot{}lib{}com{}google{}common")
+            .resolveTransitiveDependencies(true)
+            .build()
+        val sqliteLib = Library.builder()
+            .groupId("org{}xerial")
+            .artifactId("sqlite-jdbc")
+            .version(RuntimeLibraryVersions.SQLITE_JDBC)
+            .resolveTransitiveDependencies(true)
+            .build()
+        val mysqlLib = Library.builder()
+            .groupId("com{}mysql")
+            .artifactId("mysql-connector-j")
+            .version(RuntimeLibraryVersions.MYSQL_CONNECTOR)
+            .resolveTransitiveDependencies(true)
+            .build()
+        val aonebotLib = Library.builder()
+            .groupId("com{}github{}alazeprt")
+            .artifactId("AOneBot")
+            .version(RuntimeLibraryVersions.AONE_BOT)
+            .relocate("com{}google{}code{}gson", "top{}alazeprt{}aonebot{}lib{}com{}google")
+            .resolveTransitiveDependencies(true)
+            .build()
+        val gsonLib = Library.builder()
+            .groupId("com{}google{}code{}gson")
+            .artifactId("gson")
+            .version(RuntimeLibraryVersions.GSON)
+            .resolveTransitiveDependencies(true)
+            .build()
+        val configurateYamlLib = Library.builder()
+            .groupId("org{}spongepowered")
+            .artifactId("configurate-yaml")
+            .version(RuntimeLibraryVersions.CONFIGURATE_YAML)
+            .resolveTransitiveDependencies(true)
+            .build()
+        val configurateHoconLib = Library.builder()
+            .groupId("org{}spongepowered")
+            .artifactId("configurate-hocon")
+            .version(RuntimeLibraryVersions.CONFIGURATE_HOCON)
+            .resolveTransitiveDependencies(true)
+            .build()
+        val configurateExtraKotlinLib = Library.builder()
+            .groupId("org{}spongepowered")
+            .artifactId("configurate-extra-kotlin")
+            .version(RuntimeLibraryVersions.CONFIGURATE_EXTRA_KOTLIN)
+            .resolveTransitiveDependencies(true)
+            .build()
+
+        libraryManager.addRepository("https://maven.aliyun.com/repository/public")
+        libraryManager.addMavenCentral()
+        libraryManager.addJitPack()
+        libraryManager.loadLibraries(guavaLib, hikaricpLib, sqliteLib, mysqlLib, databaseLib, aonebotLib, gsonLib, configurateYamlLib, configurateHoconLib, configurateExtraKotlinLib)
+    }
+}
