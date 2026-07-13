@@ -52,6 +52,9 @@ object BotProvider {
             hasLoaded = true
         } catch (e: Exception) {
             context.logger.log(LogLevel.ERROR, "Failed to load bot ${factory.metadata.type}: ${e.message ?: e.javaClass.name}")
+            context.logger.log(LogLevel.ERROR, e.stackTraceToString())
+            hasLoaded = false
+            throw IllegalStateException("Failed to load bot ${factory.metadata.type}", e)
         }
     }
 
