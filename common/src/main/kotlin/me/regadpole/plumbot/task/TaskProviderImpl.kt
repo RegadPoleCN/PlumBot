@@ -1,8 +1,9 @@
 package me.regadpole.plumbot.task
 
 import kotlinx.coroutines.*
-import java.util.concurrent.Future
+import me.regadpole.plumbot.platform.PlatformTaskHandle
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.Future
 
 object TaskProviderImpl : TaskProvider {
     private val mainScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
@@ -55,8 +56,8 @@ object TaskProviderImpl : TaskProvider {
     }
 
     private fun launchAsFuture(scope: CoroutineScope, block: suspend CoroutineScope.() -> Unit): Future<*> {
-        val future = CompletableFuture<Unit>()
-        scope.launch {
+        val future = JobFuture()
+        val job = scope.launch {
             try {
                 block()
                 future.complete(Unit)
@@ -64,11 +65,30 @@ object TaskProviderImpl : TaskProvider {
                 future.completeExceptionally(e)
             }
         }
+        future.initJob(job)
         return future
     }
 
     fun shutdown() {
         mainScope.cancel()
         asyncScope.cancel()
+    }
+
+    private class JobFuture : CompletableFuture<Unit>(), PlatformTaskHandle {
+        private var _job: Job? = null
+        override val job: Job get() = _job ?: throw IllegalStateException("Job is not initialized")
+
+        fun initJob(job: Job) {
+            this._job = job
+        }
+
+        override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
+            job.cancel()
+            return super<CompletableFuture>.cancel(mayInterruptIfRunning)
+        }
+
+        override fun isCancelled(): Boolean = super.isCancelled() || job.isCancelled
+
+        override fun isDone(): Boolean = super.isDone() || job.isCompleted
     }
 }

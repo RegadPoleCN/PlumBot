@@ -4,6 +4,7 @@ import me.regadpole.plumbot.api.database.IDatabase
 import taboolib.module.database.ColumnBuilder
 import taboolib.module.database.Host
 import taboolib.module.database.Table
+import com.zaxxer.hikari.HikariDataSource
 import java.util.*
 import javax.sql.DataSource
 
@@ -32,7 +33,12 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
     }
 
     override fun close() {
-        dataSource.connection.close()
+        val ds = dataSource
+        if (ds is HikariDataSource) {
+            ds.close()
+        } else {
+            ds.connection.close()
+        }
     }
 
     override fun getConnection(): DataSource {

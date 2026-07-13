@@ -9,12 +9,7 @@ import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.platform.PlatformContext
-import me.regadpole.plumbot.platform.PlatformLogger
-import me.regadpole.plumbot.platform.PlatformMessenger
-import me.regadpole.plumbot.platform.PlatformPlayerService
-import me.regadpole.plumbot.platform.PlatformScheduler
 import me.regadpole.plumbot.platform.PlatformTaskHandle
-import me.regadpole.plumbot.platform.PlatformType
 import me.regadpole.plumbot.task.TaskProvider
 import me.regadpole.plumbot.task.TaskProviderImpl
 import me.regadpole.plumbot.utils.TextToImg
@@ -22,6 +17,8 @@ import net.kyori.adventure.text.Component
 import taboolib.module.database.Database
 import java.io.File
 import java.nio.file.Path
+import java.util.concurrent.Future
+import kotlinx.coroutines.Job
 import kotlin.io.path.pathString
 import kotlin.reflect.KMutableProperty
 
@@ -40,49 +37,6 @@ interface PlumBot: TaskProvider {
     fun loadDependencies()
 
     val platform: PlatformContext
-        get() = object : PlatformContext {
-            override val config: YamlConfigurator
-                get() = this@PlumBot.config
-            override val datasource: YamlConfigurator
-                get() = this@PlumBot.datasource
-            override val dataDirectory: Path
-                get() = this@PlumBot.dataDirectory
-            override val logger: PlatformLogger = PlatformLogger { level, message ->
-                this@PlumBot.log(level, message)
-            }
-            override val scheduler: PlatformScheduler = object : PlatformScheduler {
-                override fun run(task: Runnable): PlatformTaskHandle = this@PlumBot.submit(task).asPlatformTaskHandle()
-
-                override fun runAsync(task: Runnable): PlatformTaskHandle = this@PlumBot.submitAsync(task).asPlatformTaskHandle()
-
-                override fun runLater(delay: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitLater(delay, task).asPlatformTaskHandle()
-
-                override fun runLaterAsync(delay: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitLaterAsync(delay, task).asPlatformTaskHandle()
-
-                override fun runTimer(delay: Long, period: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitTimer(delay, period, task).asPlatformTaskHandle()
-
-                override fun runTimerAsync(delay: Long, period: Long, task: Runnable): PlatformTaskHandle = this@PlumBot.submitTimerAsync(delay, period, task).asPlatformTaskHandle()
-            }
-            override val playerService: PlatformPlayerService = object : PlatformPlayerService {
-                override fun kickPlayer(name: String) = this@PlumBot.kickPlayer(name)
-
-                override fun listPlayers(): List<String> = this@PlumBot.listPlayers()
-
-                override fun listPlayerString(): String = this@PlumBot.listPlayerString()
-            }
-            override val messenger: PlatformMessenger = PlatformMessenger { message ->
-                this@PlumBot.sendMessage(message)
-            }
-            override val platformType: PlatformType = PlatformType.BUKKIT
-
-            override fun isPluginAvailable(name: String): Boolean = false
-        }
-
-    private fun java.util.concurrent.Future<*>.asPlatformTaskHandle(): PlatformTaskHandle {
-        return object : PlatformTaskHandle {
-            override fun cancel(): Boolean = this@asPlatformTaskHandle.cancel(false)
-        }
-    }
 
     fun enable() {
         loadConfig()
@@ -133,14 +87,33 @@ interface PlumBot: TaskProvider {
         config = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
         datasource = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
         val messagesConf = YamlConfigurator.createConfig(dataDirectory, "messages.yml")
-        Messages::class.members.forEach{
+        if (messagesConf == null) {
+            log(LogLevel.WARN, "messages.yml 加载失败，使用默认消息配置")
+            return
+        }
+        Messages::class.members.forEach {
             if (it is KMutableProperty<*>) {
-                when(it.returnType.classifier) {
-                    String::class -> it.setter.call(Messages, messagesConf!!.getString(it.name))
-                    List::class -> it.setter.call(Messages, messagesConf!!.getStringList(it.name))
+                when (it.returnType.classifier) {
+                    String::class -> {
+                        val value = messagesConf.getString(it.name)
+                        if (value != null) it.setter.call(Messages, value)
+                    }
+                    List::class -> it.setter.call(Messages, messagesConf.getStringList(it.name))
                 }
 //                log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(Messages)}")
             }
+        }
+    }
+}
+
+fun Future<*>.asPlatformTaskHandle(): PlatformTaskHandle {
+    if (this is PlatformTaskHandle) return this
+    return object : PlatformTaskHandle {
+        override val job = Job()
+        override fun cancel(): Boolean {
+            val cancelled = this@asPlatformTaskHandle.cancel(true)
+            job.cancel()
+            return cancelled
         }
     }
 }
