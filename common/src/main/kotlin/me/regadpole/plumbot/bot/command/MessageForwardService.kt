@@ -9,16 +9,10 @@ class MessageForwardService(private val service: BotCommandService) {
     fun forward(message: String, groupId: Long, userId: Long) {
         if (!service.isFeatureEnabled("message")) return
 
-        if (service.config.getInteger("feature", "message", "mode") == 0) {
-            sendOb2ServerMessage(message, groupId, userId)
-            return
-        } else if (service.config.getInteger("feature", "message", "mode") == 1) {
-            val prefix = service.config.getString("feature", "message", "prefix")!!
-            if (Regex(prefix).matchesAt(message, 0)) {
-                sendOb2ServerMessage(message.replace(prefix, ""), groupId, userId)
-                return
-            }
-        }
+        val mode = service.config.getInteger("feature", "message", "mode")
+        val prefix = service.config.getString("feature", "message", "prefix")
+        val resolved = MessageModeResolver.resolve(message, mode, prefix) ?: return
+        sendOb2ServerMessage(resolved, groupId, userId)
     }
 
     private fun sendOb2ServerMessage(message: String, groupId: Long, userId: Long) {
