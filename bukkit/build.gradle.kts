@@ -6,8 +6,8 @@ plugins {
 
 dependencies {
     implementation(project(":common"))
-    implementation(project(":adapter-onebot"))
-    implementation(project(":adapter-miraimc"))
+    implementation(project(":adapter:onebot"))
+    implementation(project(":adapter:miraimc"))
     // kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation(kotlin("reflect"))

@@ -9,14 +9,40 @@ kotlinxSerializationJSON = "1.7.3"
 kotlinxCoroutines = "1.9.0"
 sqlite = "3.49.0.0"
 mysql = "8.3.0"
+gson = "2.11.0"
+configurateVersion = "4.2.0"
+taboolibDatabaseVersion = "1.0.2"
+hikaricp = "4.0.3"
+guava = "21.0"
+aonebot = "1.0.11-beta"
+miraimcVersion = "1.9"
+adventureVersion = "4.21.0"
+adventurePlatformBukkitVersion = "4.4.0"
+libbyVersion = "2.0.0-SNAPSHOT"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlinxDatetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinxDatetime" }
 kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJSON" }
 kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
+gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
+configurateYaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurateVersion" }
+configurateHocon = { module = "org.spongepowered:configurate-hocon", version.ref = "configurateVersion" }
+configurateExtraKotlin = { module = "org.spongepowered:configurate-extra-kotlin", version.ref = "configurateVersion" }
+taboolibDatabase = { module = "com.github.RegadPoleCN:taboolib-database", version.ref = "taboolibDatabaseVersion" }
 sqlite = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
 mysql = { module = "com.mysql:mysql-connector-j", version.ref = "mysql" }
+hikaricp = { module = "com.zaxxer:HikariCP", version.ref = "hikaricp" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+aonebot = { module = "com.github.alazeprt:AOneBot", version.ref = "aonebot" }
+miraimcIntegration = { module = "io.github.dreamvoid:MiraiMC-Integration", version.ref = "miraimcVersion" }
+miraimcBukkit = { module = "io.github.dreamvoid:MiraiMC-Bukkit", version.ref = "miraimcVersion" }
+adventureApi = { module = "net.kyori:adventure-api", version.ref = "adventureVersion" }
+adventureTextMinimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventureVersion" }
+adventureTextSerializerLegacy = { module = "net.kyori:adventure-text-serializer-legacy", version.ref = "adventureVersion" }
+adventurePlatformBukkit = { module = "net.kyori:adventure-platform-bukkit", version.ref = "adventurePlatformBukkitVersion" }
+libbyCore = { module = "com.alessiodp.libby:libby-core", version.ref = "libbyVersion" }
+libbyBukkit = { module = "com.alessiodp.libby:libby-bukkit", version.ref = "libbyVersion" }
 
 # Libraries can be bundled together for easier import
 [bundles]

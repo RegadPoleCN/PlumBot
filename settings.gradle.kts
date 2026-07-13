@@ -35,7 +35,7 @@ plugins {
 // 只保留需要的模块
 include(":common") 
 include(":bukkit")
-include(":adapter-onebot")
-include(":adapter-miraimc")
+include(":adapter:onebot")
+include(":adapter:miraimc")
 
 rootProject.name = "PlumBot-V3"
