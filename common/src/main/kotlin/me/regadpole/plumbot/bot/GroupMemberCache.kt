@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.bot
 
+import me.regadpole.plumbot.internal.cache.TimedValue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
@@ -60,11 +61,6 @@ open class DefaultGroupMemberCache(
     private val fetchMember: (groupId: Long, userId: Long) -> CompletableFuture<MemberInfo?>,
     private val refreshAfterWriteMillis: Long = DEFAULT_REFRESH_MILLIS
 ) : GroupMemberCache {
-
-    private data class TimedValue<V>(
-        val future: CompletableFuture<V>,
-        val timestamp: Long = System.currentTimeMillis()
-    )
 
     private val cache = ConcurrentHashMap<Pair<Long, Long>, TimedValue<MemberInfo?>>()
 

@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.bot
 
+import me.regadpole.plumbot.internal.cache.TimedValue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 
@@ -39,11 +40,6 @@ open class DefaultBotCache<K, V>(
     private val loader: (K) -> CompletableFuture<V>,
     private val refreshAfterWriteMillis: Long = DEFAULT_REFRESH_MILLIS
 ) : BotCache<K, V> {
-
-    private data class TimedValue<V>(
-        val future: CompletableFuture<V>,
-        val timestamp: Long = System.currentTimeMillis()
-    )
 
     private val cache = ConcurrentHashMap<K, TimedValue<V>>()
 
