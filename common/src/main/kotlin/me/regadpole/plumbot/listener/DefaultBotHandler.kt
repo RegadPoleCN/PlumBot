@@ -15,47 +15,63 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
     private val playerListCommandService = PlayerListCommandService(commandService)
     private val messageForwardService = MessageForwardService(commandService)
 
-    override fun onGroupMessage(message: String, groupId: Long, userId: Long) {
-        commandService.bot.requireCapability(BotCapability.GROUP_MESSAGE_RECEIVE)
+    private class CommandRegistration(
+        val keys: List<String?>,
+        val feature: String,
+        val regex: (String, String?) -> String,
+        val payload: (String, String?, String) -> String,
+        val handler: (String, Long, Long) -> Unit
+    )
 
+    private val commands: List<CommandRegistration> by lazy {
         val keys = commandService.config.getConfigMaker("keys")
-        val prefix = commandService.config.getString("feature", "cmdPrefix")
-        if (handleCommand(
-                message,
-                prefix,
+        listOf(
+            CommandRegistration(
                 keys.getStringList("list"),
                 "list",
                 { cmdPrefix, key -> """$cmdPrefix$key""" },
-                { cmdPrefix, key -> message.replace("$cmdPrefix$key", "") }
-            ) { onPlayerList(it, groupId, userId) }
-        ) return
-        if (handleCommand(
-                message,
-                prefix,
+                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key", "") }
+            ) { message, groupId, userId -> onPlayerList(message, groupId, userId) },
+            CommandRegistration(
                 keys.getStringList("addBind"),
                 "bind",
                 { cmdPrefix, key -> """$cmdPrefix$key (.+)""" },
-                { cmdPrefix, key -> message.replace("$cmdPrefix$key ", "") }
-            ) { onWhitelistApply(it, groupId, userId) }
-        ) return
-        if (handleCommand(
-                message,
-                prefix,
+                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key ", "") }
+            ) { message, groupId, userId -> onWhitelistApply(message, groupId, userId) },
+            CommandRegistration(
                 keys.getStringList("deleteBind"),
                 "bind",
                 { cmdPrefix, key -> """$cmdPrefix$key (.+)""" },
-                { cmdPrefix, key -> message.replace("$cmdPrefix$key ", "") }
-            ) { onWhitelistRemove(it, groupId, userId) }
-        ) return
-        if (handleCommand(
-                message,
-                prefix,
+                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key ", "") }
+            ) { message, groupId, userId -> onWhitelistRemove(message, groupId, userId) },
+            CommandRegistration(
                 keys.getStringList("queryBind"),
                 "bind",
                 { cmdPrefix, key -> """$cmdPrefix$key(.*)""" },
-                { cmdPrefix, key -> message.replace("$cmdPrefix$key", "") }
-            ) { onWhitelistQuery(it, groupId, userId) }
-        ) return
+                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key", "") }
+            ) { message, groupId, userId -> onWhitelistQuery(message, groupId, userId) }
+        )
+    }
+
+    override fun onGroupMessage(message: String, groupId: Long, userId: Long) {
+        commandService.bot.requireCapability(BotCapability.GROUP_MESSAGE_RECEIVE)
+
+        val prefix = commandService.config.getString("feature", "cmdPrefix") ?: ""
+
+        for (cmd in commands) {
+            if (handleCommand(
+                    message,
+                    prefix,
+                    cmd.keys,
+                    cmd.feature,
+                    cmd.regex,
+                    cmd.payload,
+                    cmd.handler,
+                    groupId,
+                    userId
+                )
+            ) return
+        }
 
         messageForwardService.forward(message, groupId, userId)
     }
@@ -83,16 +99,18 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
 
     private fun handleCommand(
         message: String,
-        prefix: String?,
+        prefix: String = "",
         keys: List<String?>,
         feature: String,
-        regex: (String?, String?) -> String,
-        payload: (String?, String?) -> String,
-        handler: (String) -> Unit
+        regex: (String, String?) -> String,
+        payload: (String, String?, String) -> String,
+        handler: (String, Long, Long) -> Unit,
+        groupId: Long,
+        userId: Long
     ): Boolean {
         keys.forEach {
             if (regex(prefix, it).toRegex().matches(message) && commandService.isFeatureEnabled(feature)) {
-                handler(payload(prefix, it))
+                handler(payload(prefix, it, message), groupId, userId)
                 return true
             }
         }
