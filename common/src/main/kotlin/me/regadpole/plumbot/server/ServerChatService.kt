@@ -3,6 +3,7 @@ package me.regadpole.plumbot.server
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.api.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
+import me.regadpole.plumbot.bot.command.MessageModeResolver
 
 class ServerChatService(private val config: YamlConfigurator) {
     fun handleChat(playerName: String, serverName: String, rawMessage: String) {
@@ -12,16 +13,10 @@ class ServerChatService(private val config: YamlConfigurator) {
             "§" + matchResult.groupValues[1]
         }.replace(Regex("#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})"), "")
 
-        if (config.getInteger("feature", "message", "mode") == 0) {
-            sendServerMessage(serverName, playerName, message)
-            return
-        } else if (config.getInteger("feature", "message", "mode") == 1) {
-            val prefix = config.getString("feature", "message", "prefix")!!
-            if (Regex(prefix).matchesAt(rawMessage, 0)) {
-                sendServerMessage(serverName, playerName, message.replace(prefix, ""))
-                return
-            }
-        }
+        val mode = config.getInteger("feature", "message", "mode")
+        val prefix = config.getString("feature", "message", "prefix")
+        val resolved = MessageModeResolver.resolve(message, mode, prefix) ?: return
+        sendServerMessage(serverName, playerName, resolved)
     }
 
     private fun sendServerMessage(serverName: String, playerName: String, message: String) {
