@@ -1,49 +1,49 @@
 package me.regadpole.plumbot.api.config
 
-object Messages: Cloneable {
-    lateinit var prefix: String
+object Messages : Cloneable {
+    var prefix: String = "<missing:prefix>"
 
-    lateinit var load: String
-    lateinit var unload: String
+    var load: String = "<missing:load>"
+    var unload: String = "<missing:unload>"
 
-    lateinit var ob2server: String
-    lateinit var server2ob: String
+    var ob2server: String = "<missing:ob2server>"
+    var server2ob: String = "<missing:server2ob>"
 
-    lateinit var playerList: String
+    var playerList: String = "<missing:playerList>"
 
-    lateinit var joinProxy: String
-    lateinit var leaveProxy: String
-    lateinit var changeServer: String
+    var joinProxy: String = "<missing:joinProxy>"
+    var leaveProxy: String = "<missing:leaveProxy>"
+    var changeServer: String = "<missing:changeServer>"
 
-    lateinit var kickServer: String
-    lateinit var kickPlatform: String
+    var kickServer: String = "<missing:kickServer>"
+    var kickPlatform: String = "<missing:kickPlatform>"
 
-    lateinit var playerAddBind: String
-    lateinit var playerDeleteBind: String
-    lateinit var playerQueryBind: String
+    var playerAddBind: String = "<missing:playerAddBind>"
+    var playerDeleteBind: String = "<missing:playerDeleteBind>"
+    var playerQueryBind: String = "<missing:playerQueryBind>"
 
-    lateinit var fullBind: String
-    lateinit var qqEmptyBind: String
-    lateinit var idEmptyBind: String
-    lateinit var existsBind: String
-    lateinit var notExistsBind: String
-    lateinit var notBelongToYou: String
-    lateinit var wrongUsage: String
-    lateinit var internalError: String
+    var fullBind: String = "<missing:fullBind>"
+    var qqEmptyBind: String = "<missing:qqEmptyBind>"
+    var idEmptyBind: String = "<missing:idEmptyBind>"
+    var existsBind: String = "<missing:existsBind>"
+    var notExistsBind: String = "<missing:notExistsBind>"
+    var notBelongToYou: String = "<missing:notBelongToYou>"
+    var wrongUsage: String = "<missing:wrongUsage>"
+    var internalError: String = "<missing:internalError>"
 
-    lateinit var adminAddBind: String
-    lateinit var adminDeleteBind: String
-    lateinit var adminQueryIdBind: String
-    lateinit var adminQueryQQBind: String
+    var adminAddBind: String = "<missing:adminAddBind>"
+    var adminDeleteBind: String = "<missing:adminDeleteBind>"
+    var adminQueryIdBind: String = "<missing:adminQueryIdBind>"
+    var adminQueryQQBind: String = "<missing:adminQueryQQBind>"
 
-    lateinit var help: List<String>
+    var help: List<String> = emptyList()
 
-    lateinit var noCommandFound: String
-    lateinit var commandAddBind: String
-    lateinit var commandDeleteBindById: String
-    lateinit var commandDeleteBindByQQ: String
-    lateinit var commandQueryBindById: String
-    lateinit var commandQueryBindByQQ: String
+    var noCommandFound: String = "<missing:noCommandFound>"
+    var commandAddBind: String = "<missing:commandAddBind>"
+    var commandDeleteBindById: String = "<missing:commandDeleteBindById>"
+    var commandDeleteBindByQQ: String = "<missing:commandDeleteBindByQQ>"
+    var commandQueryBindById: String = "<missing:commandQueryBindById>"
+    var commandQueryBindByQQ: String = "<missing:commandQueryBindByQQ>"
 
     public override fun clone(): Messages {
         return super.clone() as Messages
