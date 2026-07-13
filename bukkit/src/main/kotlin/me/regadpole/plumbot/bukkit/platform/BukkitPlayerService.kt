@@ -7,6 +7,8 @@ import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
 import org.bukkit.Server
 
+private const val PLAYERS_PER_LINE = 5
+
 class BukkitPlayerService(
     private val server: Server,
     private val configProvider: () -> YamlConfigurator,
@@ -27,12 +29,12 @@ class BukkitPlayerService(
     }
 
     override fun listPlayerString(): String {
-        val newLine = 5
+        val playersPerLine = PLAYERS_PER_LINE
         var list = server.onlinePlayers.map { it.name }.sorted().toList()
         var result = ""
-        while(list.size > newLine) {
-            result += list.slice(0..<newLine).joinToString(postfix = "\n  ")
-            list = list.drop(newLine)
+        while(list.size > playersPerLine) {
+            result += list.slice(0..<playersPerLine).joinToString(postfix = "\n  ")
+            list = list.drop(playersPerLine)
         }
         result += list.joinToString()
         result += "\n"

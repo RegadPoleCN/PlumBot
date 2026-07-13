@@ -1,5 +1,9 @@
 package me.regadpole.plumbot.bukkit.platform
 
+/**
+ * 通过 Libby 在 Bukkit 运行时下载依赖。
+ * 依赖版本统一取自 [RuntimeLibraryVersions]，请确保其与 gradle/libs.versions.toml 保持一致。
+ */
 import com.alessiodp.libby.BukkitLibraryManager
 import com.alessiodp.libby.Library
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
@@ -21,6 +25,7 @@ class BukkitDependencyLoader(
             .groupId("com{}github{}RegadPoleCN")
             .artifactId("taboolib-database")
             .version(RuntimeLibraryVersions.TABOOLIB_DATABASE)
+            // TODO: 未来统一 relocation 目标包名到 me.regadpole.plumbot.lib.*（BREAKING，需评估运行兼容性）
             .relocate("com{}google{}common", "top{}alazeprt{}aqqbot{}lib{}com{}google{}common")
             .build()
         val hikaricpLib = Library.builder()
@@ -33,6 +38,7 @@ class BukkitDependencyLoader(
             .groupId("com{}google{}guava")
             .artifactId("guava")
             .version(RuntimeLibraryVersions.GUAVA)
+            // TODO: 未来统一 relocation 目标包名到 me.regadpole.plumbot.lib.*（BREAKING，需评估运行兼容性）
             .relocate("com{}google{}common", "top{}alazeprt{}aqqbot{}lib{}com{}google{}common")
             .resolveTransitiveDependencies(true)
             .build()
@@ -52,6 +58,7 @@ class BukkitDependencyLoader(
             .groupId("com{}github{}alazeprt")
             .artifactId("AOneBot")
             .version(RuntimeLibraryVersions.AONE_BOT)
+            // TODO: 未来统一 relocation 目标包名到 me.regadpole.plumbot.lib.*（BREAKING，需评估运行兼容性）
             .relocate("com{}google{}code{}gson", "top{}alazeprt{}aonebot{}lib{}com{}google")
             .resolveTransitiveDependencies(true)
             .build()

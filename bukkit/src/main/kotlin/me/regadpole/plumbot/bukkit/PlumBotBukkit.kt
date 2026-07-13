@@ -47,14 +47,26 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     }
 
     override var dataDirectory: Path = dataFolder.toPath()
-    override var datasource: YamlConfigurator = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
-    override var config: YamlConfigurator = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
+    override lateinit var datasource: YamlConfigurator
+    override lateinit var config: YamlConfigurator
     override var debugProvider = DebugProvider(this)
 
     override val platform: PlatformContext
         get() = platformContext
 
     override fun onEnable() {
+        try {
+            datasource = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")
+                ?: error("Failed to load datasource.yml")
+            config = YamlConfigurator.createConfig(dataDirectory, "config.yml")
+                ?: error("Failed to load config.yml")
+        } catch (e: Exception) {
+            logger.severe("Failed to load configuration: ${e.message}")
+            e.printStackTrace()
+            Bukkit.getPluginManager().disablePlugin(this)
+            return
+        }
+
         val botType = config.getString("bot", "type")
         val useMirai = botType.equals("mirai", ignoreCase = true)
         val miraiAvailable = Bukkit.getPluginManager().isPluginEnabled("MiraiMC")
@@ -147,7 +159,9 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
                 return cancelled
             }
 
-            override fun isDone(): Boolean = false
+            override fun isDone(): Boolean = this@asFuture.job.isCompleted
+
+            override fun isCancelled(): Boolean = this@asFuture.job.isCancelled
 
             override fun get(): Void? = null
 
