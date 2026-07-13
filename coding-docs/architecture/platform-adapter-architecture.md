@@ -16,36 +16,38 @@
 
 ```text
 :bukkit -----------------------------> :common
-:bukkit -----------------------------> :adapter-onebot
-:bukkit -----------------------------> :adapter-miraimc
-:adapter-onebot ---------------------> :common
-:adapter-miraimc --------------------> :common
+:bukkit -----------------------------> :adapter:onebot
+:bukkit -----------------------------> :adapter:miraimc
+:adapter:onebot ---------------------> :common
+:adapter:miraimc --------------------> :common
 ```
 
 说明：
 
 - `:bukkit` 保留既有模块名，未重命名为 `:platform-bukkit`。
-- `:adapter-onebot` 和 `:adapter-miraimc` 已完成迁移并接入 `:bukkit`；`:bukkit` 通过 Gradle `implementation(project(...))` 在构建时将二者打包进最终产物。
+- `:adapter:onebot` 和 `:adapter:miraimc` 已完成迁移并接入 `:bukkit`；`:bukkit` 通过 Gradle `implementation(project(...))` 在构建时将二者打包进最终产物。
 - `common` 不再包含 AOneBot、MiraiMC 或 Bukkit 等具体平台/协议实现；具体 adapter 依赖已下放到对应模块。
 
 ## 推荐模块命名
+
+未来新增 adapter 建议放在 `adapter/<name>/` 目录下，对应的 Gradle 模块路径为 `:adapter:<name>`：
 
 ```text
 :common
 :platform-bukkit
 :platform-velocity
 :platform-bungee
-:adapter-onebot
-:adapter-miraimc-bukkit
-:adapter-discord
-:adapter-telegram
+:adapter:onebot
+:adapter:miraimc-bukkit
+:adapter:discord
+:adapter:telegram
 ```
 
 命名规则：
 
 - 服务端平台模块使用 `platform-<name>`。
-- Bot 接入模块使用 `adapter-<name>`。
-- 如果某个 adapter 强绑定某个平台，使用 `adapter-<name>-<platform>`。
+- Bot 接入模块使用 `:adapter:<name>`。
+- 如果某个 adapter 强绑定某个平台，使用 `:adapter:<name>-<platform>`。
 
 ## common 职责
 
@@ -123,7 +125,7 @@ adapter 不应直接依赖不支持的平台 API；如果必须依赖平台 API�
 
 ## 兼容性维护
 
-adapter 与 platform 的支持关系维护在 `docs/architecture/adapter-platform-compatibility.md`。新增或迁移 adapter 时必须同步更新：
+adapter 与 platform 的支持关系维护在 `coding-docs/architecture/adapter-platform-compatibility.md`。新增或迁移 adapter 时必须同步更新：
 
 - 支持的平台。
 - 必需插件。
@@ -132,12 +134,12 @@ adapter 与 platform 的支持关系维护在 `docs/architecture/adapter-platfor
 
 ## 能力维护
 
-Bot 能力说明维护在 `docs/architecture/bot-capabilities.md`。新增 adapter 时只声明实际支持的能力，不应为了满足旧接口而假装支持。
+Bot 能力说明维护在 `coding-docs/architecture/bot-capabilities.md`。新增 adapter 时只声明实际支持的能力，不应为了满足旧接口而假装支持。
 
 ## 新增平台
 
-新增平台时参考 `docs/development/adding-platform.md`，重点是实现 platform 抽象，并把平台事件转换为 common service 调用。
+新增平台时参考 `coding-docs/development/adding-platform.md`，重点是实现 platform 抽象，并把平台事件转换为 common service 调用。
 
 ## 新增 Bot Adapter
 
-新增 Bot adapter 时参考 `docs/development/adding-bot-adapter.md`，重点是实现 factory、metadata 和支持的能力，并同步兼容矩阵。
+新增 Bot adapter 时参考 `coding-docs/development/adding-bot-adapter.md`，重点是实现 factory、metadata 和支持的能力，并同步兼容矩阵。

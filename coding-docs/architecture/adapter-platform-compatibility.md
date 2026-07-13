@@ -6,8 +6,8 @@
 
 | Adapter | Module | Bukkit | Velocity | Bungee | Standalone | Required Plugin | Notes |
 |---|---|---:|---:|---:|---:|---|---|
-| onebot | `:adapter-onebot` | 是 | 是 | 是 | 是 | 无 | 基于 WebSocket 接入，理论上平台无关；具体启动方式由 platform 注册 factory 决定。 |
-| miraimc | `:adapter-miraimc` | 是 | 否 | 否 | 否 | MiraiMC | 依赖 MiraiMC 插件 API，当前视为 Bukkit-only adapter。 |
+| onebot | `:adapter:onebot` | 是 | 是 | 是 | 是 | 无 | 基于 WebSocket 接入，理论上平台无关；具体启动方式由 platform 注册 factory 决定。 |
+| miraimc | `:adapter:miraimc` | 是 | 否 | 否 | 否 | MiraiMC | 依赖 MiraiMC 插件 API，当前视为 Bukkit-only adapter。 |
 
 ## 字段说明
 
@@ -27,4 +27,4 @@
 
 ## 矩阵说明
 
-代码迁移已完成，矩阵记录 `:adapter-onebot` 与 `:adapter-miraimc` 的实际兼容状态。新增或修改 adapter 时应同步更新本文件。
+代码迁移已完成，矩阵记录 `:adapter:onebot` 与 `:adapter:miraimc` 的实际兼容状态。新增或修改 adapter 时应同步更新本文件。

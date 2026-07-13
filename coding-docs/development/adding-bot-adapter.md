@@ -11,32 +11,37 @@ Bot adapter 模块负责接入外部 Bot 协议或插件 API，并将外部事�
 通用 adapter：
 
 ```text
-:adapter-<name>
+:adapter:<name>
 ```
 
 平台绑定 adapter：
 
 ```text
-:adapter-<name>-<platform>
+:adapter:<name>-<platform>
 ```
 
 示例：
 
 ```text
-:adapter-onebot
-:adapter-discord
-:adapter-miraimc-bukkit
+:adapter:onebot
+:adapter:discord
+:adapter:miraimc-bukkit
 ```
 
 当前仓库 Step 1 建立的模块为：
 
-- `:adapter-onebot`
-- `:adapter-miraimc`
+- `:adapter:onebot`
+- `:adapter:miraimc`
 
 ## 新增步骤
 
-1. 在 `settings.gradle.kts` 中 include 新模块。
-2. 新建 `adapter-<name>/build.gradle.kts`。
+1. 在 `settings.gradle.kts` 中 include 新模块：
+
+   ```kotlin
+   include(":adapter:<name>")
+   ```
+
+2. 新建 `adapter/<name>/build.gradle.kts`。
 3. 应用现有 Kotlin JVM convention plugin 和 Kotlin serialization plugin。
 4. 依赖 `project(":common")`。
 5. 添加协议 SDK、插件 API 或网络库依赖。
@@ -44,7 +49,11 @@ Bot adapter 模块负责接入外部 Bot 协议或插件 API，并将外部事�
 7. 声明 Bot adapter metadata。
 8. 只声明真实支持的 capabilities。
 9. 将外部 Bot 事件转换为 common Bot 事件或 dispatcher 调用。
-10. 在支持的 platform 模块中注册 factory。
+10. 在支持的 platform 模块中注册 factory。例如在 `:bukkit` 的 `build.gradle.kts` 中添加：
+
+    ```kotlin
+    implementation(project(":adapter:<name>"))
+    ```
 11. 更新兼容矩阵和能力文档。
 12. 编译验证 adapter 模块和受影响 platform 模块。
 
@@ -80,7 +89,7 @@ adapter 只声明实际支持的能力。例如：
 - 通用 adapter 不应 import Bukkit、Velocity、Bungee 等平台 API。
 - 平台插件型 adapter 必须显式声明支持平台和 required plugin。
 - 不支持的平台不能提前加载平台专属类。
-- 如果 adapter 只能在 Bukkit 运行，优先考虑命名为 `adapter-<name>-bukkit`；如短期未改名，必须在兼容矩阵中明确 Bukkit-only。
+- 如果 adapter 只能在 Bukkit 运行，优先考虑命名为 `:adapter:<name>-bukkit`；如短期未改名，必须在兼容矩阵中明确 Bukkit-only。
 
 ## 事件处理原则
 
@@ -96,6 +105,17 @@ adapter 负责协议转换，不负责业务决策：
 - 群成员信息。
 - 退群、撤回、私聊等事件类型。
 - 图片、文本或富文本消息格式。
+
+## 代码模板
+
+common 模块提供了 `BotAdapterTemplate`（`common/src/main/kotlin/me/regadpole/plumbot/bot/BotAdapterTemplate.kt`），内含新增 adapter 时常用的字符串模板：
+
+- `FACTORY_TEMPLATE`：`BotFactory` 与 `BotAdapterMetadata` 声明示例，包括 `supportedPlatforms`、`requiredPlugins` 与 `capabilities`。
+- `ADAPTER_TEMPLATE`：继承 `AbstractBotAdapter` 的实现骨架，覆盖连接建立、资源清理、成员查询、消息发送等方法。
+- `LISTENER_TEMPLATE`：将外部事件转换为 common `BotHandler` 调用的 listener 示例。
+- `NOTES`：新增 adapter 的注意事项，例如必须正确声明平台支持、依赖插件与能力；阻塞查询应使用 `AbstractBotAdapter.awaitWithTimeout` 保持统一超时；图片发送可复用 common 模块的 `TextToImg` 等工具。
+
+`BotAdapterTemplate` 仅作为文档/模板存在，内部字符串不需要编译通过，也不应引入任何具体协议 SDK。建议复制模板到 `:adapter:<name>` 模块中，根据实际协议填写实现。
 
 ## 验证清单
 
