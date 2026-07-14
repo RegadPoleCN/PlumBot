@@ -11,6 +11,7 @@ import me.regadpole.plumbot.bukkit.listener.MiraiMCListener
 import me.regadpole.plumbot.bukkit.listener.ServerListener
 import me.regadpole.plumbot.bukkit.platform.BukkitDependencyLoader
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformContext
+import me.regadpole.plumbot.bukkit.platform.BukkitTaskHandle
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformLogger
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformMessenger
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformScheduler
@@ -152,6 +153,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     }
 
     private fun PlatformTaskHandle.asFuture(): Future<*> {
+        val bukkitTask = (this as? BukkitTaskHandle)?.task
         return object : CompletableFuture<Void>() {
             override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
                 val cancelled = this@asFuture.cancel()
@@ -159,9 +161,9 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
                 return cancelled
             }
 
-            override fun isDone(): Boolean = this@asFuture.job.isCompleted
+            override fun isDone(): Boolean = bukkitTask == null || super.isDone()
 
-            override fun isCancelled(): Boolean = this@asFuture.job.isCancelled
+            override fun isCancelled(): Boolean = bukkitTask?.isCancelled == true || super.isCancelled()
 
             override fun get(): Void? = null
 

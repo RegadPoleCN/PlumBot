@@ -1,18 +1,17 @@
 package me.regadpole.plumbot.bukkit.platform
 
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Job
 import me.regadpole.plumbot.platform.PlatformTaskHandle
 import org.bukkit.scheduler.BukkitTask
 
 class BukkitTaskHandle(
-    private val task: BukkitTask?,
+    val task: BukkitTask?,
+    override val job: Job = Job(),
 ): PlatformTaskHandle {
-    override val job = SupervisorJob()
-
     override fun cancel(): Boolean {
-        task?.cancel()
-        if (!job.isActive) return false
-        job.cancel()
+        if (task == null) return false
+        if (task.isCancelled) return false
+        task.cancel()
         return true
     }
 }

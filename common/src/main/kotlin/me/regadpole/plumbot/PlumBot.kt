@@ -9,7 +9,6 @@ import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.platform.PlatformContext
-import me.regadpole.plumbot.platform.PlatformTaskHandle
 import me.regadpole.plumbot.task.TaskProvider
 import me.regadpole.plumbot.task.TaskProviderImpl
 import me.regadpole.plumbot.utils.TextToImg
@@ -17,8 +16,6 @@ import net.kyori.adventure.text.Component
 import taboolib.module.database.Database
 import java.io.File
 import java.nio.file.Path
-import java.util.concurrent.Future
-import kotlinx.coroutines.Job
 import kotlin.io.path.pathString
 import kotlin.reflect.KMutableProperty
 
@@ -102,18 +99,6 @@ interface PlumBot: TaskProvider {
                 }
 //                log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(Messages)}")
             }
-        }
-    }
-}
-
-fun Future<*>.asPlatformTaskHandle(): PlatformTaskHandle {
-    if (this is PlatformTaskHandle) return this
-    return object : PlatformTaskHandle {
-        override val job = Job()
-        override fun cancel(): Boolean {
-            val cancelled = this@asPlatformTaskHandle.cancel(true)
-            job.cancel()
-            return cancelled
         }
     }
 }
