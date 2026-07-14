@@ -43,7 +43,7 @@ class ServerListener(private val plugin: PlumBot): Listener {
         val playerName = event.player.name
         val serverName = Bukkit.getServer().name
         plugin.submitAsync {
-            PlayerJoinLeaveService(plugin.config).notifyLeave(playerName, serverName)
+            PlayerJoinLeaveService.notifyLeave(playerName, serverName, plugin.config)
         }
     }
 }

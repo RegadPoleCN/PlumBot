@@ -2,7 +2,6 @@ package me.regadpole.plumbot.server
 
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.api.config.YamlConfigurator
-import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.bot.command.MessageModeResolver
 
 class ServerChatService(private val config: YamlConfigurator) {
@@ -20,16 +19,14 @@ class ServerChatService(private val config: YamlConfigurator) {
     }
 
     private fun sendServerMessage(serverName: String, playerName: String, message: String) {
-        config.getLongList("groups").forEach {
-            BotProvider.getBot()?.sendMsg(
-                true,
-                it,
-                Messages.server2ob
-                    .replace("%server%", serverName)
-                    .replace("%player_name%", playerName)
-                    .replace("%message%", message),
-                config.getBoolean("feature", "message", "pic")
-            )
-        }
+        val rendered = Messages.server2ob
+            .replace("%server%", serverName)
+            .replace("%player_name%", playerName)
+            .replace("%message%", message)
+        ServerMessageSender.broadcastToGroups(
+            config,
+            rendered,
+            config.getBoolean("feature", "message", "pic")
+        )
     }
 }

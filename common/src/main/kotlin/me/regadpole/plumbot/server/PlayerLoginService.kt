@@ -2,7 +2,6 @@ package me.regadpole.plumbot.server
 
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.api.config.YamlConfigurator
-import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
@@ -37,18 +36,16 @@ class PlayerLoginService(private val config: YamlConfigurator) {
     }
 
     private fun notifyKick(playerName: String) {
-        config.getLongList("groups").forEach {
-            BotProvider.getBot()?.sendMsg(
-                true,
-                it,
-                Messages.kickPlatform
-                    .replace("%player_name%", playerName),
-                config.getBoolean("feature", "bind", "pic")
-            )
-        }
+        val rendered = Messages.kickPlatform
+            .replace("%player_name%", playerName)
+        ServerMessageSender.broadcastToGroups(
+            config,
+            rendered,
+            config.getBoolean("feature", "bind", "pic")
+        )
     }
 
     private fun notifyJoinProxy(playerName: String) {
-        PlayerJoinLeaveService(config).notifyJoin(playerName)
+        PlayerJoinLeaveService.notifyJoin(playerName, config)
     }
 }
