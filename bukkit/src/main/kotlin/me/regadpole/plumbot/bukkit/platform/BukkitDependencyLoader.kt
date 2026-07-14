@@ -25,8 +25,7 @@ class BukkitDependencyLoader(
             .groupId("com{}github{}RegadPoleCN")
             .artifactId("taboolib-database")
             .version(RuntimeLibraryVersions.TABOOLIB_DATABASE)
-            // TODO: 未来统一 relocation 目标包名到 me.regadpole.plumbot.lib.*（BREAKING，需评估运行兼容性）
-            .relocate("com{}google{}common", "top{}alazeprt{}aqqbot{}lib{}com{}google{}common")
+            .relocate("com{}google{}common", "me{}regadpole{}plumbot{}lib{}com{}google{}common")
             .build()
         val hikaricpLib = Library.builder()
             .groupId("com{}zaxxer")
@@ -38,8 +37,7 @@ class BukkitDependencyLoader(
             .groupId("com{}google{}guava")
             .artifactId("guava")
             .version(RuntimeLibraryVersions.GUAVA)
-            // TODO: 未来统一 relocation 目标包名到 me.regadpole.plumbot.lib.*（BREAKING，需评估运行兼容性）
-            .relocate("com{}google{}common", "top{}alazeprt{}aqqbot{}lib{}com{}google{}common")
+            .relocate("com{}google{}common", "me{}regadpole{}plumbot{}lib{}com{}google{}common")
             .resolveTransitiveDependencies(true)
             .build()
         val sqliteLib = Library.builder()
@@ -58,8 +56,7 @@ class BukkitDependencyLoader(
             .groupId("com{}github{}alazeprt")
             .artifactId("AOneBot")
             .version(RuntimeLibraryVersions.AONE_BOT)
-            // TODO: 未来统一 relocation 目标包名到 me.regadpole.plumbot.lib.*（BREAKING，需评估运行兼容性）
-            .relocate("com{}google{}code{}gson", "top{}alazeprt{}aonebot{}lib{}com{}google")
+            .relocate("com{}google{}code{}gson", "me{}regadpole{}plumbot{}lib{}com{}google{}code{}gson")
             .resolveTransitiveDependencies(true)
             .build()
         val gsonLib = Library.builder()

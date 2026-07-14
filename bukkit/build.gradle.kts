@@ -24,8 +24,10 @@ dependencies {
 
 tasks {
     processResources {
-        filesMatching("plugin.yml") {
-            expand(rootProject.properties)
+        withGroovyBuilder {
+            "filesMatching"("plugin.yml") {
+                "expand"("version" to rootProject.version.toString())
+            }
         }
     }
     
