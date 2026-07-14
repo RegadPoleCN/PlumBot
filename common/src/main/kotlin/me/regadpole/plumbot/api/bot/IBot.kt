@@ -37,10 +37,19 @@ interface IBot: Cloneable {
     fun checkUserInGroup(userId: Long, groupId: Long): Boolean
 
     /**
-     * Send message to the group/user
+     * Send message to the group/user.
+     *
+     * When [isPic] is `true`, [BotImpl] internally delegates to
+     * [sendGroupPicWithText] (for [isGroup] = `true`) or
+     * [sendUserPicWithText] (for [isGroup] = `false`), preserving the
+     * exact behavior of the previously public `sendPictureWithText`.
+     *
      * @param isGroup is this message send to group
      * @param targetId the target you want to send
      * @param message the message
+     * @param isPic when `true`, send as a picture with text via
+     *   [sendGroupPicWithText] / [sendUserPicWithText]; otherwise send as
+     *   a plain text message via [sendGroupMsg] / [sendUserMsg]
      */
     fun sendMsg(isGroup: Boolean, targetId: Long, message: String?, isPic: Boolean)
 
@@ -57,14 +66,6 @@ interface IBot: Cloneable {
      * @param message Message to send
      */
     fun sendUserMsg(targetId: Long, message: String)
-
-    /**
-     * Send picture to the group/user
-     * @param isGroup is this message send to group
-     * @param targetId the target you want to send
-     * @param message the message
-     */
-    fun sendPictureWithText(isGroup: Boolean, targetId: Long, message: String?)
 
     /**
      * Send a picture to group
