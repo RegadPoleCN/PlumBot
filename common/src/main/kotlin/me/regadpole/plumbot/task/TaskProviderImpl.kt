@@ -87,8 +87,10 @@ object TaskProviderImpl : TaskProvider {
             return super<CompletableFuture>.cancel(mayInterruptIfRunning)
         }
 
-        override fun isCancelled(): Boolean = super.isCancelled() || job.isCancelled
+        override fun isCancelled(): Boolean =
+            _job?.isCancelled ?: super.isCancelled()
 
-        override fun isDone(): Boolean = super.isDone() || job.isCompleted
+        override fun isDone(): Boolean =
+            _job?.isCompleted ?: super.isDone()
     }
 }
