@@ -65,7 +65,7 @@ mysql = "8.3.0"
 
 `:bukkit` 模块使用 Shadow 插件将 `:common`、`:adapter:onebot`、`:adapter:miraimc` 及第三方依赖打包成单一 JAR，并通过 relocation 避免类冲突。
 
-当前 relocation 包名部分使用 `top.alazeprt.*` 历史路径，未来计划统一为 `me.regadpole.plumbot.lib.*`，但属于 BREAKING 变更，需谨慎。
+当前 relocation 包名已统一为 `me.regadpole.plumbot.lib.*` 前缀（`BukkitDependencyLoader` 中 taboolib-database / guava / AOneBot 依赖通过 Libby 运行时下载并 relocation，`bukkit/build.gradle.kts` 的 shadowJar 中 libby / commodore / adventure 也使用同一前缀）。注意：早期版本中使用 `top.alazeprt.*` 历史路径的运行时会与新版本不兼容，属于 BREAKING 变更。
 
 ## 发布流程
 
