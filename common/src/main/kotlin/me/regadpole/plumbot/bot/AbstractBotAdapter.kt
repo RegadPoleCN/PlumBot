@@ -112,6 +112,13 @@ abstract class AbstractBotAdapter : BotImpl {
     protected abstract fun preloadGroupCaches()
 
     /**
+     * 预热单条群成员缓存，供子类 [preloadGroupCaches] 复用，统一缓存写入路径。
+     */
+    protected fun primeGroupMember(groupId: Long, info: MemberInfo) {
+        groupMemberCache.put(groupId, info.userId, info)
+    }
+
+    /**
      * 异步获取指定群成员信息，供 [groupMemberCache] 回源。
      */
     protected abstract fun fetchMember(groupId: Long, userId: Long): CompletableFuture<MemberInfo?>

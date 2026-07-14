@@ -57,8 +57,10 @@ class MiraiMCAdapter(
     override fun preloadGroupCaches() {
         context.config.getLongList("groups").forEach { groupId ->
             bot.getGroup(groupId).members.forEach {
-                groupMemberCache.put(groupId, it.id,
-                    MemberInfo(it.id, it.nick, it.nameCard, permissionToRole(it.permission)))
+                primeGroupMember(
+                    groupId,
+                    MemberInfo(it.id, it.nick, it.nameCard, permissionToRole(it.permission))
+                )
             }
         }
     }
@@ -66,8 +68,10 @@ class MiraiMCAdapter(
     override fun loadGroupName(groupId: Long): CompletableFuture<String> {
         val future = CompletableFuture<String>()
         try {
+            // MiraiMC 协议层（Bot.getGroup(name)）为同步调用，无异步回调。
+            // 直接 complete 与 OneBot 异步回调路径在外部观察者侧保持一致语义。
             future.complete(bot.getGroup(groupId).name)
-        } catch (e: Throwable) {
+        } catch (e: Exception) {
             future.completeExceptionally(e)
         }
         return future

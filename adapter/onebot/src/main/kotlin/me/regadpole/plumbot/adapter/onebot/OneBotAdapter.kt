@@ -57,13 +57,10 @@ class OneBotAdapter(
         context.config.getLongList("groups").forEach { groupId ->
             client.action(GetGroupMemberList(groupId)) { users ->
                 users.forEach {
-                    val role = try {
-                        it.role?.toString()
-                    } catch (_: Exception) {
-                        null
-                    } ?: "member"
-                    groupMemberCache.put(groupId, it.member.userId,
-                        MemberInfo(it.member.userId, it.member.nickname, it.card, role))
+                    primeGroupMember(
+                        groupId,
+                        MemberInfo(it.member.userId, it.member.nickname, it.card, extractRole(it.role))
+                    )
                 }
             }
         }
@@ -74,7 +71,7 @@ class OneBotAdapter(
         client.action(GetGroupInfo(groupId)) { group: Group ->
             try {
                 future.complete(group.groupName)
-            } catch (e: Throwable) {
+            } catch (e: Exception) {
                 future.completeExceptionally(e)
             }
         }
@@ -85,12 +82,30 @@ class OneBotAdapter(
         val future = CompletableFuture<MemberInfo?>()
         client.action(GetGroupMemberInfo(groupId, userId)) { result ->
             try {
-                val role = result.role?.toString() ?: "member"
-                future.complete(MemberInfo(result.member.userId, result.member.nickname, result.card, role))
-            } catch (e: Throwable) {
+                future.complete(
+                    MemberInfo(
+                        result.member.userId,
+                        result.member.nickname,
+                        result.card,
+                        extractRole(result.role)
+                    )
+                )
+            } catch (e: Exception) {
                 future.completeExceptionally(e)
             }
         }
         return future
+    }
+
+    /**
+     * 提取 OneBot 角色字段，兼容不同版本 API 返回的 role 类型（String 或枚举）。
+     * 解析失败或缺失时统一回落到 "member"，与 MiraiMCAdapter 行为一致。
+     */
+    private fun extractRole(role: Any?): String {
+        return try {
+            role?.toString()
+        } catch (_: Exception) {
+            null
+        } ?: "member"
     }
 }
