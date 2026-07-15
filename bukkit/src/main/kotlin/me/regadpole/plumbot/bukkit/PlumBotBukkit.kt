@@ -8,14 +8,15 @@ import me.regadpole.plumbot.adapter.onebot.OneBotFactory
 import me.regadpole.plumbot.api.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.bukkit.listener.MiraiMCListener
+import me.regadpole.plumbot.bukkit.listener.PluginListener
 import me.regadpole.plumbot.bukkit.listener.ServerListener
 import me.regadpole.plumbot.bukkit.platform.BukkitDependencyLoader
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformContext
-import me.regadpole.plumbot.bukkit.platform.BukkitTaskHandle
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformLogger
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformMessenger
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformScheduler
 import me.regadpole.plumbot.bukkit.platform.BukkitPlayerService
+import me.regadpole.plumbot.bukkit.platform.BukkitTaskHandle
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.platform.PlatformContext
@@ -84,13 +85,20 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             BotProvider.registerFactory(MiraiMCFactory)
         }
 
-        // 插件启用时的逻辑
-        server.servicesManager.register(BotProvider.javaClass, BotProvider, this, ServicePriority.Normal)
-        server.servicesManager.register(DatabaseProvider.javaClass, DatabaseProvider, this, ServicePriority.Normal)
-        server.servicesManager.register(PlumBotAPI::class.java, PlumBotAPI(this), this, ServicePriority.Normal)
+        // 注入公开 API 与服务（BREAKING：PlumBotAPI 由 `class` 改为 `object`，
+        // 不再通过构造传参；迁移路径为调用 `PlumBotAPI.attach(this)`）。
+        PlumBotAPI.attach(this)
+
+        // ServicesManager 注册 key 一律使用 `::class.java`，避免混用 `object.javaClass`。
+        // 第三方插件通过 PlumBotAPI::class.java 取到 PlumBotAPI 单例，
+        // 不再单独暴露宿主 plugin 引用（PluginProvider）。
+        server.servicesManager.register(BotProvider::class.java, BotProvider, this, ServicePriority.Normal)
+        server.servicesManager.register(DatabaseProvider::class.java, DatabaseProvider, this, ServicePriority.Normal)
+        server.servicesManager.register(PlumBotAPI::class.java, PlumBotAPI, this, ServicePriority.Normal)
 
         enable()
         server.pluginManager.registerEvents(ServerListener(this), this)
+        server.pluginManager.registerEvents(PluginListener(), this)
         if(useMirai) {
             // MiraiMC 监听器
             server.pluginManager.registerEvents(MiraiMCListener(this), this)
@@ -101,6 +109,13 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     override fun onDisable() {
         // 插件禁用时的逻辑
         disable()
+        // 清空注册表，避免 /reload 后残留外部 adapter。
+        runCatching {
+            for (type in BotProvider.availableAdapters().map { it.type }) {
+                BotProvider.unregisterFactory(type)
+            }
+        }
+        PlumBotAPI.detach()
         logger.info("PlumBot has been disabled!")
     }
 
