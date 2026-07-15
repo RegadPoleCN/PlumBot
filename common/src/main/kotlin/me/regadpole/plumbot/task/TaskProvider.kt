@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.task
 
+import me.regadpole.plumbot.api.StableApi
 import java.util.concurrent.Future
 
 /**
@@ -13,6 +14,7 @@ import java.util.concurrent.Future
  * - 当协程被取消时，[Future.isCancelled] 应返回 `true`。
  * - 当协程执行完成（正常结束、异常或取消）时，[Future.isDone] 应返回 `true`。
  */
+@StableApi
 interface TaskProvider {
     fun submit(task: Runnable): Future<*>
 

@@ -1,5 +1,8 @@
 package me.regadpole.plumbot.platform
 
+import me.regadpole.plumbot.api.StableApi
+
+@StableApi
 interface PlatformScheduler {
     fun run(task: Runnable): PlatformTaskHandle
 

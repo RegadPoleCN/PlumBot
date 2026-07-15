@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.adapter.onebot
 
+import me.regadpole.plumbot.api.PublicApi
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.bot.BotAdapterMetadata
 import me.regadpole.plumbot.bot.BotCapability
@@ -9,6 +10,7 @@ import me.regadpole.plumbot.platform.PlatformType
 import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
 import java.net.URI
 
+@PublicApi
 object OneBotFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(
         type = "onebot",

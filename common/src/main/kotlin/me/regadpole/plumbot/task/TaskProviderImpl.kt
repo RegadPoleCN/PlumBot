@@ -1,10 +1,12 @@
 package me.regadpole.plumbot.task
 
 import kotlinx.coroutines.*
+import me.regadpole.plumbot.api.PublicApi
 import me.regadpole.plumbot.platform.PlatformTaskHandle
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
+@PublicApi
 object TaskProviderImpl : TaskProvider {
     private val mainScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val asyncScope = CoroutineScope(Dispatchers.IO + SupervisorJob())

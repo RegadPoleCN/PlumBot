@@ -1,5 +1,8 @@
 package me.regadpole.plumbot.api.config
 
+import me.regadpole.plumbot.api.PublicApi
+
+@PublicApi
 object Messages : Cloneable {
     var prefix: String = "<missing:prefix>"
 

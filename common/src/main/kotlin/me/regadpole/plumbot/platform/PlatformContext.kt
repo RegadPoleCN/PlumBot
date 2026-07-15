@@ -1,8 +1,10 @@
 package me.regadpole.plumbot.platform
 
+import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.api.config.YamlConfigurator
 import java.nio.file.Path
 
+@StableApi
 interface PlatformContext {
     val config: YamlConfigurator
     val datasource: YamlConfigurator

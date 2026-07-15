@@ -1,5 +1,8 @@
 package me.regadpole.plumbot.bot
 
+import me.regadpole.plumbot.api.PublicApi
+
+@PublicApi
 enum class BotCapability {
     GROUP_MESSAGE_SEND,
     USER_MESSAGE_SEND,

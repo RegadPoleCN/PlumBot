@@ -1,10 +1,12 @@
 package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.platform.PlatformContext
 
+@StableApi
 object BotProvider {
 
     private const val DEFAULT_TYPE = "onebot"
@@ -17,6 +19,20 @@ object BotProvider {
 
     fun registerFactory(factory: BotFactory) {
         registry.register(factory)
+    }
+
+    /**
+     * Unregister a single bot factory by its [BotAdapterMetadata.type]. Returns
+     * `true` if a factory was removed, `false` otherwise. Used by third-party
+     * extension cleanup paths that need to remove specific adapters without
+     * nuking the entire registry.
+     */
+    fun unregisterFactory(type: String): Boolean {
+        val key = type.lowercase()
+        val before = registry.factories().map { it.metadata.type.lowercase() }
+        if (key !in before) return false
+        registry.unregister(type)
+        return true
     }
 
     fun clearFactories() {
@@ -74,6 +90,9 @@ object BotProvider {
             bot = null
             hasLoaded = false
         }
+        // Public-API listener cleanup. Public-API handles returned by
+        // PlumBotAPI.subscribeXxx are best-effort closed via this hook.
+        BotEventDispatcher.clearAllListeners()
     }
 
     fun getBot(): IBot? {

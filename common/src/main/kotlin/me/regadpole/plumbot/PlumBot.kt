@@ -1,6 +1,7 @@
 package me.regadpole.plumbot
 
 import me.regadpole.config.DatabaseSource
+import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.api.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
@@ -19,6 +20,7 @@ import java.nio.file.Path
 import kotlin.io.path.pathString
 import kotlin.reflect.KMutableProperty
 
+@StableApi
 interface PlumBot: TaskProvider {
 
     var datasource: YamlConfigurator

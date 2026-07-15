@@ -1,8 +1,10 @@
 package me.regadpole.plumbot.api.bot
 
+import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.bot.BotAdapterMetadata
 import me.regadpole.plumbot.listener.BotHandler
 
+@StableApi
 interface IBot: Cloneable {
     var handler: BotHandler?
 

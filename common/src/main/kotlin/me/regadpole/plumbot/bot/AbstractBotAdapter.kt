@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.bot
 
+import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.listener.BotHandler
@@ -10,6 +11,7 @@ import java.util.concurrent.CompletableFuture
 /**
  * Adapter 公共模板基类，封装 handler 创建、加载/卸载广播、缓存刷新、成员查询 fallback。
  */
+@StableApi
 abstract class AbstractBotAdapter : BotImpl {
 
     abstract val context: PlatformContext

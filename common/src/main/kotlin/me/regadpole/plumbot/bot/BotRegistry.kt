@@ -1,7 +1,9 @@
 package me.regadpole.plumbot.bot
 
+import me.regadpole.plumbot.api.PublicApi
 import me.regadpole.plumbot.platform.PlatformType
 
+@PublicApi
 class BotRegistry {
     private val factories = linkedMapOf<String, BotFactory>()
 

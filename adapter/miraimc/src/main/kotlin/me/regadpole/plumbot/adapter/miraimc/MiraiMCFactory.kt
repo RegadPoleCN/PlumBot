@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.adapter.miraimc
 
+import me.regadpole.plumbot.api.PublicApi
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.bot.BotAdapterMetadata
 import me.regadpole.plumbot.bot.BotCapability
@@ -7,6 +8,7 @@ import me.regadpole.plumbot.bot.BotFactory
 import me.regadpole.plumbot.platform.PlatformContext
 import me.regadpole.plumbot.platform.PlatformType
 
+@PublicApi
 object MiraiMCFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(
         type = "mirai",

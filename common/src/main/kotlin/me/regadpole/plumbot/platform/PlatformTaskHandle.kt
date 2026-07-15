@@ -1,7 +1,9 @@
 package me.regadpole.plumbot.platform
 
 import kotlinx.coroutines.Job
+import me.regadpole.plumbot.api.StableApi
 
+@StableApi
 interface PlatformTaskHandle {
     val job: Job
     fun cancel(): Boolean {
