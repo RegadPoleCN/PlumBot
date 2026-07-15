@@ -1,23 +1,135 @@
 package me.regadpole.plumbot.bot
 
+import me.regadpole.plumbot.PlumBotAPI
+import me.regadpole.plumbot.api.ListenerHandle
+import me.regadpole.plumbot.api.event.GroupMessageEvent
+import me.regadpole.plumbot.api.event.UserDecreaseEvent
+import me.regadpole.plumbot.internal.LogLevel
+import java.util.concurrent.CopyOnWriteArrayList
+
 /**
- * 统一事件分发入口，从不同 Bot 协议（OneBot / MiraiMC 等）的 Listener 转发到
- * [BotProvider] 当前活跃 Bot 的 [me.regadpole.plumbot.listener.BotHandler]。
+ * Unified event dispatcher for bot-side incoming events (group messages,
+ * user decrease).
  *
- * 注意：理想状态下该对象仅供 `common` 内部使用（应声明为 `internal object`）。
- * 然而当前 `bukkit` 模块下的 `MiraiMCListener` 直接引用本对象以解耦 listener
- * 与 Bot 实例生命周期，跨模块 `internal` 可见性限制会破坏现有调用方。
+ * **Stability**: This object is part of the internal framework surface. Public
+ * third-party listeners **MUST NOT** call it directly; use
+ * [PlumBotAPI.subscribeGroupMessages] / [PlumBotAPI.subscribeUserDecrease]
+ * which delegate to [registerGroupMessageHandler] / [registerUserDecreaseHandler].
  *
- * 因此暂保持 `public` 可见性，并在此 KDoc 中显式标注"仅供框架内部使用"，
- * 以避免外部模块继续将新的 Listener 直接依赖在此处。后续若将所有 Listener
- * 迁移到 `common` 模块（或改用 `@PublishedApi internal`），再收紧到 `internal`。
+ * The two public dispatch methods (`dispatchGroupMessage` / `dispatchUserDecrease`)
+ * are called by the bot adapter listeners (`OneBotListener`,
+ * `MiraiMCListener`) to forward raw adapter events to the framework's
+ * [me.regadpole.plumbot.listener.BotHandler] chain.
+ *
+ * Listener registry semantics:
+ *  - Thread-safe.
+ *  - Exceptions thrown by a listener are isolated and logged; other listeners
+ *    still run.
+ *  - All registered listeners are cleared on [unloadBot].
  */
 object BotEventDispatcher {
-    fun dispatchGroupMessage(message: String, groupId: Long, senderId: Long) {
-        BotProvider.getBot()?.handler?.onGroupMessage(message, groupId, senderId)
+
+    private val groupMessageHandlers: MutableList<(GroupMessageEvent) -> Unit> = CopyOnWriteArrayList()
+    private val userDecreaseHandlers: MutableList<(UserDecreaseEvent) -> Unit> = CopyOnWriteArrayList()
+
+    /**
+     * Register a public-API listener for group messages. Returns a
+     * [ListenerHandle] whose [ListenerHandle.close] unregisters exactly this
+     * listener. Idempotent close is guaranteed.
+     */
+    fun registerGroupMessageHandler(handler: (GroupMessageEvent) -> Unit): ListenerHandle {
+        groupMessageHandlers.add(handler)
+        return ListenerHandle {
+            groupMessageHandlers.remove(handler)
+        }
     }
 
+    /**
+     * Register a public-API listener for user decrease events. Symmetric to
+     * [registerGroupMessageHandler].
+     */
+    fun registerUserDecreaseHandler(handler: (UserDecreaseEvent) -> Unit): ListenerHandle {
+        userDecreaseHandlers.add(handler)
+        return ListenerHandle {
+            userDecreaseHandlers.remove(handler)
+        }
+    }
+
+    /**
+     * Drop every registered listener. Called by [BotProvider.unloadBot] via
+     * [clearAllListeners].
+     */
+    fun clearAllListeners() {
+        groupMessageHandlers.clear()
+        userDecreaseHandlers.clear()
+    }
+
+    // ------------------------------------------------------------------
+    // Internal dispatch entry-points. Only bot adapter listeners call these.
+    // ------------------------------------------------------------------
+
+    /**
+     * Dispatch an inbound group message into the framework's handler chain.
+     *
+     * @param messageRaw the raw message text (may contain color codes; will be
+     *                   forwarded as-is to listeners).
+     * @param groupId the QQ (or equivalent) group id.
+     * @param senderId the message sender id.
+     */
+    fun dispatchGroupMessage(messageRaw: String, groupId: Long, senderId: Long) {
+        // Preserve existing behavior: forward to BotHandler if present.
+        BotProvider.getBot()?.handler?.onGroupMessage(messageRaw, groupId, senderId)
+
+        // Public-API fan-out.
+        val event = GroupMessageEvent(
+            botId = currentBotId(),
+            groupId = groupId,
+            userId = senderId,
+            message = messageRaw,
+            timestamp = System.currentTimeMillis(),
+        )
+        dispatchTo(groupMessageHandlers, event, "GroupMessage")
+    }
+
+    /**
+     * Dispatch an inbound user decrease event.
+     */
     fun dispatchUserDecrease(groupId: Long, userId: Long) {
         BotProvider.getBot()?.handler?.onUserDecrease(groupId, userId)
+
+        val event = UserDecreaseEvent(
+            botId = currentBotId(),
+            groupId = groupId,
+            userId = userId,
+            timestamp = System.currentTimeMillis(),
+        )
+        dispatchTo(userDecreaseHandlers, event, "UserDecrease")
+    }
+
+    private fun <E> dispatchTo(
+        handlers: List<(E) -> Unit>,
+        event: E,
+        label: String,
+    ) {
+        for (handler in handlers) {
+            try {
+                handler(event)
+            } catch (e: Throwable) {
+                logListenerFailure(label, e)
+            }
+        }
+    }
+
+    private fun currentBotId(): String =
+        BotProvider.getBot()?.metadata?.type ?: "unknown"
+
+    private fun logListenerFailure(label: String, e: Throwable) {
+        val plugin = PlumBotAPI.getAttachedPlugin()
+        val msg = "BotEventDispatcher $label listener threw: ${e.message ?: e.javaClass.simpleName}"
+        if (plugin != null) {
+            plugin.log(LogLevel.WARN, msg)
+        } else {
+            System.err.println(msg)
+        }
     }
 }

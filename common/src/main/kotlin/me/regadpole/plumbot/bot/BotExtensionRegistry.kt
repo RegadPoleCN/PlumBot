@@ -1,0 +1,155 @@
+package me.regadpole.plumbot.bot
+
+import me.regadpole.plumbot.PlumBotAPI
+import me.regadpole.plumbot.api.Plugin
+import me.regadpole.plumbot.api.PublicApi
+
+/**
+ * Runtime registry for **third-party** bot adapters.
+ *
+ * Unlike the compile-time registration used by the built-in adapters
+ * ([OneBotFactory], [MiraiMCFactory]), this registry accepts
+ * [me.regadpole.plumbot.bot.BotFactory] instances supplied at runtime and
+ * records the originating [Plugin] so they can be deregistered when the
+ * plugin is disabled.
+ *
+ * The registry wraps [BotProvider]'s underlying [BotRegistry] so that all
+ * factories (built-in or external) share the same `type` namespace. A duplicate
+ * type registration is rejected with `false` and a WARN log entry — the
+ * built-in adapter always wins so the host server stays in a known state.
+ *
+ * Obtain via [PlumBotAPI.getExtensionRegistry].
+ */
+@PublicApi
+class BotExtensionRegistry internal constructor(
+    private val provider: BotProvider,
+) {
+    /** Tracks (type, plugin) → factory for batch cleanup on plugin disable. */
+    private val registrations: MutableMap<Pair<String, Plugin>, BotFactory> = linkedMapOf()
+    private val lock = Any()
+
+    /**
+     * Register an external [BotFactory] supplied by [plugin].
+     *
+     * @return `true` on success, `false` when:
+     *  - the type is already registered (either built-in or by another plugin),
+     *  - the factory's [BotAdapterMetadata.supportedPlatforms] is not compatible
+     *    (the registry needs a [me.regadpole.plumbot.platform.PlatformContext];
+     *    here we accept all factories and let [me.regadpole.plumbot.platform.PlatformContext]
+     *    decide at load time, which is consistent with [BotProvider.registerFactory]).
+     *
+     * Failures are logged but never throw.
+     */
+    @PublicApi
+    fun registerExternalFactory(factory: BotFactory, plugin: Plugin): Boolean {
+        val type = factory.metadata.type
+        synchronized(lock) {
+            val key = type.lowercase() to plugin
+            if (registrations.containsKey(key)) {
+                warn("BotExtensionRegistry: factory for type '$type' already registered by ${plugin.name}; skip")
+                return false
+            }
+            val existingType = registrations.keys.firstOrNull { it.first == type.lowercase() }
+            if (existingType != null) {
+                warn("BotExtensionRegistry: type '$type' already registered by ${existingType.second.name}; skip")
+                return false
+            }
+            // Built-in factories do not appear in `registrations`; check provider directly.
+            val builtIn = runCatching { provider.availableAdapters() }
+                .getOrDefault(emptyList())
+                .any { it.type.equals(type, ignoreCase = true) }
+            if (builtIn) {
+                warn("BotExtensionRegistry: type '$type' is a built-in adapter; skip (built-in wins)")
+                return false
+            }
+            runCatching { provider.registerFactory(factory) }
+                .onFailure { warn("BotExtensionRegistry: provider.registerFactory failed: ${it.message}"); return false }
+            registrations[key] = factory
+            return true
+        }
+    }
+
+    /**
+     * Unregister a single external factory by type and originating plugin.
+     *
+     * @return `true` if a registration was removed, `false` otherwise.
+     */
+    @PublicApi
+    fun unregisterExternalFactory(type: String, plugin: Plugin): Boolean {
+        val key = type.lowercase() to plugin
+        synchronized(lock) {
+            val factory = registrations.remove(key) ?: return false
+            // Only remove from the provider if no other plugin owns this type — i.e. the
+            // entry was truly external. If a built-in of the same type is also registered
+            // we keep the provider's view intact.
+            val stillOwned = registrations.any { it.key.first == type.lowercase() }
+            val wasBuiltin = runCatching { provider.availableAdapters() }
+                .getOrDefault(emptyList())
+                .any { it.type.equals(factory.metadata.type, ignoreCase = true) && !stillOwned }
+            if (!stillOwned) {
+                runCatching { provider.unregisterFactory(type) }
+                    .onFailure { warn("BotExtensionRegistry: provider.unregisterFactory('$type') failed: ${it.message}") }
+            }
+            debug("BotExtensionRegistry: unregistered type '${factory.metadata.type}' from ${plugin.name} (wasBuiltin=$wasBuiltin, stillOwned=$stillOwned)")
+            return true
+        }
+    }
+
+    /**
+     * Unregister every factory that was registered by [plugin]. Invoked by
+     * Bukkit's `PluginDisableEvent` to keep the registry clean when a third-party
+     * plugin unloads.
+     *
+     * Note: this **does not** unload any currently-running bot owned by the
+     * factory, leaving shutdown decisions to the main host plugin.
+     *
+     * @return number of registrations removed.
+     */
+    @PublicApi
+    fun unregisterAllFor(plugin: Plugin): Int {
+        synchronized(lock) {
+            val keys = registrations.keys.filter { it.second === plugin || it.second == plugin }
+            if (keys.isEmpty()) return 0
+            keys.forEach { registrations.remove(it) }
+            // Group remaining types: only call unregisterFactory for types where this
+            // plugin was the sole owner, so built-ins and other plugins' factories
+            // survive.
+            val remainingTypes = registrations.keys.map { it.first }.toSet()
+            val myTypes = keys.map { it.first }
+            myTypes.forEach { type ->
+                if (type !in remainingTypes) {
+                    runCatching { provider.unregisterFactory(type) }
+                        .onFailure { warn("BotExtensionRegistry: provider.unregisterFactory('$type') failed: ${it.message}") }
+                }
+            }
+            debug("BotExtensionRegistry: unregistered ${keys.size} factories from ${plugin.name}")
+            return keys.size
+        }
+    }
+
+    private fun debug(message: String) {
+        val plugin = PlumBotAPI.getAttachedPlugin()
+        if (plugin != null) {
+            plugin.log(me.regadpole.plumbot.internal.LogLevel.DEBUG, message)
+        }
+    }
+
+    /**
+     * Snapshot of registered (type, plugin) pairs. Useful for diagnostics / tests.
+     */
+    @PublicApi
+    fun snapshot(): List<Pair<String, Plugin>> = synchronized(lock) {
+        registrations.keys.toList()
+    }
+
+    private fun warn(message: String) {
+        // Use the attached plugin logger if available; fall back to stderr.
+        val plugin = PlumBotAPI.getAttachedPlugin()
+        if (plugin != null) {
+            plugin.log(me.regadpole.plumbot.internal.LogLevel.WARN, message)
+        } else {
+            System.err.println(message)
+        }
+    }
+
+}
