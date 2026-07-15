@@ -130,3 +130,22 @@ common 模块提供了 `BotAdapterTemplate`（`common/src/main/kotlin/me/regadpo
 - [ ] 已更新兼容矩阵。
 - [ ] 已更新能力文档。
 - [ ] 已完成 Gradle 编译验证。
+
+## 13. 作为第三方插件注册 adapter（无需源码改动）
+
+> 自 `public-api-extension` spec 起，第三方插件可在运行时通过
+> [`PlumBotAPI.getExtensionRegistry()`](../development/extending-from-other-plugins.md)
+> 注册自己的 `BotFactory`，**无需**修改 PlumBot 源码或重新打包。
+>
+> 完整 API 文档、约束与示例见
+> [附属插件调用公开 API](../development/extending-from-other-plugins.md#4-如何注册自定义-botadapter)。
+
+要点摘要：
+
+1. 在第三方插件 `onEnable` 中构造 `BotFactory`，调用
+   `PlumBotAPI.getExtensionRegistry().registerExternalFactory(factory, BukkitPlugin(this))`。
+2. 同 `type` 重复注册或与内置 adapter 冲突时返回 `false`，**不抛异常**。
+3. 第三方插件 disable 时，Bukkit `PluginDisableEvent` 触发
+   `BotExtensionRegistry.unregisterAllFor(this)`，自动清理已注册的 factories。
+4. 不要直接调用 `BotEventDispatcher` 或 `BotProvider` 的私有方法：它们属
+   internal 框架 API，公开入口走 `PlumBotAPI`。

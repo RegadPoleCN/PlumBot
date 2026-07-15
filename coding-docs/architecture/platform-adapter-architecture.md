@@ -143,3 +143,40 @@ Bot 能力说明维护在 `coding-docs/architecture/bot-capabilities.md`。新�
 ## 新增 Bot Adapter
 
 新增 Bot adapter 时参考 `coding-docs/development/adding-bot-adapter.md`，重点是实现 factory、metadata 和支持的能力，并同步兼容矩阵。
+
+## 第三方插件嵌入视图（Public API Surface）
+
+自 `public-api-extension` spec 起，第三方插件可以通过 `PlumBotAPI` 在**不改 PlumBot 源码**的前提下集成下列能力：
+
+```text
+                  ┌───────────────────────────────────┐
+                  │ third-party Bukkit plugin         │
+                  │ (依附于消息、玩家名单、命令桥接)  │
+                  └─────┬─────────────┬─────────────┬─┘
+                        │             │             │
+            registerExternalFactory│  subscribeXxx│  sendXxxMessage
+                        ▼             ▼             ▼
+              BotExtensionRegistry  BotEventDispatcher（隐）
+                        │             │
+              BotProvider.registerFactory      BotHandler.onGroupMessage（隐）
+                        │             │
+                  ┌─────▼─────────────▼─────────────┐
+                  │ BotProvider / BotRegistry       │
+                  └───────────────┬─────────────────┘
+                                  ▼
+                         IBot / AbstractBotAdapter
+```
+
+* `PlumBotAPI`（`object`，通过 `PlumBotAPI.attach()` 由 `PlumBotBukkit.onEnable` 注入）暴露：
+  * 静态 / ServicesManager 双入口。
+  * `getBotProvider()`、`getExtensionRegistry()`、`subscribeGroupMessages()`、
+    `subscribeUserDecrease()`、`sendGroupMessage()` 等新入口。
+* `BotExtensionRegistry` 是第三方 adapter 注册门面，与内置 adapter 共用
+  `BotRegistry` 命名空间，**同 type 冲突时返回 `false`**（内置永远占优）。
+* `BotEventDispatcher` 仍标注 `object`（不收紧到 `internal`，因 `MiraiMCListener`
+  跨模块引用）；公开 API 入口请走 `PlumBotAPI.subscribeXxx`。
+* 平台无关 `common` 不依赖 Bukkit；新增 Sponge / Velocity 时需补 `Plugin`
+  适配实现。
+
+详情见 [extending-from-other-plugins.md](../development/extending-from-other-plugins.md)
+和 [公开 API 表面](../README.md#公开-api-third-party-surface)。
