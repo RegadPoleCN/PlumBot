@@ -3,11 +3,14 @@ package me.regadpole.plumbot.bot.command
 import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.bot.BotCapability
 import me.regadpole.plumbot.bot.requireCapability
+import me.regadpole.plumbot.utils.escapeMiniMessageTags
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 
 class MessageForwardService(private val service: BotCommandService) {
     fun forward(message: String, groupId: Long, userId: Long) {
         if (!service.isFeatureEnabled("message")) return
+        val toServer = service.config.getBoolean("feature", "message", "to_server")
+        if (!toServer) return
 
         val mode = service.config.getInteger("feature", "message", "mode")
         val prefix = service.config.getString("feature", "message", "prefix")
@@ -20,18 +23,17 @@ class MessageForwardService(private val service: BotCommandService) {
         val groupName = service.bot.getGroupName(groupId)
         val userName = service.bot.getGroupUserName(groupId, userId)
         val userCard = service.bot.getGroupUserCard(groupId, userId)
-        service.context.messenger.sendMessage(
-            getComponentFromMiniMsg(
-                service.render(
-                    Messages.ob2server,
-                    "%group_name%" to groupName,
-                    "%group_id%" to groupId.toString(),
-                    "%user_nick%" to userCard,
-                    "%message%" to message,
-                    "%user_id%" to userId.toString(),
-                    "%user_name%" to userName
-                )
-            )
+
+        val rendered = service.render(
+            Messages.ob2server,
+            "%group_name%" to escapeMiniMessageTags(groupName),
+            "%group_id%" to groupId.toString(),
+            "%user_nick%" to escapeMiniMessageTags(userCard),
+            "%message%" to escapeMiniMessageTags(message),
+            "%user_id%" to userId.toString(),
+            "%user_name%" to escapeMiniMessageTags(userName)
         )
+
+        service.context.messenger.sendMessage(getComponentFromMiniMsg(rendered))
     }
 }
