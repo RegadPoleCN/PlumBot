@@ -42,7 +42,10 @@ interface PlumBot: TaskProvider {
         log(LogLevel.INFO, "Config loaded!")
         debugProvider.load()
         log(LogLevel.INFO, "Debugging loaded!")
-        TextToImg.ttfFile = File(config.getString("feature", "img", "file")!!.replace("%plugin_folder%", dataDirectory.pathString))
+        val fontPath = config.getString("feature", "img", "file")?.replace("%plugin_folder%", dataDirectory.pathString)
+        if (fontPath != null) {
+            TextToImg.ttfFile = File(fontPath)
+        }
         loadDatabase()
         log(LogLevel.INFO, "Database initialized!")
         loadBot()
@@ -67,19 +70,17 @@ interface PlumBot: TaskProvider {
     }
 
     fun loadDatabase() {
-        TaskProviderImpl.submitAsync {
-            Database.settingsFile = DatabaseSource(datasource.getNode())
-            val mode = config.getString("database", "mode")
-            val database = when (mode) {
-                "sqlite" -> SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
-                "mysql" -> MySQL(config.getNode("database", "mysql"))
-                else -> {
-                    log(LogLevel.ERROR, "Unknown database type! Using SQLite...")
-                    SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
-                }
+        Database.settingsFile = DatabaseSource(datasource.getNode())
+        val mode = config.getString("database", "mode")
+        val database = when (mode) {
+            "sqlite" -> SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+            "mysql" -> MySQL(config.getNode("database", "mysql"))
+            else -> {
+                log(LogLevel.ERROR, "Unknown database type! Using SQLite...")
+                SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
             }
-            DatabaseProvider.start(database)
         }
+        DatabaseProvider.start(database)
     }
 
     fun loadConfig() {

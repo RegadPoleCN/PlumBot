@@ -5,6 +5,8 @@ import me.regadpole.plumbot.api.config.YamlConfigurator
 
 object PlayerJoinLeaveService {
     fun notifyJoin(playerName: String, config: YamlConfigurator) {
+        val totalEnabled = config.getBoolean("feature", "joinAndLeave", "enable")
+        if (!totalEnabled) return
         if (!config.getBoolean("feature", "joinAndLeave", "joinProxy")) return
 
         val rendered = Messages.joinProxy
@@ -17,6 +19,8 @@ object PlayerJoinLeaveService {
     }
 
     fun notifyLeave(playerName: String, serverName: String, config: YamlConfigurator) {
+        val totalEnabled = config.getBoolean("feature", "joinAndLeave", "enable")
+        if (!totalEnabled) return
         if (!config.getBoolean("feature", "joinAndLeave", "leaveProxy")) return
 
         val rendered = Messages.leaveProxy

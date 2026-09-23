@@ -44,24 +44,44 @@ object TextToImg {
     private var font: Font? = null
     private var fm: FontMetrics? = null
     var ttfFile: File? = null
+        set(value) {
+            field = value
+            font = null
+            fm = null
+        }
+
+    fun reset() {
+        font = null
+        fm = null
+    }
+
+    private fun ensureFontInitialized() {
+        if (font != null && fm != null) return
+
+        val currentTtfFile = ttfFile
+        if (currentTtfFile != null && currentTtfFile.exists() && currentTtfFile.isFile) {
+            try {
+                val createdFont = Font.createFont(Font.TRUETYPE_FONT, currentTtfFile.toURI().toURL().openStream())
+                val derivedFont = createdFont.deriveFont(DEFAULT_FONT_SIZE)
+                val derivedFm = Canvas().getFontMetrics(derivedFont)
+                font = derivedFont
+                fm = derivedFm
+                return
+            } catch (e: Exception) {
+                System.err.println("[PlumBot] 读取字体文件失败 (${currentTtfFile.absolutePath}): ${e.message}，回退使用系统默认无衬线字体。")
+            }
+        }
+        val defaultFont = Font(Font.SANS_SERIF, Font.PLAIN, DEFAULT_FONT_SIZE.toInt())
+        font = defaultFont
+        fm = Canvas().getFontMetrics(defaultFont)
+    }
 
     @Throws(IOException::class)
     private fun toImg(text: String): ByteArray {
-        val currentTtfFile = ttfFile ?: throw IllegalStateException("TextToImg 字体文件未配置，请先设置 ttfFile")
-        if (fm == null) {
-            try {
-                val createdFont = Font.createFont(Font.TRUETYPE_FONT, currentTtfFile.toURI().toURL().openStream())
-                font = createdFont.deriveFont(DEFAULT_FONT_SIZE)
-                fm = Toolkit.getDefaultToolkit().getFontMetrics(font)
-            } catch (e: FontFormatException) {
-                throw IllegalStateException("TextToImg 字体文件格式不正确: ${currentTtfFile.absolutePath}", e)
-            } catch (e: IOException) {
-                throw IllegalStateException("TextToImg 无法读取字体文件: ${currentTtfFile.absolutePath}", e)
-            }
-        }
+        ensureFontInitialized()
 
-        val currentFont = font ?: throw IllegalStateException("TextToImg 字体未初始化")
-        val currentFm = fm ?: throw IllegalStateException("TextToImg 字体度量未初始化")
+        val currentFont = font ?: Font(Font.SANS_SERIF, Font.PLAIN, DEFAULT_FONT_SIZE.toInt())
+        val currentFm = fm ?: Canvas().getFontMetrics(currentFont)
 
         val strings = text.split("\n".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
         var minX = 0
@@ -179,11 +199,9 @@ object TextToImg {
 
     fun toFile(string: String): File {
         try {
-            val inputStream: InputStream = ByteArrayInputStream(toImg(string))
-            val image = ImageIO.read(inputStream)
+            val bytes = toImg(string)
             val file = File.createTempFile("PlumBot", ".png")
-            ImageIO.write(image, "png", file)
-            file.deleteOnExit()
+            file.writeBytes(bytes)
             return file
         } catch (e: Exception) {
             throw RuntimeException(e)

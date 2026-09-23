@@ -22,15 +22,7 @@ class PlayerLoginService(private val config: YamlConfigurator) {
                     )
                 )
             }
-
-            if (config.getBoolean("feature", "joinAndLeave", "joinProxy")) {
-                notifyJoinProxy(playerName)
-            }
             return PreLoginResult(allowed = true)
-        }
-
-        if (config.getBoolean("feature", "joinAndLeave", "joinProxy")) {
-            notifyJoinProxy(playerName)
         }
         return PreLoginResult(allowed = true)
     }
@@ -43,9 +35,5 @@ class PlayerLoginService(private val config: YamlConfigurator) {
             rendered,
             config.getBoolean("feature", "bind", "pic")
         )
-    }
-
-    private fun notifyJoinProxy(playerName: String) {
-        PlayerJoinLeaveService.notifyJoin(playerName, config)
     }
 }

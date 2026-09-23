@@ -26,6 +26,7 @@ import org.bukkit.Bukkit
 import org.bukkit.plugin.ServicePriority
 import org.bukkit.plugin.java.JavaPlugin
 import java.nio.file.Path
+import kotlin.io.path.pathString
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
@@ -58,6 +59,15 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
     override fun onEnable() {
         try {
+            loadDependencies()
+        } catch (e: Exception) {
+            logger.severe("Failed to load dependencies: ${e.message}")
+            e.printStackTrace()
+            Bukkit.getPluginManager().disablePlugin(this)
+            return
+        }
+
+        try {
             datasource = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")
                 ?: error("Failed to load datasource.yml")
             config = YamlConfigurator.createConfig(dataDirectory, "config.yml")
@@ -69,11 +79,11 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             return
         }
 
-        val botType = config.getString("bot", "type")
-        val useMirai = botType.equals("mirai", ignoreCase = true)
+        val botType = config.getString("bot", "type") ?: "onebot"
+        val useMirai = botType.equals("miraimc", ignoreCase = true)
         val miraiAvailable = Bukkit.getPluginManager().isPluginEnabled("MiraiMC")
 
-        if (!miraiAvailable && useMirai) {
+        if (useMirai && !miraiAvailable) {
             logger.severe("MiraiMC is not enabled! Please install MiraiMC to use Mirai bot.")
             Bukkit.getPluginManager().disablePlugin(this)
             return
@@ -85,13 +95,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             BotProvider.registerFactory(MiraiMCFactory)
         }
 
-        // 注入公开 API 与服务（BREAKING：PlumBotAPI 由 `class` 改为 `object`，
-        // 不再通过构造传参；迁移路径为调用 `PlumBotAPI.attach(this)`）。
         PlumBotAPI.attach(this)
 
-        // ServicesManager 注册 key 一律使用 `::class.java`，避免混用 `object.javaClass`。
-        // 第三方插件通过 PlumBotAPI::class.java 取到 PlumBotAPI 单例，
-        // 不再单独暴露宿主 plugin 引用（PluginProvider）。
         server.servicesManager.register(BotProvider::class.java, BotProvider, this, ServicePriority.Normal)
         server.servicesManager.register(DatabaseProvider::class.java, DatabaseProvider, this, ServicePriority.Normal)
         server.servicesManager.register(PlumBotAPI::class.java, PlumBotAPI, this, ServicePriority.Normal)
@@ -99,11 +104,21 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         enable()
         server.pluginManager.registerEvents(ServerListener(this), this)
         server.pluginManager.registerEvents(PluginListener(), this)
-        if(useMirai) {
-            // MiraiMC 监听器
+        if (useMirai) {
             server.pluginManager.registerEvents(MiraiMCListener(this), this)
         }
         logger.info("PlumBot has been enabled!")
+    }
+
+    fun reloadPlugin() {
+        loadConfig()
+        debugProvider.reload()
+        val fontPath = config.getString("feature", "img", "file")?.replace("%plugin_folder%", dataDirectory.pathString)
+        if (fontPath != null) {
+            me.regadpole.plumbot.utils.TextToImg.ttfFile = java.io.File(fontPath)
+            me.regadpole.plumbot.utils.TextToImg.reset()
+        }
+        logger.info("[PlumBot] Configuration and resources reloaded.")
     }
 
     override fun onDisable() {
@@ -168,21 +183,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     }
 
     private fun PlatformTaskHandle.asFuture(): Future<*> {
-        val bukkitTask = (this as? BukkitTaskHandle)?.task
-        return object : CompletableFuture<Void>() {
-            override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
-                val cancelled = this@asFuture.cancel()
-                super.cancel(mayInterruptIfRunning)
-                return cancelled
-            }
-
-            override fun isDone(): Boolean = bukkitTask == null || super.isDone()
-
-            override fun isCancelled(): Boolean = bukkitTask?.isCancelled == true || super.isCancelled()
-
-            override fun get(): Void? = null
-
-            override fun get(timeout: Long, unit: TimeUnit): Void? = null
-        }
+        val handle = this as? BukkitTaskHandle
+        return handle?.completionFuture ?: CompletableFuture.completedFuture(null)
     }
 }

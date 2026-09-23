@@ -4,3 +4,9 @@ main: me.regadpole.plumbot.bukkit.PlumBotBukkit
 api-version: '1.13'
 author: RegadPole
 softdepend: ["MiraiMC"]
+
+commands:
+  plumbot:
+    description: PlumBot 主管理指令
+    permission: plumbot.admin
+    usage: /<command> [reload|status|bind]

@@ -1,5 +1,8 @@
 ver: "1.0"
 
+server:
+    name: ""
+
 bot:
     # 可取：onebot、miraimc
     type: "onebot"
@@ -20,6 +23,8 @@ feature:
         pic: false
     message: 
         enable: true
+        to_group: true
+        to_server: true
         mode: 0
         prefix: "#"
         pic: false
@@ -31,12 +36,15 @@ feature:
         whitelist: true
         maxNum: 1
         adminBypass: true
+        require_in_group: false
         pic: true
     joinAndLeave: 
+        enable: true
         pic: false
         joinProxy: true
         leaveProxy: true
-        changeServer: true
+        # 跨服反代端（Velocity/Bungee）专用占位
+        changeServer: false
     img:
         file: "%plugin_folder%/MiSans-Normal.ttf"
 
