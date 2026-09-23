@@ -11,7 +11,7 @@ import me.regadpole.plumbot.platform.PlatformType
 @PublicApi
 object MiraiMCFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(
-        type = "mirai",
+        type = "miraimc",
         displayName = "MiraiMC",
         supportedPlatforms = setOf(PlatformType.BUKKIT),
         requiredPlugins = setOf("MiraiMC"),

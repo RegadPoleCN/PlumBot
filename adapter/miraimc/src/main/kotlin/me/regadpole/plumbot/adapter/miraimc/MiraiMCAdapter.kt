@@ -44,14 +44,24 @@ class MiraiMCAdapter(
 
     override fun sendGroupPicWithText(targetId: Long, message: String) {
         val group = bot.getGroup(targetId)
-        val imageId = group.uploadImage(TextToImg.toFile(message))
-        group.sendMessageMirai("[mirai:image:$imageId]")
+        val tempFile = TextToImg.toFile(message)
+        try {
+            val imageId = group.uploadImage(tempFile)
+            group.sendMessageMirai("[mirai:image:$imageId]")
+        } finally {
+            runCatching { tempFile.delete() }
+        }
     }
 
     override fun sendUserPicWithText(targetId: Long, message: String) {
         val friend = bot.getFriend(targetId)
-        val imageId = friend.uploadImage(TextToImg.toFile(message))
-        friend.sendMessageMirai("[mirai:image:$imageId]")
+        val tempFile = TextToImg.toFile(message)
+        try {
+            val imageId = friend.uploadImage(tempFile)
+            friend.sendMessageMirai("[mirai:image:$imageId]")
+        } finally {
+            runCatching { tempFile.delete() }
+        }
     }
 
     override fun preloadGroupCaches() {
