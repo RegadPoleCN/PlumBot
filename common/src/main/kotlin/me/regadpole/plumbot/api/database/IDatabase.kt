@@ -6,7 +6,7 @@ import java.util.UUID
 import javax.sql.DataSource
 
 
-interface IDatabase: Cloneable {
+interface IDatabase {
     /**
      * initialize the database
      */
@@ -41,10 +41,4 @@ interface IDatabase: Cloneable {
 //    fun getBind(user: Long, id: Int): String?
 //
     fun setUUID(name: String, uuid: UUID)
-//    fun getUUID(name: String): UUID?
-//    fun getUUID(user: Long): UUID?
-
-    public override fun clone(): IDatabase {
-        return super.clone() as IDatabase
-    }
 }

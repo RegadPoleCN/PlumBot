@@ -64,8 +64,9 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
     }
 
     override fun addBind(user: Long, name: String) {
-        table.insert(dataSource, "user_id", "player_name") {
-            value(user, name)
+        val now = System.currentTimeMillis().toString()
+        table.insert(dataSource, "user_id", "player_name", "binding_time") {
+            value(user, name, now)
         }
     }
 
