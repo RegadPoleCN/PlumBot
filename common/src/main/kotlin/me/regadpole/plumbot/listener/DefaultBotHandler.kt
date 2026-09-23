@@ -29,26 +29,26 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
             CommandRegistration(
                 keys.getStringList("list"),
                 "list",
-                { cmdPrefix, key -> """$cmdPrefix$key""" },
-                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key", "") }
+                { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}$""" },
+                { cmdPrefix, key, message -> "" }
             ) { message, groupId, userId -> onPlayerList(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("addBind"),
                 "bind",
-                { cmdPrefix, key -> """$cmdPrefix$key (.+)""" },
-                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key ", "") }
+                { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+(.+)$""" },
+                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
             ) { message, groupId, userId -> onWhitelistApply(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("deleteBind"),
                 "bind",
-                { cmdPrefix, key -> """$cmdPrefix$key (.+)""" },
-                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key ", "") }
+                { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+(.+)$""" },
+                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
             ) { message, groupId, userId -> onWhitelistRemove(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("queryBind"),
                 "bind",
-                { cmdPrefix, key -> """$cmdPrefix$key(.*)""" },
-                { cmdPrefix, key, message -> message.replace("$cmdPrefix$key", "") }
+                { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
+                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
             ) { message, groupId, userId -> onWhitelistQuery(message, groupId, userId) }
         )
     }

@@ -10,120 +10,110 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
     override fun execute(message: String, groupId: Long, userId: Long) {
         try {
             requireDatabase()
+            val trimmedMessage = message.trim()
+            if (trimmedMessage.isEmpty()) {
+                service.sendWrongUsage(groupId)
+                return
+            }
+
             if (service.isAdmin(userId)) {
-                if (message.startsWith("id:")) {
-                    val arg = message.removePrefix("id:")
-                    if (!service.checkPlayerExists(arg)) {
-                        service.sendBindTemplate(groupId, Messages.notExistsBind, "%player_name%" to arg)
+                if (trimmedMessage.startsWith("id:")) {
+                    val playerName = trimmedMessage.removePrefix("id:").trim()
+                    if (!service.checkPlayerExists(playerName)) {
+                        service.sendBindTemplate(groupId, Messages.notExistsBind, "%player_name%" to playerName)
                         return
                     }
-                    val target = DatabaseProvider.getBindByName(arg)?.toLongOrNull()
-                    if (target == null) {
+                    val targetUser = DatabaseProvider.getBindByName(playerName)
+                    val targetUserId = targetUser?.toLongOrNull()
+                    if (targetUserId == null) {
                         service.sendWrongUsage(groupId)
                         return
                     }
-                    requireDatabase().removeBind(arg)
-                    service.context.playerService.kickPlayer(arg)
-                    val wl = DatabaseProvider.getBindByUser(target.toString())
+                    requireDatabase().removeBind(playerName)
+                    service.context.playerService.kickPlayer(playerName)
+                    val remaining = DatabaseProvider.getBindByUser(targetUser)
+                    val remainingNames = remaining.keys.joinToString(", ")
                     service.sendBindTemplate(
                         groupId,
                         Messages.adminDeleteBind,
                         *service.originReplacements(groupId, userId),
-                        "%user_id%" to target.toString(),
-                        "%user_name%" to service.bot.getGroupUserName(groupId, target),
-                        "%user_nick%" to service.bot.getGroupUserCard(groupId, target),
-                        "%target_player%" to arg,
-                        "%num%" to wl.size.toString(),
-                        "%current%" to wl.keys.toString()
+                        "%user_id%" to targetUser,
+                        "%user_name%" to service.bot.getGroupUserName(groupId, targetUserId),
+                        "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUserId),
+                        "%target_player%" to playerName,
+                        "%num%" to remaining.size.toString(),
+                        "%current%" to remainingNames
                     )
                     return
                 }
 
-                if (message.startsWith("qq:")) {
-                    val args = message.removePrefix("qq:").split(" ")
-                    if (args.size != 2) {
+                if (trimmedMessage.startsWith("qq:")) {
+                    val parts = trimmedMessage.removePrefix("qq:").trim().split(Regex("""\s+"""))
+                    if (parts.size != 2) {
                         service.sendWrongUsage(groupId)
                         return
                     }
-                    val qqStr = args[0]
-                    val indexStr = args[1]
-                    val qq = qqStr.toLongOrNull()
-                    val index = indexStr.toIntOrNull()
-                    if (qq == null || index == null) {
+                    val targetQqStr = parts[0]
+                    val playerName = parts[1]
+                    val targetQq = targetQqStr.toLongOrNull()
+                    if (targetQq == null) {
                         service.sendWrongUsage(groupId)
                         return
                     }
-                    if (DatabaseProvider.getBindByUser(qqStr).isEmpty()) {
+                    val userBinds = DatabaseProvider.getBindByUser(targetQqStr)
+                    if (userBinds.isEmpty()) {
                         service.sendBindTemplate(
                             groupId,
                             Messages.qqEmptyBind,
-                            "%user_id%" to qqStr,
-                            "%user_name%" to service.bot.getGroupUserName(groupId, qq),
-                            "%user_nick%" to service.bot.getGroupUserCard(groupId, qq)
+                            "%user_id%" to targetQqStr,
+                            "%user_name%" to service.bot.getGroupUserName(groupId, targetQq),
+                            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetQq)
                         )
                         return
                     }
-                    val target = requireDatabase().removeBindByNum(qq, index)
-                    if (target == null) {
-                        service.sendWrongUsage(groupId)
+                    val matchedPlayer = userBinds.keys.firstOrNull { it.equals(playerName, ignoreCase = true) }
+                    if (matchedPlayer == null) {
+                        service.sendBindTemplate(groupId, Messages.notBelongToYou, "%player_name%" to playerName)
                         return
                     }
-                    target.let { service.context.playerService.kickPlayer(it) }
-                    var wl = DatabaseProvider.getBindByUser(qqStr)
-                    if (wl.isEmpty()) wl = LinkedHashMap()
+                    requireDatabase().removeBind(matchedPlayer)
+                    service.context.playerService.kickPlayer(matchedPlayer)
+                    val remaining = DatabaseProvider.getBindByUser(targetQqStr)
+                    val remainingNames = remaining.keys.joinToString(", ")
                     service.sendBindTemplate(
                         groupId,
                         Messages.adminDeleteBind,
                         *service.originReplacements(groupId, userId),
-                        "%user_id%" to qqStr,
-                        "%user_name%" to service.bot.getGroupUserName(groupId, qq),
-                        "%user_nick%" to service.bot.getGroupUserCard(groupId, qq),
-                        "%target_player%" to target,
-                        "%num%" to wl.size.toString(),
-                        "%current%" to wl.keys.toString()
+                        "%user_id%" to targetQqStr,
+                        "%user_name%" to service.bot.getGroupUserName(groupId, targetQq),
+                        "%user_nick%" to service.bot.getGroupUserCard(groupId, targetQq),
+                        "%target_player%" to matchedPlayer,
+                        "%num%" to remaining.size.toString(),
+                        "%current%" to remainingNames
                     )
                     return
                 }
             }
 
-            val index = message.toIntOrNull()
-            if (index != null) {
-                val target = requireDatabase().removeBindByNum(userId, index)
-                if (target == null) {
-                    service.sendWrongUsage(groupId)
-                    return
-                }
-                target.let { service.context.playerService.kickPlayer(it) }
-                var wl = DatabaseProvider.getBindByUser(userId.toString())
-                if (wl.isEmpty()) wl = LinkedHashMap()
-                service.sendBindTemplate(
-                    groupId,
-                    Messages.playerDeleteBind,
-                    *service.userReplacements(groupId, userId),
-                    "%target_player%" to target,
-                    "%num%" to wl.size.toString(),
-                    "%current%" to wl.keys.toString()
-                )
+            // 普通用户或管理员直接删除玩家名
+            val userBinds = DatabaseProvider.getBindByUser(userId.toString())
+            val matchedPlayer = userBinds.keys.firstOrNull { it.equals(trimmedMessage, ignoreCase = true) }
+            if (matchedPlayer == null) {
+                service.sendBindTemplate(groupId, Messages.notBelongToYou, "%player_name%" to trimmedMessage)
                 return
             }
-
-            if (!service.checkPlayerBelongToUser(message, userId.toString())) {
-                service.sendBindTemplate(groupId, Messages.notBelongToYou, "%player_name%" to message)
-                return
-            }
-            requireDatabase().removeBind(message)
-            service.context.playerService.kickPlayer(message)
-            var wl = DatabaseProvider.getBindByUser(userId.toString())
-            if (wl.isEmpty()) wl = LinkedHashMap()
+            requireDatabase().removeBind(matchedPlayer)
+            service.context.playerService.kickPlayer(matchedPlayer)
+            val remaining = DatabaseProvider.getBindByUser(userId.toString())
+            val remainingNames = remaining.keys.joinToString(", ")
             service.sendBindTemplate(
                 groupId,
                 Messages.playerDeleteBind,
                 *service.userReplacements(groupId, userId),
-                "%target_player%" to message,
-                "%num%" to wl.size.toString(),
-                "%current%" to wl.keys.toString()
+                "%target_player%" to matchedPlayer,
+                "%num%" to remaining.size.toString(),
+                "%current%" to remainingNames
             )
-            return
         } catch (e: IllegalStateException) {
             sendInternalError(groupId, e)
         } catch (e: SQLException) {

@@ -10,11 +10,11 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
     override fun execute(message: String, groupId: Long, userId: Long) {
         try {
             requireDatabase()
-            if (service.isAdmin(userId) && message.contains(" ")) {
-                val msg = message.substring(1)
+            val trimmedMessage = message.trim()
+            if (service.isAdmin(userId) && trimmedMessage.isNotEmpty()) {
                 when {
-                    msg.startsWith("id:") -> {
-                        val arg = msg.removePrefix("id:")
+                    trimmedMessage.startsWith("id:") -> {
+                        val arg = trimmedMessage.removePrefix("id:").trim()
                         val wl = DatabaseProvider.getBindByName(arg)
                         if (wl == null) {
                             service.sendBindTemplate(groupId, Messages.idEmptyBind, "%player%" to arg)
@@ -37,33 +37,34 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         return
                     }
 
-                    msg.startsWith("qq:") -> {
-                        val argStr = msg.removePrefix("qq:")
+                    trimmedMessage.startsWith("qq:") -> {
+                        val argStr = trimmedMessage.removePrefix("qq:").trim()
                         val arg = argStr.toLongOrNull()
                         if (arg == null) {
                             service.sendWrongUsage(groupId)
                             return
                         }
-                        val wl = DatabaseProvider.getBindByUser(arg.toString())
+                        val wl = DatabaseProvider.getBindByUser(argStr)
                         if (wl.isEmpty()) {
                             service.sendBindTemplate(
                                 groupId,
                                 Messages.qqEmptyBind,
-                                "%user_id%" to arg.toString(),
+                                "%user_id%" to argStr,
                                 "%user_name%" to service.bot.getGroupUserName(groupId, arg),
                                 "%user_nick%" to service.bot.getGroupUserCard(groupId, arg)
                             )
                             return
                         }
+                        val formattedList = formatPlayerList(wl.keys)
                         service.sendBindTemplate(
                             groupId,
                             Messages.adminQueryQQBind,
                             *service.originReplacements(groupId, userId),
-                            "%user_id%" to arg.toString(),
+                            "%user_id%" to argStr,
                             "%user_name%" to service.bot.getGroupUserName(groupId, arg),
                             "%user_nick%" to service.bot.getGroupUserCard(groupId, arg),
                             "%num%" to wl.size.toString(),
-                            "%current%" to wl.keys.toString()
+                            "%current%" to formattedList
                         )
                         return
                     }
@@ -79,14 +80,14 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                 service.sendBindTemplate(groupId, Messages.qqEmptyBind, *service.userReplacements(groupId, userId))
                 return
             }
+            val formattedList = formatPlayerList(wl.keys)
             service.sendBindTemplate(
                 groupId,
                 Messages.playerQueryBind,
                 *service.userReplacements(groupId, userId),
                 "%num%" to wl.size.toString(),
-                "%current%" to wl.toString()
+                "%current%" to formattedList
             )
-            return
         } catch (e: IllegalStateException) {
             sendInternalError(groupId, e)
         } catch (e: SQLException) {
@@ -94,5 +95,10 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
         } catch (e: Exception) {
             sendInternalError(groupId, e)
         }
+    }
+
+    private fun formatPlayerList(players: Collection<String>): String {
+        if (players.isEmpty()) return "无"
+        return players.joinToString(separator = "\n  • ", prefix = "\n  • ")
     }
 }

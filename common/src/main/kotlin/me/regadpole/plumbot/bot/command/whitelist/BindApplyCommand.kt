@@ -7,14 +7,27 @@ import java.sql.SQLException
 
 class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
 
+    private val playerNameRegex = Regex("""^[a-zA-Z0-9_\.*]{3,16}$""")
+
     override fun execute(message: String, groupId: Long, userId: Long) {
         try {
             requireDatabase()
-            val args = message.split(" ")
-            if (service.isAdmin(userId)) {
+            val args = message.trim().split(Regex("""\s+""")).filter { it.isNotEmpty() }
+            val isAdmin = service.isAdmin(userId)
+            val adminBypass = service.config.getBoolean("feature", "bind", "adminBypass")
+
+            if (isAdmin) {
                 when (args.size) {
                     1 -> {
-                        val playerName = message
+                        val playerName = args[0]
+                        if (!isValidPlayerName(playerName)) {
+                            service.sendWrongUsage(groupId)
+                            return
+                        }
+                        if (!adminBypass && service.checkUserBindingFull(userId.toString())) {
+                            sendFullBindNotice(groupId, userId)
+                            return
+                        }
                         if (service.checkPlayerExists(playerName)) {
                             service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
                             return
@@ -27,7 +40,7 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                             *service.userReplacements(groupId, userId),
                             "%target_player%" to playerName,
                             "%num%" to wl.size.toString(),
-                            "%current%" to wl.keys.toString()
+                            "%current%" to wl.keys.joinToString(", ")
                         )
                         return
                     }
@@ -35,13 +48,21 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                     2 -> {
                         val targetUserIdStr = args[0]
                         val playerName = args[1]
-                        if (service.checkPlayerExists(playerName)) {
-                            service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
+                        if (!isValidPlayerName(playerName)) {
+                            service.sendWrongUsage(groupId)
                             return
                         }
                         val targetUserId = targetUserIdStr.toLongOrNull()
                         if (targetUserId == null) {
                             service.sendWrongUsage(groupId)
+                            return
+                        }
+                        if (!adminBypass && service.checkUserBindingFull(targetUserIdStr)) {
+                            sendFullBindNotice(groupId, targetUserId)
+                            return
+                        }
+                        if (service.checkPlayerExists(playerName)) {
+                            service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
                             return
                         }
                         requireDatabase().addBind(targetUserId, playerName)
@@ -55,7 +76,7 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                             "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUserId),
                             "%target_player%" to playerName,
                             "%num%" to wl.size.toString(),
-                            "%current%" to wl.keys.toString()
+                            "%current%" to wl.keys.joinToString(", ")
                         )
                         return
                     }
@@ -67,33 +88,28 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                     service.sendWrongUsage(groupId)
                     return
                 }
+                val playerName = args[0]
+                if (!isValidPlayerName(playerName)) {
+                    service.sendWrongUsage(groupId)
+                    return
+                }
                 if (service.checkUserBindingFull(userId.toString())) {
-                    val wl = DatabaseProvider.getBindByUser(userId.toString())
-                    service.sendBindTemplate(
-                        groupId,
-                        Messages.fullBind,
-                        "%player_name%" to wl.keys.toString(),
-                        "%current%" to wl.size.toString(),
-                        "%user_id%" to userId.toString(),
-                        "%whitelist_limit%" to service.config.getInteger("feature", "bind", "maxNum").toString(),
-                        "%user_name%" to service.bot.getGroupUserName(groupId, userId),
-                        "%user_nick%" to service.bot.getGroupUserCard(groupId, userId)
-                    )
+                    sendFullBindNotice(groupId, userId)
                     return
                 }
-                if (service.checkPlayerExists(message)) {
-                    service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to message)
+                if (service.checkPlayerExists(playerName)) {
+                    service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
                     return
                 }
-                requireDatabase().addBind(userId, message)
+                requireDatabase().addBind(userId, playerName)
                 val wl = DatabaseProvider.getBindByUser(userId.toString())
                 service.sendBindTemplate(
                     groupId,
                     Messages.playerAddBind,
                     *service.userReplacements(groupId, userId),
-                    "%target_player%" to message,
+                    "%target_player%" to playerName,
                     "%num%" to wl.size.toString(),
-                    "%current%" to wl.keys.toString()
+                    "%current%" to wl.keys.joinToString(", ")
                 )
                 return
             }
@@ -104,5 +120,21 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
         } catch (e: Exception) {
             sendInternalError(groupId, e)
         }
+    }
+
+    private fun isValidPlayerName(name: String): Boolean = playerNameRegex.matches(name)
+
+    private fun sendFullBindNotice(groupId: Long, targetUser: Long) {
+        val wl = DatabaseProvider.getBindByUser(targetUser.toString())
+        service.sendBindTemplate(
+            groupId,
+            Messages.fullBind,
+            "%player_name%" to wl.keys.joinToString(", "),
+            "%current%" to wl.size.toString(),
+            "%user_id%" to targetUser.toString(),
+            "%whitelist_limit%" to service.config.getInteger("feature", "bind", "maxNum").toString(),
+            "%user_name%" to service.bot.getGroupUserName(groupId, targetUser),
+            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUser)
+        )
     }
 }
