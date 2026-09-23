@@ -11,7 +11,7 @@ dependencies {
     compileOnly(libs.configurateHocon)
     compileOnly(libs.configurateExtraKotlin)
     // cache
-    // 已统一使用 common 内置的 ConcurrentHashMap 缓存，无外部缓存库依赖
+    compileOnly(libs.aedile)
     // database
     compileOnly(libs.taboolibDatabase)
     compileOnly(libs.hikaricp)

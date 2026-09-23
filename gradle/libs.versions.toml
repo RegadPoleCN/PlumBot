@@ -19,6 +19,7 @@ miraimcVersion = "1.9"
 adventureVersion = "4.21.0"
 adventurePlatformBukkitVersion = "4.4.0"
 libbyVersion = "2.0.0-SNAPSHOT"
+aedileVersion = "2.0.3"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -43,6 +44,7 @@ adventureTextSerializerLegacy = { module = "net.kyori:adventure-text-serializer-
 adventurePlatformBukkit = { module = "net.kyori:adventure-platform-bukkit", version.ref = "adventurePlatformBukkitVersion" }
 libbyCore = { module = "com.alessiodp.libby:libby-core", version.ref = "libbyVersion" }
 libbyBukkit = { module = "com.alessiodp.libby:libby-bukkit", version.ref = "libbyVersion" }
+aedile = { module = "com.sksamuel.aedile:aedile-core", version.ref = "aedileVersion" }
 
 # Libraries can be bundled together for easier import
 [bundles]
