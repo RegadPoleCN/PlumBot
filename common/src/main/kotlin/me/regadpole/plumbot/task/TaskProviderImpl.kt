@@ -76,6 +76,18 @@ object TaskProviderImpl : TaskProvider {
         asyncScope.cancel()
     }
 
+    fun <T> launchFuture(block: suspend CoroutineScope.() -> T): CompletableFuture<T> {
+        val future = CompletableFuture<T>()
+        asyncScope.launch {
+            try {
+                future.complete(block())
+            } catch (e: Throwable) {
+                future.completeExceptionally(e)
+            }
+        }
+        return future
+    }
+
     private class JobFuture : CompletableFuture<Unit>(), PlatformTaskHandle {
         private var _job: Job? = null
         override val job: Job get() = _job ?: throw IllegalStateException("Job is not initialized")

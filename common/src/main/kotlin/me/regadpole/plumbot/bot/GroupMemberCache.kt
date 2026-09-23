@@ -1,9 +1,12 @@
 package me.regadpole.plumbot.bot
 
-import me.regadpole.plumbot.internal.cache.TimedValue
+import com.sksamuel.aedile.core.LoadingCache
+import com.sksamuel.aedile.core.cacheBuilder
+import kotlinx.coroutines.future.await
+import me.regadpole.plumbot.task.TaskProviderImpl
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import kotlin.time.Duration.Companion.minutes
 
 /**
  * 群成员信息。
@@ -21,94 +24,89 @@ data class MemberInfo(
 )
 
 /**
- * 群成员缓存抽象，屏蔽不同 Adapter 的实现差异。
+ * 群成员缓存抽象，结合 aedile 提供协程异步与 CompletableFuture 契约。
  */
 interface GroupMemberCache {
 
-    /**
-     * 异步获取指定群成员信息；未命中缓存时会调用 Adapter 提供的 fetchMember。
-     */
+    suspend fun getAsync(groupId: Long, userId: Long): MemberInfo?
+
     fun get(groupId: Long, userId: Long): CompletableFuture<MemberInfo?>
 
-    /**
-     * 刷新指定群的成员缓存。
-     */
+    suspend fun refreshAsync(groupId: Long)
+
     fun refresh(groupId: Long): CompletableFuture<Unit>
 
-    /**
-     * 失效指定群成员的缓存条目。
-     */
     fun invalidate(groupId: Long, userId: Long)
 
-    /**
-     * 失效指定群的所有成员缓存条目。
-     */
     fun invalidate(groupId: Long)
 
-    /**
-     * 失效所有缓存条目。
-     */
     fun invalidateAll()
 }
 
 /**
- * [GroupMemberCache] 的默认实现，基于 [ConcurrentHashMap]。
+ * [GroupMemberCache] 的实现，基于 [com.sksamuel.aedile.core.LoadingCache]。
  *
  * @param fetchMember Adapter 提供的异步加载器
- * @param refreshAfterWriteMillis 缓存刷新周期，默认 10 分钟
  */
 open class DefaultGroupMemberCache(
-    private val fetchMember: (groupId: Long, userId: Long) -> CompletableFuture<MemberInfo?>,
-    private val refreshAfterWriteMillis: Long = DEFAULT_REFRESH_MILLIS
+    private val fetchMember: (groupId: Long, userId: Long) -> CompletableFuture<MemberInfo?>
 ) : GroupMemberCache {
 
-    private val cache = ConcurrentHashMap<Pair<Long, Long>, TimedValue<MemberInfo?>>()
-
-    override fun get(groupId: Long, userId: Long): CompletableFuture<MemberInfo?> {
-        val key = groupId to userId
-        val now = System.currentTimeMillis()
-        val existing = cache[key]
-        if (existing != null && now - existing.timestamp < refreshAfterWriteMillis) {
-            return existing.future
+    private val cache: LoadingCache<Pair<Long, Long>, MemberInfo> = cacheBuilder<Pair<Long, Long>, MemberInfo> {
+        refreshAfterWrite = 10.minutes
+        expireAfterWrite = 30.minutes
+    }.build { (groupId, userId) ->
+        try {
+            val result = fetchMember(groupId, userId).await()
+            result ?: throw NoSuchElementException("Member not found")
+        } catch (e: Throwable) {
+            invalidate(groupId, userId)
+            throw e
         }
-        val future = fetchMember(groupId, userId)
-        cache[key] = TimedValue(future, now)
-        return future
     }
 
-    /**
-     * 直接写入成员信息，常用于启动时批量预热。
-     */
-    fun put(groupId: Long, userId: Long, info: MemberInfo): CompletableFuture<MemberInfo?> {
-        val future = CompletableFuture.completedFuture<MemberInfo?>(info)
-        cache[groupId to userId] = TimedValue(future)
-        return future
+    override suspend fun getAsync(groupId: Long, userId: Long): MemberInfo? =
+        try {
+            cache.get(groupId to userId)
+        } catch (_: NoSuchElementException) {
+            null
+        } catch (_: Throwable) {
+            null
+        }
+
+    override fun get(groupId: Long, userId: Long): CompletableFuture<MemberInfo?> =
+        TaskProviderImpl.launchFuture {
+            getAsync(groupId, userId)
+        }
+
+    fun put(groupId: Long, userId: Long, info: MemberInfo) {
+        cache.put(groupId to userId, info)
     }
 
-    override fun refresh(groupId: Long): CompletableFuture<Unit> {
-        cache.keys.removeAll { it.first == groupId }
-        return CompletableFuture.completedFuture(Unit)
+    override suspend fun refreshAsync(groupId: Long) {
+        invalidate(groupId)
     }
+
+    override fun refresh(groupId: Long): CompletableFuture<Unit> =
+        TaskProviderImpl.launchFuture {
+            refreshAsync(groupId)
+        }
 
     override fun invalidate(groupId: Long, userId: Long) {
-        cache.remove(groupId to userId)
+        cache.invalidate(groupId to userId)
     }
 
     override fun invalidate(groupId: Long) {
-        cache.keys.removeAll { it.first == groupId }
+        cache.underlying().synchronous().asMap().keys.removeIf { it.first == groupId }
     }
 
     override fun invalidateAll() {
-        cache.clear()
+        cache.invalidateAll()
     }
 
     companion object {
-        private const val DEFAULT_REFRESH_MILLIS = 10L * 60L * 1000L
         private const val DEFAULT_TIMEOUT_SECONDS = 10L
 
-        /**
-         * 顶层同步等待工具，所有公开同步方法必须使用该 10 秒超时。
-         */
         @JvmStatic
         fun <T> await(
             future: CompletableFuture<T>,

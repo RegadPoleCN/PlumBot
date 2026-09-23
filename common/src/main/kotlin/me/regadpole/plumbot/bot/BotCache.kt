@@ -1,73 +1,70 @@
 package me.regadpole.plumbot.bot
 
-import me.regadpole.plumbot.internal.cache.TimedValue
+import com.sksamuel.aedile.core.LoadingCache
+import com.sksamuel.aedile.core.cacheBuilder
+import kotlinx.coroutines.future.await
+import me.regadpole.plumbot.task.TaskProviderImpl
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
+import kotlin.time.Duration.Companion.minutes
 
 /**
- * 通用异步缓存抽象，基于 [CompletableFuture] 与 [ConcurrentHashMap] 实现。
+ * 通用缓存抽象，结合 [com.sksamuel.aedile.core.LoadingCache] 实现挂起函数与 CompletableFuture 双契约。
  */
-interface BotCache<K, V> {
+interface BotCache<K : Any, V : Any> {
 
-    /**
-     * 获取指定键对应的值；未命中缓存时会调用加载器。
-     */
+    suspend fun getAsync(key: K): V
+
     fun get(key: K): CompletableFuture<V>
 
-    /**
-     * 刷新指定键的缓存条目。
-     */
+    suspend fun refreshAsync(key: K)
+
     fun refresh(key: K): CompletableFuture<Unit>
 
-    /**
-     * 失效指定键的缓存条目。
-     */
     fun invalidate(key: K)
 
-    /**
-     * 失效所有缓存条目。
-     */
     fun invalidateAll()
 }
 
 /**
- * [BotCache] 的默认实现，基于 [ConcurrentHashMap]。
- *
- * @param loader 异步加载器
- * @param refreshAfterWriteMillis 缓存刷新周期，默认 10 分钟
+ * [BotCache] 的默认实现，基于 [com.sksamuel.aedile.core.LoadingCache]。
  */
-open class DefaultBotCache<K, V>(
-    private val loader: (K) -> CompletableFuture<V>,
-    private val refreshAfterWriteMillis: Long = DEFAULT_REFRESH_MILLIS
+open class DefaultBotCache<K : Any, V : Any>(
+    private val loader: (K) -> CompletableFuture<V>
 ) : BotCache<K, V> {
 
-    private val cache = ConcurrentHashMap<K, TimedValue<V>>()
-
-    override fun get(key: K): CompletableFuture<V> {
-        val now = System.currentTimeMillis()
-        val existing = cache[key]
-        if (existing != null && now - existing.timestamp < refreshAfterWriteMillis) {
-            return existing.future
+    private val cache: LoadingCache<K, V> = cacheBuilder<K, V> {
+        refreshAfterWrite = 10.minutes
+        expireAfterWrite = 30.minutes
+    }.build { key ->
+        try {
+            loader(key).await()
+        } catch (e: Throwable) {
+            invalidate(key)
+            throw e
         }
-        val future = loader(key)
-        cache[key] = TimedValue(future, now)
-        return future
     }
 
-    override fun refresh(key: K): CompletableFuture<Unit> {
-        cache.remove(key)
-        return CompletableFuture.completedFuture(Unit)
+    override suspend fun getAsync(key: K): V = cache.get(key)
+
+    override fun get(key: K): CompletableFuture<V> =
+        TaskProviderImpl.launchFuture {
+            getAsync(key)
+        }
+
+    override suspend fun refreshAsync(key: K) {
+        cache.underlying().synchronous().refresh(key)
     }
+
+    override fun refresh(key: K): CompletableFuture<Unit> =
+        TaskProviderImpl.launchFuture {
+            refreshAsync(key)
+        }
 
     override fun invalidate(key: K) {
-        cache.remove(key)
+        cache.invalidate(key)
     }
 
     override fun invalidateAll() {
-        cache.clear()
-    }
-
-    companion object {
-        private const val DEFAULT_REFRESH_MILLIS = 10L * 60L * 1000L
+        cache.invalidateAll()
     }
 }
