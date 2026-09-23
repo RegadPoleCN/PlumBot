@@ -45,17 +45,13 @@ class BotExtensionRegistryTest {
 
     @Test
     fun `built-in factory refuses external registration with same type`() {
-        // Built-in registration is done via `BotProvider.registerFactory` directly,
-        // not through the registry. Verify that a registry call sees it as taken by
-        // asking for availableAdapters() first.
         val oneBot = FakeFactory("onebotx")
         BotProvider.registerFactory(oneBot)
         val pluginA = FakePlugin("pluginA")
-        // Use internal constructor to attach to the provider.
         val registry = BotExtensionRegistry(BotProvider)
-        // Internal: rebuild after the test.
-        val ok = registry.registerExternalFactory(FakeFactory("onebotx"), pluginA)
-        assertFalse(ok, "duplicate type must return false")
+        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.AdapterRegistrationException> {
+            registry.registerExternalFactory(FakeFactory("onebotx"), pluginA)
+        }
         assertTrue("onebotx" in BotProvider.availableAdapters().map { it.type })
     }
 

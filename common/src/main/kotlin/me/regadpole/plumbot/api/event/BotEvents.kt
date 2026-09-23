@@ -6,7 +6,7 @@ import me.regadpole.plumbot.api.PublicApi
  * Immutable payload representing a group message received by the bot.
  *
  * Third-party plugins receive instances of this class via
- * [me.regadpole.plumbot.PlumBotAPI.subscribeGroupMessages]. All fields are stable;
+ * [me.regadpole.plumbot.PlumBotAPI.subscribeGroupMessage]. All fields are stable;
  * additional fields MAY be added in future minor versions.
  */
 @PublicApi
@@ -19,15 +19,18 @@ data class GroupMessageEvent(
 )
 
 /**
- * Immutable payload representing a user decrease (member leaves) event.
+ * Immutable payload representing a group member decrease event.
  *
  * Third-party plugins receive instances of this class via
- * [me.regadpole.plumbot.PlumBotAPI.subscribeUserDecrease].
+ * [me.regadpole.plumbot.PlumBotAPI.subscribeGroupMemberDecrease].
  */
 @PublicApi
-data class UserDecreaseEvent(
+data class GroupMemberDecreaseEvent(
     val botId: String,
     val groupId: Long,
     val userId: Long,
     val timestamp: Long,
 )
+
+/** Alias for compatibility before v3 release if any */
+typealias UserDecreaseEvent = GroupMemberDecreaseEvent

@@ -46,24 +46,31 @@ class BotExtensionRegistry internal constructor(
         synchronized(lock) {
             val key = type.lowercase() to plugin
             if (registrations.containsKey(key)) {
-                warn("BotExtensionRegistry: factory for type '$type' already registered by ${plugin.name}; skip")
-                return false
+                throw me.regadpole.plumbot.api.exception.AdapterRegistrationException(
+                    "Factory for type '$type' already registered by ${plugin.name}"
+                )
             }
             val existingType = registrations.keys.firstOrNull { it.first == type.lowercase() }
             if (existingType != null) {
-                warn("BotExtensionRegistry: type '$type' already registered by ${existingType.second.name}; skip")
-                return false
+                throw me.regadpole.plumbot.api.exception.AdapterRegistrationException(
+                    "Type '$type' already registered by ${existingType.second.name}"
+                )
             }
             // Built-in factories do not appear in `registrations`; check provider directly.
             val builtIn = runCatching { provider.availableAdapters() }
                 .getOrDefault(emptyList())
                 .any { it.type.equals(type, ignoreCase = true) }
             if (builtIn) {
-                warn("BotExtensionRegistry: type '$type' is a built-in adapter; skip (built-in wins)")
-                return false
+                throw me.regadpole.plumbot.api.exception.AdapterRegistrationException(
+                    "Type '$type' is a built-in adapter; registration rejected"
+                )
             }
             runCatching { provider.registerFactory(factory) }
-                .onFailure { warn("BotExtensionRegistry: provider.registerFactory failed: ${it.message}"); return false }
+                .onFailure {
+                    throw me.regadpole.plumbot.api.exception.AdapterRegistrationException(
+                        "provider.registerFactory failed: ${it.message}"
+                    )
+                }
             registrations[key] = factory
             return true
         }

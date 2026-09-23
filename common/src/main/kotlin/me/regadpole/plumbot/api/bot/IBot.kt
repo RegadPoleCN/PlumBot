@@ -5,7 +5,7 @@ import me.regadpole.plumbot.bot.BotAdapterMetadata
 import me.regadpole.plumbot.listener.BotHandler
 
 @StableApi
-interface IBot: Cloneable {
+interface IBot {
     var handler: BotHandler?
 
     /**
@@ -98,8 +98,4 @@ interface IBot: Cloneable {
      * @return the card of user in group
      */
     fun getGroupUserCard(groupId: Long, targetId: Long): String
-
-    public override fun clone(): IBot {
-        return super.clone() as IBot
-    }
 }

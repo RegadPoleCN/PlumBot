@@ -44,17 +44,20 @@ class PlumBotAPITest {
     }
 
     @Test
-    fun `sendGroupMessage returns false when no bot loaded`() {
-        // even if no plugin is attached, the API should not throw.
+    fun `sendGroupMessage throws BotNotReadyException when no bot loaded`() {
         PlumBotAPI.detach()
-        val sent = PlumBotAPI.sendGroupMessage(123L, "hi")
-        assertFalse(sent, "sendGroupMessage must return false when no bot is loaded")
-        val userSent = PlumBotAPI.sendUserMessage(456L, "hi")
-        assertFalse(userSent)
-        val groupImg = PlumBotAPI.sendGroupMessageWithImage(123L, "hi")
-        assertFalse(groupImg)
-        val userImg = PlumBotAPI.sendUserMessageWithImage(456L, "hi")
-        assertFalse(userImg)
+        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
+            PlumBotAPI.sendGroupMessage(123L, "hi")
+        }
+        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
+            PlumBotAPI.sendUserMessage(456L, "hi")
+        }
+        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
+            PlumBotAPI.sendGroupMessageWithImage(123L, "hi")
+        }
+        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
+            PlumBotAPI.sendUserMessageWithImage(456L, "hi")
+        }
     }
 
     @Test
@@ -76,7 +79,7 @@ class PlumBotAPITest {
         // dispatcher directly to verify wiring. The dispatcher is internal,
         // but its registration is observable through `close()` semantics.
         var invocations = 0
-        val handle = PlumBotAPI.subscribeGroupMessages { _ ->
+        val handle = PlumBotAPI.subscribeGroupMessage { _ ->
             invocations++
         }
         // Call the dispatcher directly (same package — these tests share the common sources).
@@ -93,7 +96,7 @@ class PlumBotAPITest {
     @Test
     fun `subscribeGroupMessages handler exception does not throw to caller`() {
         var throwCount = 0
-        PlumBotAPI.subscribeGroupMessages { _ ->
+        PlumBotAPI.subscribeGroupMessage { _ ->
             throwCount++
             throw RuntimeException("boom")
         }

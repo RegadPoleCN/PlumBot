@@ -3,7 +3,7 @@ package me.regadpole.plumbot.api.config
 import me.regadpole.plumbot.api.PublicApi
 
 @PublicApi
-object Messages : Cloneable {
+object Messages {
     var prefix: String = "<missing:prefix>"
 
     var load: String = "<missing:load>"
@@ -47,8 +47,4 @@ object Messages : Cloneable {
     var commandDeleteBindByQQ: String = "<missing:commandDeleteBindByQQ>"
     var commandQueryBindById: String = "<missing:commandQueryBindById>"
     var commandQueryBindByQQ: String = "<missing:commandQueryBindByQQ>"
-
-    public override fun clone(): Messages {
-        return super.clone() as Messages
-    }
 }

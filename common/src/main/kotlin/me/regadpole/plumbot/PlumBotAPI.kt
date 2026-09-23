@@ -159,13 +159,13 @@ object PlumBotAPI {
      */
     @PublicApi
     fun sendGroupMessage(groupId: Long, message: String): Boolean {
-        val bot = BotProvider.getBot() ?: run {
-            debugNoBot("sendGroupMessage(groupId=$groupId)")
-            return false
+        val bot = BotProvider.getBot() ?: throw me.regadpole.plumbot.api.exception.BotNotReadyException()
+        return try {
+            bot.sendGroupMsg(groupId, message)
+            true
+        } catch (e: Throwable) {
+            throw me.regadpole.plumbot.api.exception.BotMessageSendException("sendGroupMessage(groupId=$groupId) failed", e)
         }
-        return runCatching { bot.sendGroupMsg(groupId, message); true }
-            .onFailure { logIt("sendGroupMessage failed", it) }
-            .getOrDefault(false)
     }
 
     /**
@@ -173,13 +173,13 @@ object PlumBotAPI {
      */
     @PublicApi
     fun sendUserMessage(userId: Long, message: String): Boolean {
-        val bot = BotProvider.getBot() ?: run {
-            debugNoBot("sendUserMessage(userId=$userId)")
-            return false
+        val bot = BotProvider.getBot() ?: throw me.regadpole.plumbot.api.exception.BotNotReadyException()
+        return try {
+            bot.sendUserMsg(userId, message)
+            true
+        } catch (e: Throwable) {
+            throw me.regadpole.plumbot.api.exception.BotMessageSendException("sendUserMessage(userId=$userId) failed", e)
         }
-        return runCatching { bot.sendUserMsg(userId, message); true }
-            .onFailure { logIt("sendUserMessage failed", it) }
-            .getOrDefault(false)
     }
 
     /**
@@ -188,13 +188,13 @@ object PlumBotAPI {
      */
     @PublicApi
     fun sendGroupMessageWithImage(groupId: Long, message: String): Boolean {
-        val bot = BotProvider.getBot() ?: run {
-            debugNoBot("sendGroupMessageWithImage(groupId=$groupId)")
-            return false
+        val bot = BotProvider.getBot() ?: throw me.regadpole.plumbot.api.exception.BotNotReadyException()
+        return try {
+            bot.sendGroupPicWithText(groupId, message)
+            true
+        } catch (e: Throwable) {
+            throw me.regadpole.plumbot.api.exception.BotMessageSendException("sendGroupMessageWithImage(groupId=$groupId) failed", e)
         }
-        return runCatching { bot.sendGroupPicWithText(groupId, message); true }
-            .onFailure { logIt("sendGroupMessageWithImage failed", it) }
-            .getOrDefault(false)
     }
 
     /**
@@ -203,13 +203,13 @@ object PlumBotAPI {
      */
     @PublicApi
     fun sendUserMessageWithImage(userId: Long, message: String): Boolean {
-        val bot = BotProvider.getBot() ?: run {
-            debugNoBot("sendUserMessageWithImage(userId=$userId)")
-            return false
+        val bot = BotProvider.getBot() ?: throw me.regadpole.plumbot.api.exception.BotNotReadyException()
+        return try {
+            bot.sendUserPicWithText(userId, message)
+            true
+        } catch (e: Throwable) {
+            throw me.regadpole.plumbot.api.exception.BotMessageSendException("sendUserMessageWithImage(userId=$userId) failed", e)
         }
-        return runCatching { bot.sendUserPicWithText(userId, message); true }
-            .onFailure { logIt("sendUserMessageWithImage failed", it) }
-            .getOrDefault(false)
     }
 
     /**
@@ -220,27 +220,14 @@ object PlumBotAPI {
         BotProvider.unloadBot()
     }
 
-    /**
-     * Subscribe to group messages.
-     *
-     * The returned [ListenerHandle] can be used to deregister. Listeners are
-     * called from the bot's network thread; implementations **should not**
-     * block. Exceptions thrown by [handler] are caught and logged but do not
-     * affect other listeners.
-     */
     @PublicApi
-    fun subscribeGroupMessages(handler: (GroupMessageEvent) -> Unit): ListenerHandle {
+    fun subscribeGroupMessage(handler: (GroupMessageEvent) -> Unit): ListenerHandle {
         return BotEventDispatcher.registerGroupMessageHandler(handler)
     }
 
-    /**
-     * Subscribe to user decrease events.
-     *
-     * @see subscribeGroupMessages for threading and exception semantics.
-     */
     @PublicApi
-    fun subscribeUserDecrease(handler: (UserDecreaseEvent) -> Unit): ListenerHandle {
-        return BotEventDispatcher.registerUserDecreaseHandler(handler)
+    fun subscribeGroupMemberDecrease(handler: (me.regadpole.plumbot.api.event.GroupMemberDecreaseEvent) -> Unit): ListenerHandle {
+        return BotEventDispatcher.registerMemberDecreaseHandler(handler)
     }
 
     /**

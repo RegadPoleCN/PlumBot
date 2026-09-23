@@ -47,7 +47,7 @@ class BotEventDispatcherTest {
     @Test
     fun `clearAllListeners drops everything`() {
         BotEventDispatcher.registerGroupMessageHandler { fail("should not fire") }
-        BotEventDispatcher.registerUserDecreaseHandler { fail("should not fire") }
+        BotEventDispatcher.registerMemberDecreaseHandler { fail("should not fire") }
         BotEventDispatcher.clearAllListeners()
         BotEventDispatcher.dispatchGroupMessage("m", 1L, 2L)
         BotEventDispatcher.dispatchUserDecrease(1L, 2L)
@@ -56,7 +56,7 @@ class BotEventDispatcherTest {
     @Test
     fun `public API subscribeGroupMessages delegates`() {
         var count = 0
-        val handle = PlumBotAPI.subscribeGroupMessages { _: GroupMessageEvent -> count++ }
+        val handle = PlumBotAPI.subscribeGroupMessage { _: GroupMessageEvent -> count++ }
         BotEventDispatcher.dispatchGroupMessage("hello", 10L, 20L)
         assertEquals(1, count)
         handle.close()
@@ -65,7 +65,7 @@ class BotEventDispatcherTest {
     @Test
     fun `public API subscribeUserDecrease delegates`() {
         var count = 0
-        val handle = PlumBotAPI.subscribeUserDecrease { _: UserDecreaseEvent -> count++ }
+        val handle = PlumBotAPI.subscribeGroupMemberDecrease { _: me.regadpole.plumbot.api.event.GroupMemberDecreaseEvent -> count++ }
         BotEventDispatcher.dispatchUserDecrease(10L, 20L)
         assertEquals(1, count)
         handle.close()
