@@ -1,36 +1,26 @@
 package me.regadpole.plumbot.bot
 
-import me.regadpole.plumbot.PlumBotAPI
+import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.ListenerHandle
+import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.event.GroupMemberDecreaseEvent
 import me.regadpole.plumbot.api.event.GroupMessageEvent
 import me.regadpole.plumbot.internal.LogLevel
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * Unified event dispatcher for bot-side incoming events (group messages,
  * group member decrease).
- *
- * **Stability**: This object is part of the internal framework surface. Public
- * third-party listeners **MUST NOT** call it directly; use
- * [PlumBotAPI.subscribeGroupMessage] / [PlumBotAPI.subscribeGroupMemberDecrease]
- * which delegate to [registerGroupMessageHandler] / [registerMemberDecreaseHandler].
- *
- * The two public dispatch methods (`dispatchGroupMessage` / `dispatchUserDecrease`)
- * are called by the bot adapter listeners (`OneBotListener`,
- * `MiraiMCListener`) to forward raw adapter events to the framework's
- * [me.regadpole.plumbot.listener.BotHandler] chain.
- *
- * Listener registry semantics:
- *  - Thread-safe.
- *  - Exceptions thrown by a listener are isolated and logged; other listeners
- *    still run.
- *  - All registered listeners are cleared on [unloadBot].
  */
 object BotEventDispatcher {
 
     private val groupMessageHandlers: MutableList<(GroupMessageEvent) -> Unit> = CopyOnWriteArrayList()
     private val memberDecreaseHandlers: MutableList<(GroupMemberDecreaseEvent) -> Unit> = CopyOnWriteArrayList()
+    private val pluginBindings: MutableMap<Plugin, MutableList<ListenerHandle>> = ConcurrentHashMap()
+
+    @Volatile
+    var attachedPlugin: PlumBot? = null
 
     fun registerGroupMessageHandler(handler: (GroupMessageEvent) -> Unit): ListenerHandle {
         groupMessageHandlers.add(handler)
@@ -46,9 +36,19 @@ object BotEventDispatcher {
         }
     }
 
+    fun bindPluginLifecycle(plugin: Plugin, handle: ListenerHandle) {
+        pluginBindings.computeIfAbsent(plugin) { CopyOnWriteArrayList() }.add(handle)
+    }
+
+    fun unregisterAllFor(plugin: Plugin) {
+        val handles = pluginBindings.remove(plugin) ?: return
+        handles.forEach { it.close() }
+    }
+
     fun clearAllListeners() {
         groupMessageHandlers.clear()
         memberDecreaseHandlers.clear()
+        pluginBindings.clear()
     }
 
     fun dispatchGroupMessage(messageRaw: String, groupId: Long, senderId: Long) {
@@ -94,7 +94,7 @@ object BotEventDispatcher {
         BotProvider.getBot()?.metadata?.type ?: "unknown"
 
     private fun logListenerFailure(label: String, e: Throwable) {
-        val plugin = PlumBotAPI.getAttachedPlugin()
+        val plugin = attachedPlugin
         val msg = "BotEventDispatcher $label listener threw: ${e.message ?: e.javaClass.simpleName}"
         if (plugin != null) {
             plugin.log(LogLevel.WARN, msg)
