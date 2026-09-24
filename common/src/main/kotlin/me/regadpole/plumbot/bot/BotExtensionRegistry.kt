@@ -1,6 +1,5 @@
 package me.regadpole.plumbot.bot
 
-import me.regadpole.plumbot.PlumBotAPI
 import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.PublicApi
 
@@ -135,7 +134,7 @@ class BotExtensionRegistry internal constructor(
     }
 
     private fun debug(message: String) {
-        val plugin = PlumBotAPI.getAttachedPlugin()
+        val plugin = BotEventDispatcher.attachedPlugin
         if (plugin != null) {
             plugin.log(me.regadpole.plumbot.internal.LogLevel.DEBUG, message)
         }
@@ -151,7 +150,7 @@ class BotExtensionRegistry internal constructor(
 
     private fun warn(message: String) {
         // Use the attached plugin logger if available; fall back to stderr.
-        val plugin = PlumBotAPI.getAttachedPlugin()
+        val plugin = BotEventDispatcher.attachedPlugin
         if (plugin != null) {
             plugin.log(me.regadpole.plumbot.internal.LogLevel.WARN, message)
         } else {
