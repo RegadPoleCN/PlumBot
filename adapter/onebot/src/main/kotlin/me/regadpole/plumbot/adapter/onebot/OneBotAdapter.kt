@@ -36,21 +36,55 @@ class OneBotAdapter(
     }
 
     override fun sendGroupMsg(targetId: Long, message: String) {
-        client.action(SendGroupMessage(targetId, message, false))
+        val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
+        client.action(SendGroupMessageSegments(targetId, segments))
     }
 
     override fun sendUserMsg(targetId: Long, message: String) {
-        client.action(SendPrivateMessage(targetId, message, false))
+        val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
+        client.action(SendPrivateMessageSegments(targetId, segments))
     }
 
     override fun sendGroupPicWithText(targetId: Long, message: String) {
-        val msg = TextToImg.toImgCQCode(message)
-        client.action(SendGroupMessage(targetId, msg, false))
+        val segments = try {
+            val bytes = TextToImg.toByteArray(message)
+            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
+        } catch (e: Exception) {
+            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
+        }
+        client.action(SendGroupMessageSegments(targetId, segments))
     }
 
     override fun sendUserPicWithText(targetId: Long, message: String) {
-        val msg = TextToImg.toImgCQCode(message)
-        client.action(SendPrivateMessage(targetId, msg, false))
+        val segments = try {
+            val bytes = TextToImg.toByteArray(message)
+            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
+        } catch (e: Exception) {
+            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
+        }
+        client.action(SendPrivateMessageSegments(targetId, segments))
+    }
+
+    override fun sendGroupImage(targetId: Long, imageFile: java.io.File) {
+        val bytes = imageFile.readBytes()
+        val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
+        client.action(SendGroupMessageSegments(targetId, segments))
+    }
+
+    override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) {
+        val segments = OneBotSegmentBuilder.buildArray(
+            OneBotSegmentBuilder.at(userId),
+            OneBotSegmentBuilder.text(" $message")
+        )
+        client.action(SendGroupMessageSegments(targetId, segments))
+    }
+
+    override fun sendGroupMsgAtAll(targetId: Long, message: String) {
+        val segments = OneBotSegmentBuilder.buildArray(
+            OneBotSegmentBuilder.atAll(),
+            OneBotSegmentBuilder.text(" $message")
+        )
+        client.action(SendGroupMessageSegments(targetId, segments))
     }
 
     override fun preloadGroupCaches() {
