@@ -98,4 +98,19 @@ interface IBot {
      * @return the card of user in group
      */
     fun getGroupUserCard(groupId: Long, targetId: Long): String
+
+    /**
+     * Send a local image file directly to the group without text-to-image conversion.
+     */
+    fun sendGroupImage(targetId: Long, imageFile: java.io.File)
+
+    /**
+     * Send group message and @ the target user.
+     */
+    fun sendGroupMsgAt(targetId: Long, userId: Long, message: String)
+
+    /**
+     * Send group message and @ all members.
+     */
+    fun sendGroupMsgAtAll(targetId: Long, message: String)
 }

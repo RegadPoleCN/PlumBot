@@ -22,10 +22,6 @@ dependencies {
     implementation(kotlin("reflect"))
     testImplementation(kotlin("test"))
     implementation(libs.bundles.kotlinxEcosystem)
-    // logger
-//    implementation("org.slf4j:slf4j-api:2.0.17")
-//    implementation("org.slf4j:slf4j-jdk14:2.0.17")
-//    implementation("ch.qos.logback:logback-classic:1.3.14")
     // adventure
     compileOnly(libs.adventureApi)
     compileOnly(libs.adventureTextMinimessage)

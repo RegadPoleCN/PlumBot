@@ -135,6 +135,14 @@ abstract class AbstractBotAdapter : BotImpl {
     abstract override fun sendGroupPicWithText(targetId: Long, message: String)
     abstract override fun sendUserPicWithText(targetId: Long, message: String)
 
+    override fun sendGroupImage(targetId: Long, imageFile: java.io.File) {}
+    override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) {
+        sendGroupMsg(targetId, "@$userId $message")
+    }
+    override fun sendGroupMsgAtAll(targetId: Long, message: String) {
+        sendGroupMsg(targetId, "@全体成员 $message")
+    }
+
     /**
      * 统一同步等待入口，所有需要阻塞等待 Adapter 异步结果的地方应使用此方法。
      */

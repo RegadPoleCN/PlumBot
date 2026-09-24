@@ -135,68 +135,15 @@ object TextToImg {
     }
 
     /**
-     * 将inputstream转为Base64
-     *
-     * @param bytes
-     * @return
-     * @throws Exception
+     * 渲染文本为 PNG 图片字节数组（协议中立，不带任何 CQ 码或协议封装）。
      */
-    @Throws(Exception::class)
-    private fun getBase64FromInputStream(bytes: ByteArray): String? {
-        val data: ByteArray
-
-        val inputStream: InputStream = ByteArrayInputStream(bytes)
-
-        try {
-            val swapStream = ByteArrayOutputStream()
-            val buff = ByteArray(100)
-            var rc: Int
-            while ((inputStream.read(buff, 0, 100).also { rc = it }) > 0) {
-                swapStream.write(buff, 0, rc)
-            }
-            data = swapStream.toByteArray()
-            return Base64.getEncoder().encodeToString(data)
-        } catch (_: IOException) {
-        } finally {
-            try {
-                inputStream.close()
-            } catch (e: IOException) {
-                throw RuntimeException("输入流关闭异常", e)
-            }
-        }
-        return null
+    fun toByteArray(string: String): ByteArray {
+        return toImg(string)
     }
 
     /**
-     * 字节数组转字符串，如 A0 09 70 -> 101000000000100101110000。
-     * @param bts 转入字节数组。
-     * @return 转换好的只有“1”和“0”的字符串。
+     * 渲染文本为临时 PNG 文件。
      */
-    private fun bytes2String(bts: ByteArray): String {
-        val dic = arrayOf(
-            "0000", "0001", "0010", "0011", "0100", "0101", "0110", "0111",
-            "1000", "1001", "1010", "1011", "1100", "1101", "1110", "1111"
-        )
-        val out = StringBuilder()
-        for (b in bts) {
-            var s = String.format("%x", b)
-            s = if (s.length == 1) "0$s" else s
-            out.append(dic[s.substring(0, 1).toInt(16)])
-            out.append(dic[s.substring(1, 2).toInt(16)])
-        }
-        return out.toString()
-    }
-
-    fun toImgCQCode(string: String): String {
-        var base64: String?
-        try {
-            base64 = getBase64FromInputStream(toImg(string))
-        } catch (e: Exception) {
-            throw RuntimeException(e)
-        }
-        return "[CQ:image,file=base64://$base64]"
-    }
-
     fun toFile(string: String): File {
         try {
             val bytes = toImg(string)
@@ -206,20 +153,5 @@ object TextToImg {
         } catch (e: Exception) {
             throw RuntimeException(e)
         }
-    }
-
-    fun toImgBinary(string: String): String {
-        var bytes: String
-        try {
-            bytes = bytes2String(toImg(string))
-        } catch (e: IOException) {
-            throw RuntimeException(e)
-        }
-        return bytes
-    }
-
-    @Throws(IOException::class)
-    fun toImgBinArray(string: String): ByteArray {
-        return toImg(string)
     }
 }
