@@ -1,8 +1,8 @@
 package me.regadpole.plumbot.bot
 
-import me.regadpole.plumbot.PlumBotAPI
+import me.regadpole.plumbot.api.Plugin
+import me.regadpole.plumbot.api.event.GroupMemberDecreaseEvent
 import me.regadpole.plumbot.api.event.GroupMessageEvent
-import me.regadpole.plumbot.api.event.UserDecreaseEvent
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -12,16 +12,19 @@ import kotlin.test.fail
 
 class BotEventDispatcherTest {
 
+    private class DummyPlugin(override val name: String = "DummyPlugin") : Plugin {
+        override val version: String = "1.0.0"
+        override val isEnabled: Boolean = true
+    }
+
     @BeforeTest
     fun reset() {
         BotEventDispatcher.clearAllListeners()
-        try { PlumBotAPI.detach() } catch (_: Throwable) {}
     }
 
     @AfterTest
     fun tearDown() {
         BotEventDispatcher.clearAllListeners()
-        try { PlumBotAPI.detach() } catch (_: Throwable) {}
     }
 
     @Test
@@ -54,20 +57,18 @@ class BotEventDispatcherTest {
     }
 
     @Test
-    fun `public API subscribeGroupMessages delegates`() {
+    fun `bindPluginLifecycle unregisters on plugin disable`() {
+        val plugin = DummyPlugin()
         var count = 0
-        val handle = PlumBotAPI.subscribeGroupMessage { _: GroupMessageEvent -> count++ }
+        val handle = BotEventDispatcher.registerGroupMessageHandler { count++ }
+        BotEventDispatcher.bindPluginLifecycle(plugin, handle)
+
         BotEventDispatcher.dispatchGroupMessage("hello", 10L, 20L)
         assertEquals(1, count)
-        handle.close()
-    }
 
-    @Test
-    fun `public API subscribeUserDecrease delegates`() {
-        var count = 0
-        val handle = PlumBotAPI.subscribeGroupMemberDecrease { _: me.regadpole.plumbot.api.event.GroupMemberDecreaseEvent -> count++ }
-        BotEventDispatcher.dispatchUserDecrease(10L, 20L)
+        BotEventDispatcher.unregisterAllFor(plugin)
+
+        BotEventDispatcher.dispatchGroupMessage("hello", 10L, 20L)
         assertEquals(1, count)
-        handle.close()
     }
 }

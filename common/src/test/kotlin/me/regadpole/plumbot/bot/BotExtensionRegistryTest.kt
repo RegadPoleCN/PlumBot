@@ -1,6 +1,5 @@
 package me.regadpole.plumbot.bot
 
-import me.regadpole.plumbot.PlumBotAPI
 import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.platform.PlatformContext
@@ -8,7 +7,6 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BotExtensionRegistryTest {
@@ -34,13 +32,11 @@ class BotExtensionRegistryTest {
     @BeforeTest
     fun reset() {
         BotProvider.clearFactories()
-        try { PlumBotAPI.detach() } catch (_: Throwable) {}
     }
 
     @AfterTest
     fun tearDown() {
         BotProvider.clearFactories()
-        try { PlumBotAPI.detach() } catch (_: Throwable) {}
     }
 
     @Test

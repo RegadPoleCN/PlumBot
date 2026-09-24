@@ -63,11 +63,9 @@ tasks.register("checkApiContract") {
                 }
         }
 
-        // (2) Required on a curated list of well-known public types. Adjust as
-        // the public surface evolves; this list mirrors
-        // `coding-docs/README.md` public API section.
+        // (2) Required on public types.
         val requiredApis = listOf(
-            "me/regadpole/plumbot/PlumBotAPI.kt",
+            "me/regadpole/plumbot/api/PlumBotAPI.kt",
             "me/regadpole/plumbot/PlumBot.kt",
             "me/regadpole/plumbot/api/bot/IBot.kt",
             "me/regadpole/plumbot/api/Plugin.kt",

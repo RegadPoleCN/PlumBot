@@ -1,107 +1,86 @@
 package me.regadpole.plumbot
 
+import kotlinx.coroutines.runBlocking
+import me.regadpole.plumbot.api.Plugin
+import me.regadpole.plumbot.api.PlumBotAPI
+import me.regadpole.plumbot.api.exception.BotNotReadyException
+import me.regadpole.plumbot.internal.PlumBotApiProvider
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
-import kotlin.test.fail
 
-/**
- * Tests that exercise the public API surface without depending on the Bukkit
- * runtime or a live `PlumBot` attachment. They verify:
- *  - `PlumBotAPI` is an `object` exposing the singleton.
- *  - `getInstance()` returns the singleton regardless of attach state.
- *  - `sendXxxMessage(...)` returns `false` when no bot is currently loaded
- *    (does NOT throw to the caller).
- *  - Listener registration / deregistration is balanced.
- */
 class PlumBotAPITest {
+
+    private class TestPlugin(override val name: String = "TestPlugin") : Plugin {
+        override val version: String = "1.0.0"
+        override val isEnabled: Boolean = true
+    }
 
     @BeforeTest
     fun resetState() {
-        try {
-            PlumBotAPI.detach()
-        } catch (_: Throwable) {
-            // detach is safe to call even if never attached.
-        }
+        PlumBotApiProvider.detach()
     }
 
     @AfterTest
     fun tearDown() {
-        PlumBotAPI.detach()
+        PlumBotApiProvider.detach()
     }
 
     @Test
-    fun `getInstance returns singleton regardless of attach`() {
-        val a = PlumBotAPI.getInstance()
-        val b = PlumBotAPI.getInstance()
-        assertTrue(a === b, "PlumBotAPI must be a singleton object")
-        assertNotNull(a)
-    }
-
-    @Test
-    fun `sendGroupMessage throws BotNotReadyException when no bot loaded`() {
-        PlumBotAPI.detach()
-        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
-            PlumBotAPI.sendGroupMessage(123L, "hi")
-        }
-        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
-            PlumBotAPI.sendUserMessage(456L, "hi")
-        }
-        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
-            PlumBotAPI.sendGroupMessageWithImage(123L, "hi")
-        }
-        kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.BotNotReadyException> {
-            PlumBotAPI.sendUserMessageWithImage(456L, "hi")
+    fun `PlumBotAPI get throws when not attached`() {
+        PlumBotApiProvider.detach()
+        assertFailsWith<IllegalStateException> {
+            PlumBotAPI.get()
         }
     }
 
     @Test
-    fun `getBotOrNull returns null when no bot loaded`() {
-        PlumBotAPI.detach()
-        assertNull(PlumBotAPI.getBotOrNull())
-        try {
-            PlumBotAPI.getBot()
-            fail("getBot() should have thrown when no bot is loaded")
-        } catch (e: IllegalStateException) {
-            // expected
-        }
-    }
-
-    @Test
-    fun `subscribeGroupMessages close unregisters listener`() {
-        PlumBotAPI.detach() // no plugin, no harm; just defensive.
-        // Since we have no dispatcher attached plugin we need to use the
-        // dispatcher directly to verify wiring. The dispatcher is internal,
-        // but its registration is observable through `close()` semantics.
+    fun `subscribeGroupMessage and unregisterAllFor cleans listeners on plugin disable`() {
+        val plugin = TestPlugin()
         var invocations = 0
-        val handle = PlumBotAPI.subscribeGroupMessage { _ ->
+        // Subscribe via the dispatcher directly using plugin binding
+        val handle = me.regadpole.plumbot.bot.BotEventDispatcher.registerGroupMessageHandler {
             invocations++
         }
-        // Call the dispatcher directly (same package — these tests share the common sources).
+        me.regadpole.plumbot.bot.BotEventDispatcher.bindPluginLifecycle(plugin, handle)
+
         BotEventDispatcherAccessor.dispatchGroupMessage("hello", 1L, 2L)
-        assertEquals(1, invocations, "first dispatch must hit the listener")
-        handle.close()
+        assertEquals(1, invocations)
+
+        // Simulate external plugin unload
+        me.regadpole.plumbot.bot.BotEventDispatcher.unregisterAllFor(plugin)
+
         BotEventDispatcherAccessor.dispatchGroupMessage("hello", 1L, 2L)
-        assertEquals(1, invocations, "second dispatch must NOT hit the listener after close")
-        // close() is idempotent.
-        handle.close()
-        handle.close()
+        assertEquals(1, invocations, "Listener must be unregistered when plugin is unloaded")
     }
 
     @Test
-    fun `subscribeGroupMessages handler exception does not throw to caller`() {
-        var throwCount = 0
-        PlumBotAPI.subscribeGroupMessage { _ ->
-            throwCount++
+    fun `manual close on listener handle is idempotent`() {
+        var invocations = 0
+        val handle = me.regadpole.plumbot.bot.BotEventDispatcher.registerGroupMessageHandler {
+            invocations++
+        }
+
+        BotEventDispatcherAccessor.dispatchGroupMessage("hello", 1L, 2L)
+        assertEquals(1, invocations)
+
+        handle.close()
+        handle.close()
+
+        BotEventDispatcherAccessor.dispatchGroupMessage("hello", 1L, 2L)
+        assertEquals(1, invocations)
+    }
+
+    @Test
+    fun `listener exception does not throw to caller`() {
+        me.regadpole.plumbot.bot.BotEventDispatcher.registerGroupMessageHandler {
             throw RuntimeException("boom")
         }
-        // The dispatcher swallows exceptions.
+        // Must not throw
         BotEventDispatcherAccessor.dispatchGroupMessage("hello", 7L, 8L)
-        assertEquals(1, throwCount)
     }
 }

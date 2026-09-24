@@ -2,7 +2,7 @@ package me.regadpole.plumbot.bukkit
 
 import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.PlumBot
-import me.regadpole.plumbot.PlumBotAPI
+import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.adapter.miraimc.MiraiMCFactory
 import me.regadpole.plumbot.adapter.onebot.OneBotFactory
 import me.regadpole.plumbot.api.config.YamlConfigurator
@@ -95,11 +95,12 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             BotProvider.registerFactory(MiraiMCFactory)
         }
 
-        PlumBotAPI.attach(this)
+        me.regadpole.plumbot.internal.PlumBotApiProvider.attach(this)
+        me.regadpole.plumbot.bot.BotEventDispatcher.attachedPlugin = this
 
         server.servicesManager.register(BotProvider::class.java, BotProvider, this, ServicePriority.Normal)
         server.servicesManager.register(DatabaseProvider::class.java, DatabaseProvider, this, ServicePriority.Normal)
-        server.servicesManager.register(PlumBotAPI::class.java, PlumBotAPI, this, ServicePriority.Normal)
+        server.servicesManager.register(PlumBotAPI::class.java, me.regadpole.plumbot.internal.PlumBotApiProvider.requireInstance(), this, ServicePriority.Normal)
 
         enable()
         server.pluginManager.registerEvents(ServerListener(this), this)
@@ -130,7 +131,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
                 BotProvider.unregisterFactory(type)
             }
         }
-        PlumBotAPI.detach()
+        me.regadpole.plumbot.internal.PlumBotApiProvider.detach()
+        me.regadpole.plumbot.bot.BotEventDispatcher.attachedPlugin = null
         logger.info("PlumBot has been disabled!")
     }
 
