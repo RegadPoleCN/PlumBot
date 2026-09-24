@@ -2,22 +2,9 @@ package me.regadpole.plumbot.api
 
 /**
  * Public API contract annotations for PlumBot.
- *
- * These markers exist to make the **public API surface** explicit to third-party
- * plugin authors. A class / function / field marked with one of these annotations
- * is part of the documented API. Types **without** any of these annotations in
- * `common/.../api` / `common/.../bot` / `common/.../platform` / `common/.../task`
- * are considered internal even if Kotlin visibility is `public` by default.
- *
- * Companion docs:
- *  - `coding-docs/README.md` (public API list)
- *  - `coding-docs/development/extending-from-other-plugins.md` (usage guide)
  */
 
-/**
- * Basic public API marker. Third-party plugins MAY use, but no stability
- * guarantee beyond the next minor version is given.
- */
+@PublicApi
 @Retention(AnnotationRetention.RUNTIME)
 @Target(
     AnnotationTarget.CLASS,
@@ -29,14 +16,6 @@ package me.regadpole.plumbot.api
 )
 annotation class PublicApi
 
-/**
- * Stable API marker. Signatures and behavior are committed to be backward
- * compatible across minor versions. Major versions MAY break, but breaking
- * changes will be listed in release notes.
- *
- * Modifying a `@StableApi` type requires a synchronous update of
- * `coding-docs/README.md` public API list.
- */
 @Retention(AnnotationRetention.RUNTIME)
 @Target(
     AnnotationTarget.CLASS,
@@ -49,10 +28,15 @@ annotation class PublicApi
 annotation class StableApi
 
 /**
- * Experimental / preview marker. The API MAY change in the next minor version
- * without notice. Third-party plugins should opt-in explicitly.
+ * 标记该 API 处于实验性孵化阶段。
+ * 基于 Kotlin 官方标准 [RequiresOptIn]，调用方在编译期必须显式添加 `@OptIn(ExperimentalApi::class)`，
+ * 否则 Kotlin 编译器将直接发出编译警告。
  */
-@Retention(AnnotationRetention.RUNTIME)
+@RequiresOptIn(
+    level = RequiresOptIn.Level.WARNING,
+    message = "这是 PlumBot 的实验性 API，未来版本可能发生变更，请谨慎在生产环境使用。"
+)
+@Retention(AnnotationRetention.BINARY)
 @Target(
     AnnotationTarget.CLASS,
     AnnotationTarget.ANNOTATION_CLASS,
