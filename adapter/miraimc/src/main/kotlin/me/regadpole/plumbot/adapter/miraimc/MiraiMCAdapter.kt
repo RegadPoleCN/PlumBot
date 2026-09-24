@@ -64,6 +64,22 @@ class MiraiMCAdapter(
         }
     }
 
+    override fun sendGroupImage(targetId: Long, imageFile: java.io.File) {
+        val group = bot.getGroup(targetId)
+        val imageId = group.uploadImage(imageFile)
+        group.sendMessageMirai("[mirai:image:$imageId]")
+    }
+
+    override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) {
+        val group = bot.getGroup(targetId)
+        group.sendMessageMirai("[mirai:at:$userId] $message")
+    }
+
+    override fun sendGroupMsgAtAll(targetId: Long, message: String) {
+        val group = bot.getGroup(targetId)
+        group.sendMessageMirai("[mirai:at:all] $message")
+    }
+
     override fun preloadGroupCaches() {
         context.config.getLongList("groups").forEach { groupId ->
             bot.getGroup(groupId).members.forEach {

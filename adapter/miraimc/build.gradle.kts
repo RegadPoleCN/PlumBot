@@ -8,8 +8,6 @@ dependencies {
     // miraimc
     compileOnly(libs.miraimcIntegration)
     compileOnly(libs.gson)
-    // cache
-    // 已统一使用 common 内置的 ConcurrentHashMap 缓存，无外部缓存库依赖
     // kotlin
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation(kotlin("reflect"))
