@@ -92,3 +92,47 @@ debug:
     # 设置为 -1 代表关服时保存
     # 设置为 0 代表实时保存 (在有新的日志时就保存)
     save_interval: 0
+
+# =========================================================================
+# 敏感词与合规内容双向过滤系统 (Message Filtering System)
+# 统一管理游戏聊天与 QQ 群聊的双向合规过滤
+# =========================================================================
+filter:
+    # 过滤系统总开关
+    enable: true
+
+    # 命中敏感词后的处理方式：
+    # - "replace": 将违规部分替换为脱敏字符（如 ***）后正常放行
+    # - "block": 直接阻断消息，不向对端发送
+    action: "replace"
+
+    # 当 action 为 replace 时的脱敏掩码字符
+    replacement: "***"
+
+    # 管理员豁免：admins 清单中的 QQ / 拥有控制台权限的玩家是否跳过过滤
+    admin_bypass: true
+
+    # 是否在后台记录被拦截/脱敏的消息日志
+    log_matches: true
+
+    # 云端多源词库配置
+    cloud:
+        enable: true
+        # 云端词库直链列表 (支持任意符合 { "words": [...] } 格式的 JSON 地址)
+        urls:
+            - "https://raw.githubusercontent.com/Yurinann/Filter-Thesaurus-Cloud/main/database.json"
+        # 本地快照缓存目录（各 URL 独立缓存防网络故障）
+        cache_dir: "%plugin_folder%/filter_cache"
+        timeout_ms: 5000
+
+    # 本地自定义补充词库
+    local_words:
+        - "私服拉人"
+        - "发卡网"
+        - "外挂买卖"
+
+    # 忽略白名单（精准反误杀：无论云端或本地词库是否有这些词，系统一律将其排除）
+    ignored_words:
+        - "sb"
+        - "vape"
+        - "nt"

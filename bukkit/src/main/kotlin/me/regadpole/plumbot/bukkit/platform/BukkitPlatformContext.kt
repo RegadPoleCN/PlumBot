@@ -17,6 +17,7 @@ class BukkitPlatformContext(
     override val scheduler: PlatformScheduler,
     override val playerService: PlatformPlayerService,
     override val messenger: PlatformMessenger,
+    override var filterManager: me.regadpole.plumbot.filter.FilterThesaurusManager? = null,
 ): PlatformContext {
     override val config: YamlConfigurator
         get() = configProvider()

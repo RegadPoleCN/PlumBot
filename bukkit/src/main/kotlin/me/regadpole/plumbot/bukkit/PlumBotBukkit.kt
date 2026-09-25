@@ -103,6 +103,15 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         server.servicesManager.register(PlumBotAPI::class.java, me.regadpole.plumbot.internal.PlumBotApiProvider.requireInstance(), this, ServicePriority.Normal)
 
         enable()
+
+        val filterThesaurus = me.regadpole.plumbot.filter.FilterThesaurusManager(platformContext)
+        platformContext.filterManager = filterThesaurus
+        submitAsync {
+            kotlinx.coroutines.runBlocking {
+                filterThesaurus.reload()
+            }
+        }
+
         server.pluginManager.registerEvents(ServerListener(this), this)
         server.pluginManager.registerEvents(PluginListener(), this)
         if (useMirai) {
@@ -118,6 +127,11 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         if (fontPath != null) {
             me.regadpole.plumbot.utils.TextToImg.ttfFile = java.io.File(fontPath)
             me.regadpole.plumbot.utils.TextToImg.reset()
+        }
+        submitAsync {
+            kotlinx.coroutines.runBlocking {
+                platformContext.filterManager?.reload()
+            }
         }
         logger.info("[PlumBot] Configuration and resources reloaded.")
     }
