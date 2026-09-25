@@ -15,5 +15,13 @@ interface PlatformContext {
     val messenger: PlatformMessenger
     val platformType: PlatformType
 
+    /** 当前运行平台所声明支持的全部特性能力集合 */
+    val supportedCapabilities: Set<PlatformCapability>
+        get() = emptySet()
+
     fun isPluginAvailable(name: String): Boolean
+
+    /** 校验当前平台是否具备某个能力 */
+    fun hasCapability(capability: PlatformCapability): Boolean =
+        capability in supportedCapabilities
 }
