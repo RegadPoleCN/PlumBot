@@ -50,6 +50,24 @@ object TextToImg {
             fm = null
         }
 
+    /**
+     * 系统图形渲染环境探针。
+     * 首次调用时尝试检测 AWT 图形环境；若本地缺失 X11/freetype 等本地库，自动标记为不可用，
+     * 避免后续反复尝试绘制导致抛出致命 Error。
+     */
+    val isSupported: Boolean by lazy {
+        try {
+            GraphicsEnvironment.isHeadless()
+            val img = BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB)
+            val g = img.graphics
+            g.dispose()
+            true
+        } catch (t: Throwable) {
+            System.err.println("[PlumBot] 系统环境缺少 AWT 图形环境支持: ${t.message}，图片渲染功能已停用，将全自动回退为纯文本模式。")
+            false
+        }
+    }
+
     fun reset() {
         font = null
         fm = null
@@ -78,6 +96,9 @@ object TextToImg {
 
     @Throws(IOException::class)
     private fun toImg(text: String): ByteArray {
+        if (!isSupported) {
+            throw UnsupportedOperationException("当前环境缺少 AWT 图形库支持，无法生成图片。")
+        }
         ensureFontInitialized()
 
         val currentFont = font ?: Font(Font.SANS_SERIF, Font.PLAIN, DEFAULT_FONT_SIZE.toInt())

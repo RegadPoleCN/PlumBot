@@ -46,21 +46,31 @@ class OneBotAdapter(
     }
 
     override fun sendGroupPicWithText(targetId: Long, message: String) {
+        val cleanText = stripColorCodes(message)
+        if (!TextToImg.isSupported) {
+            sendGroupMsg(targetId, cleanText)
+            return
+        }
         val segments = try {
             val bytes = TextToImg.toByteArray(message)
             OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
         } catch (e: Exception) {
-            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
+            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(cleanText))
         }
         client.action(SendGroupMessageSegments(targetId, segments))
     }
 
     override fun sendUserPicWithText(targetId: Long, message: String) {
+        val cleanText = stripColorCodes(message)
+        if (!TextToImg.isSupported) {
+            sendUserMsg(targetId, cleanText)
+            return
+        }
         val segments = try {
             val bytes = TextToImg.toByteArray(message)
             OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
         } catch (e: Exception) {
-            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
+            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(cleanText))
         }
         client.action(SendPrivateMessageSegments(targetId, segments))
     }

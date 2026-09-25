@@ -37,7 +37,7 @@ interface BotImpl: IBot {
      * from [message]. Centralized so the regular expressions are only
      * defined once and reused by every text-message send path.
      */
-    private fun stripColorCodes(message: String): String =
+    fun stripColorCodes(message: String): String =
         message
             .replace(COLOR_CODE_AMP, "")
             .replace(COLOR_CODE_SECTION, "")
