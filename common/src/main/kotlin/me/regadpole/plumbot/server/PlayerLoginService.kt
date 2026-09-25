@@ -1,12 +1,16 @@
 package me.regadpole.plumbot.server
 
 import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.api.config.YamlConfigurator
 import me.regadpole.plumbot.database.DatabaseProvider
+import me.regadpole.plumbot.platform.PlatformContext
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
 
-class PlayerLoginService(private val config: YamlConfigurator) {
+class PlayerLoginService(private val context: PlatformContext) {
+
+    private val config get() = context.config
+    private val sender = ServerMessageSender(context)
+
     fun check(playerName: String): PreLoginResult {
         if (config.getBoolean("feature", "bind", "whitelist")) {
             val qq = DatabaseProvider.getBindByName(playerName)
@@ -28,12 +32,7 @@ class PlayerLoginService(private val config: YamlConfigurator) {
     }
 
     private fun notifyKick(playerName: String) {
-        val rendered = Messages.kickPlatform
-            .replace("%player_name%", playerName)
-        ServerMessageSender.broadcastToGroups(
-            config,
-            rendered,
-            config.getBoolean("feature", "bind", "pic")
-        )
+        val rendered = Messages.kickPlatform.replace("%player_name%", playerName)
+        sender.broadcast(rendered, config.getBoolean("feature", "bind", "pic"))
     }
 }

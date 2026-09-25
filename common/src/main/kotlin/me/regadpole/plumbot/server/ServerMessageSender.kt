@@ -3,25 +3,31 @@ package me.regadpole.plumbot.server
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
+import me.regadpole.plumbot.platform.PlatformContext
 
 /**
- * Helper for broadcasting a single message to every group configured under
- * the `groups` list of [YamlConfigurator].
- *
- * Existing callers apply their own placeholder substitutions before invoking
- * this helper, so the message is treated as already-resolved. The helper
- * preserves the original `forEach` traversal order of the `groups` list and
- * the `isPic` flag semantics of [IBot.sendMsg].
+ * 负责向所有配置互通的群广播消息的发送组件。
  */
-object ServerMessageSender {
-    fun broadcastToGroups(
-        config: YamlConfigurator,
-        message: String,
-        isPic: Boolean,
-        bot: IBot? = BotProvider.getBot()
-    ) {
-        config.getLongList("groups").forEach { groupId ->
-            bot?.sendMsg(true, groupId, message, isPic)
+class ServerMessageSender(private val context: PlatformContext) {
+
+    fun broadcast(message: String, isPic: Boolean = false) {
+        val bot = BotProvider.getBot() ?: return
+        context.config.getLongList("groups").forEach { groupId ->
+            bot.sendMsg(true, groupId, message, isPic)
+        }
+    }
+
+    companion object {
+        fun broadcastToGroups(
+            config: YamlConfigurator,
+            message: String,
+            isPic: Boolean,
+            bot: IBot? = BotProvider.getBot()
+        ) {
+            val targetBot = bot ?: return
+            config.getLongList("groups").forEach { groupId ->
+                targetBot.sendMsg(true, groupId, message, isPic)
+            }
         }
     }
 }

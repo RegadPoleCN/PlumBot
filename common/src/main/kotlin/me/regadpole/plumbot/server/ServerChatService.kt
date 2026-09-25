@@ -1,11 +1,15 @@
 package me.regadpole.plumbot.server
 
 import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.api.config.YamlConfigurator
 import me.regadpole.plumbot.bot.command.MessageModeResolver
+import me.regadpole.plumbot.platform.PlatformContext
 import me.regadpole.plumbot.utils.stripMinecraftFormatting
 
-class ServerChatService(private val config: YamlConfigurator) {
+class ServerChatService(private val context: PlatformContext) {
+
+    private val config get() = context.config
+    private val sender = ServerMessageSender(context)
+
     fun handleChat(playerName: String, serverName: String, rawMessage: String) {
         if (!config.getBoolean("feature", "message", "enable")) return
         val toGroup = config.getBoolean("feature", "message", "to_group")
@@ -24,8 +28,7 @@ class ServerChatService(private val config: YamlConfigurator) {
             .replace("%server%", serverName)
             .replace("%player_name%", playerName)
             .replace("%message%", message)
-        ServerMessageSender.broadcastToGroups(
-            config,
+        sender.broadcast(
             rendered,
             config.getBoolean("feature", "message", "pic")
         )

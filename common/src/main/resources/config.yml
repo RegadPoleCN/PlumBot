@@ -45,6 +45,20 @@ feature:
         leaveProxy: true
         # 跨服反代端（Velocity/Bungee）专用占位
         changeServer: false
+    # =========================================================================
+    # 玩家死亡群广播
+    # 【声明平台】：仅限具备 PLAYER_DEATH_BROADCAST 能力的单服后端 (Bukkit/Paper)
+    # =========================================================================
+    death:
+        enable: true
+        pic: false
+    # =========================================================================
+    # 玩家达成进度/成就群广播
+    # 【声明平台】：仅限具备 PLAYER_ADVANCEMENT_BROADCAST 能力的 1.12+ 单服后端
+    # =========================================================================
+    advancement:
+        enable: true
+        pic: false
     img:
         file: "%plugin_folder%/MiSans-Normal.ttf"
 

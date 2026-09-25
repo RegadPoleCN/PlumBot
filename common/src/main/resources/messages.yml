@@ -21,6 +21,11 @@ leaveProxy: "%player_name% leave the proxy"
 # JUST FOR VELOCITY !!!
 changeServer: "%player_name% has change the server from %origin_server% to %target_server%"
 
+# server, player_name, death_message
+death: "[%server%] 玩家 %player_name% 遇难了：%death_message%"
+# server, player_name, advancement_title
+advancement: "[%server%] 恭喜 %player_name% 达成了进度 [%advancement_title%]！"
+
 # groups
 kickServer: "请加入qq群:xxx申请白名单"
 # player_name

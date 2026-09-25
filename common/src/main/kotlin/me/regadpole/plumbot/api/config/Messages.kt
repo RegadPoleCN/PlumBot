@@ -17,6 +17,8 @@ object Messages {
     var joinProxy: String = "<missing:joinProxy>"
     var leaveProxy: String = "<missing:leaveProxy>"
     var changeServer: String = "<missing:changeServer>"
+    var death: String = "<missing:death>"
+    var advancement: String = "<missing:advancement>"
 
     var kickServer: String = "<missing:kickServer>"
     var kickPlatform: String = "<missing:kickPlatform>"
