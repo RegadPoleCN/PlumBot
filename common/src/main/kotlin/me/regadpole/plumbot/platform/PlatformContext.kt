@@ -15,6 +15,10 @@ interface PlatformContext {
     val messenger: PlatformMessenger
     val platformType: PlatformType
 
+    /** 消息合规过滤器管理器（若未初始化或不支持则为 null） */
+    val filterManager: me.regadpole.plumbot.filter.FilterThesaurusManager?
+        get() = null
+
     /** 当前运行平台所声明支持的全部特性能力集合 */
     val supportedCapabilities: Set<PlatformCapability>
         get() = emptySet()

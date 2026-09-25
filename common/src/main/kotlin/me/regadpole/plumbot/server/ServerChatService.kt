@@ -17,9 +17,15 @@ class ServerChatService(private val context: PlatformContext) {
 
         val cleanMessage = stripMinecraftFormatting(rawMessage)
 
+        val filterResult = context.filterManager?.process(cleanMessage)
+        if (filterResult?.isBlocked == true) {
+            return
+        }
+        val messageToSend = filterResult?.sanitizedText ?: cleanMessage
+
         val mode = config.getInteger("feature", "message", "mode")
         val prefix = config.getString("feature", "message", "prefix")
-        val resolved = MessageModeResolver.resolve(cleanMessage, mode, prefix) ?: return
+        val resolved = MessageModeResolver.resolve(messageToSend, mode, prefix) ?: return
         sendServerMessage(serverName, playerName, resolved)
     }
 

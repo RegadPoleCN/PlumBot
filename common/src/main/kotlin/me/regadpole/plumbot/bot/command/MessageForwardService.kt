@@ -15,7 +15,15 @@ class MessageForwardService(private val service: BotCommandService) {
         val mode = service.config.getInteger("feature", "message", "mode")
         val prefix = service.config.getString("feature", "message", "prefix")
         val resolved = MessageModeResolver.resolve(message, mode, prefix) ?: return
-        sendOb2ServerMessage(resolved, groupId, userId)
+
+        val isBypass = service.isAdmin(userId)
+        val filterResult = service.context.filterManager?.process(resolved, isBypass = isBypass)
+        if (filterResult?.isBlocked == true) {
+            return
+        }
+        val finalMessage = filterResult?.sanitizedText ?: resolved
+
+        sendOb2ServerMessage(finalMessage, groupId, userId)
     }
 
     private fun sendOb2ServerMessage(message: String, groupId: Long, userId: Long) {
