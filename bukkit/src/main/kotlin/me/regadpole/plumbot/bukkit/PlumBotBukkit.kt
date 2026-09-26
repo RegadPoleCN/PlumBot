@@ -31,7 +31,9 @@ import java.util.concurrent.Future
 import java.util.concurrent.TimeUnit
 
 class PlumBotBukkit: JavaPlugin(), PlumBot{
-    private val dependencyLoader: BukkitDependencyLoader by lazy { BukkitDependencyLoader(this) }
+    private val dependencyLoader: BukkitDependencyLoader by lazy {
+        BukkitDependencyLoader(this) { if (::config.isInitialized) config else null }
+    }
     private val platformLogger: BukkitPlatformLogger by lazy { BukkitPlatformLogger(logger, debugProvider) }
     private val platformScheduler: BukkitPlatformScheduler by lazy { BukkitPlatformScheduler(this) }
     private val playerService: BukkitPlayerService by lazy { BukkitPlayerService(server) { config } }
@@ -60,8 +62,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         try {
             loadDependencies()
         } catch (e: Exception) {
-            logger.severe("Failed to load dependencies: ${e.message}")
-            e.printStackTrace()
+            logger.severe("[PlumBot] 依赖加载失败: ${e.message}")
             Bukkit.getPluginManager().disablePlugin(this)
             return
         }
@@ -72,8 +73,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             config = YamlConfigurator.createConfig(dataDirectory, "config.yml")
                 ?: error("Failed to load config.yml")
         } catch (e: Exception) {
-            logger.severe("Failed to load configuration: ${e.message}")
-            e.printStackTrace()
+            logger.severe("[PlumBot] 基础配置加载失败: ${e.message}")
             Bukkit.getPluginManager().disablePlugin(this)
             return
         }

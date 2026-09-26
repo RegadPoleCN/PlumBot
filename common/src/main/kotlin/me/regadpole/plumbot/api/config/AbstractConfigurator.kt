@@ -68,7 +68,7 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         try {
             loader.save(config)
         } catch (e: IOException) {
-            e.printStackTrace()
+            System.err.println("[PlumBot-Config] 无法保存配置文件 (${configFile.fileName}): ${e.message}")
         }
     }
 
@@ -96,7 +96,7 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
 
                 return factory(loader.load())
             } catch (e: IOException) {
-                e.printStackTrace()
+                System.err.println("[PlumBot-Config] 无法创建或读取配置文件 ($fileName): ${e.message}")
                 return null
             }
         }
