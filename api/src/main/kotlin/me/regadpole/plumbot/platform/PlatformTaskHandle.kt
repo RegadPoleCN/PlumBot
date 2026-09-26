@@ -1,14 +1,17 @@
 package me.regadpole.plumbot.platform
 
-import kotlinx.coroutines.Job
-import me.regadpole.plumbot.api.StableApi
+import me.regadpole.plumbot.api.PublicApi
 
-@StableApi
-interface PlatformTaskHandle {
-    val job: Job
-    fun cancel(): Boolean {
-        if (!job.isActive) return false
-        job.cancel()
-        return true
-    }
+/**
+ * 平台任务执行句柄。
+ * 用于主动取消正在排队或周期运行的调度任务。
+ */
+@PublicApi
+fun interface PlatformTaskHandle {
+
+    /**
+     * 取消当前任务。
+     * @return true 代表成功取消
+     */
+    fun cancel(): Boolean
 }
