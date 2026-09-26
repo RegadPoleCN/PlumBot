@@ -45,15 +45,18 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         return dataSource
     }
 
+    private fun normalize(name: String): String = name.trim().lowercase()
+
     override fun getByUser(user: String): List<Binding> {
         return Binding.of(table.select(dataSource) {
-            where { "user_id" eq user }
+            where { "user_id" eq user.trim() }
         })
     }
 
     override fun getByName(name: String): Binding? {
+        val cleanName = normalize(name)
         return Binding.of(table.select(dataSource) {
-            where { "player_name" eq name }
+            where { "player_name" eq cleanName }
         }.firstOrNull { this })
     }
 
@@ -64,9 +67,10 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
     }
 
     override fun addBind(user: Long, name: String) {
+        val cleanName = normalize(name)
         val now = System.currentTimeMillis().toString()
         table.insert(dataSource, "user_id", "player_name", "binding_time") {
-            value(user, name, now)
+            value(user, cleanName, now)
         }
     }
 
@@ -87,15 +91,17 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
     }
 
     override fun removeBind(name: String) {
+        val cleanName = normalize(name)
         table.delete(dataSource) {
-            where { "player_name" eq name }
+            where { "player_name" eq cleanName }
         }
     }
 
     override fun setUUID(name: String, uuid: UUID) {
+        val cleanName = normalize(name)
         table.update(dataSource) {
             set("player_uuid", uuid.toString())
-            where { "player_name" eq name }
+            where { "player_name" eq cleanName }
         }
     }
 }

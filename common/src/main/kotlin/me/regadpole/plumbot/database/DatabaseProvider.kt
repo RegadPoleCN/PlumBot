@@ -8,8 +8,11 @@ object DatabaseProvider {
     private var database: IDatabase? = null
     private var hasLoaded = false
 
+    val isReady: Boolean
+        get() = hasLoaded && database != null
+
     private val loadedDatabase: IDatabase
-        get() = database!!
+        get() = database ?: throw IllegalStateException("DatabaseProvider 尚未就绪，数据库未初始化完成！")
 
     fun start(database: IDatabase) {
         database.initialize()

@@ -17,6 +17,9 @@ object BotProvider {
 
     private var hasLoaded = false
 
+    val isReady: Boolean
+        get() = hasLoaded && bot != null
+
     fun registerFactory(factory: BotFactory) {
         registry.register(factory)
     }
