@@ -95,17 +95,18 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             BotProvider.registerFactory(MiraiMCFactory)
         }
 
-        me.regadpole.plumbot.internal.PlumBotApiProvider.attach(this)
+        val apiImpl = me.regadpole.plumbot.internal.createPlumBotApi(this)
+        me.regadpole.plumbot.api.PlumBotApiProvider.register(apiImpl)
         me.regadpole.plumbot.bot.BotEventDispatcher.attachedPlugin = this
 
         server.servicesManager.register(BotProvider::class.java, BotProvider, this, ServicePriority.Normal)
         server.servicesManager.register(DatabaseProvider::class.java, DatabaseProvider, this, ServicePriority.Normal)
-        server.servicesManager.register(PlumBotAPI::class.java, me.regadpole.plumbot.internal.PlumBotApiProvider.requireInstance(), this, ServicePriority.Normal)
+        server.servicesManager.register(PlumBotAPI::class.java, apiImpl, this, ServicePriority.Normal)
 
         enable()
 
         val filterThesaurus = me.regadpole.plumbot.filter.FilterThesaurusManager(platformContext)
-        platformContext.filterManager = filterThesaurus
+        me.regadpole.plumbot.filter.FilterManagerHolder.manager = filterThesaurus
         submitAsync {
             kotlinx.coroutines.runBlocking {
                 filterThesaurus.reload()
@@ -130,7 +131,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         }
         submitAsync {
             kotlinx.coroutines.runBlocking {
-                platformContext.filterManager?.reload()
+                me.regadpole.plumbot.filter.FilterManagerHolder.manager?.reload()
             }
         }
         logger.info("[PlumBot] Configuration and resources reloaded.")
@@ -145,7 +146,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
                 BotProvider.unregisterFactory(type)
             }
         }
-        me.regadpole.plumbot.internal.PlumBotApiProvider.detach()
+        me.regadpole.plumbot.filter.FilterManagerHolder.manager = null
+        me.regadpole.plumbot.api.PlumBotApiProvider.unregister()
         me.regadpole.plumbot.bot.BotEventDispatcher.attachedPlugin = null
         logger.info("PlumBot has been disabled!")
     }
