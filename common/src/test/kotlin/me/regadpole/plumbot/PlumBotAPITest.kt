@@ -3,8 +3,8 @@ package me.regadpole.plumbot
 import kotlinx.coroutines.runBlocking
 import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.PlumBotAPI
+import me.regadpole.plumbot.api.PlumBotApiProvider
 import me.regadpole.plumbot.api.exception.BotNotReadyException
-import me.regadpole.plumbot.internal.PlumBotApiProvider
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -22,17 +22,17 @@ class PlumBotAPITest {
 
     @BeforeTest
     fun resetState() {
-        PlumBotApiProvider.detach()
+        PlumBotApiProvider.unregister()
     }
 
     @AfterTest
     fun tearDown() {
-        PlumBotApiProvider.detach()
+        PlumBotApiProvider.unregister()
     }
 
     @Test
     fun `PlumBotAPI get throws when not attached`() {
-        PlumBotApiProvider.detach()
+        PlumBotApiProvider.unregister()
         assertFailsWith<IllegalStateException> {
             PlumBotAPI.get()
         }

@@ -4,6 +4,7 @@ plugins {
 }
 
 dependencies {
+    api(project(":api"))
     // gson
     compileOnly(libs.gson)
     // config
@@ -45,6 +46,7 @@ tasks.register("checkApiContract") {
     description = "Validate @PublicApi / @StableApi contract on common modules."
 
     val srcDir = file("src/main/kotlin")
+    val apiSrcDir = file("../api/src/main/kotlin")
     val internalDir = file("src/main/kotlin/me/regadpole/plumbot/internal")
     val publicApiRe = Regex("""@(?:PublicApi|StableApi|ExperimentalApi)\b""")
 
@@ -92,7 +94,7 @@ tasks.register("checkApiContract") {
             "me/regadpole/plumbot/task/TaskProviderImpl.kt",
         )
         requiredApis.forEach { rel ->
-            val f = file("$srcDir/$rel")
+            val f = if (file("$srcDir/$rel").exists()) file("$srcDir/$rel") else file("$apiSrcDir/$rel")
             if (!f.exists()) {
                 violations.add("$rel: missing (was a public type deleted?)")
                 return@forEach

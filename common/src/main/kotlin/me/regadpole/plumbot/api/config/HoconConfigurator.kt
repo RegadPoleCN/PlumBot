@@ -27,8 +27,4 @@ class HoconConfigurator(config: ConfigurationNode) : AbstractConfigurator<HoconC
             return AbstractConfigurator.createConfig(folder, fileName, ::HoconConfigurator, HoconConfigurationLoader::builder)
         }
     }
-
-    public override fun clone(): HoconConfigurator {
-        return HoconConfigurator(config.copy())
-    }
 }

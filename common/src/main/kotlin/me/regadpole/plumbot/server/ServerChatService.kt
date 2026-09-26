@@ -17,7 +17,7 @@ class ServerChatService(private val context: PlatformContext) {
 
         val cleanMessage = stripMinecraftFormatting(rawMessage)
 
-        val filterResult = context.filterManager?.process(cleanMessage)
+        val filterResult = me.regadpole.plumbot.filter.FilterManagerHolder.manager?.process(cleanMessage)
         if (filterResult?.isBlocked == true) {
             return
         }

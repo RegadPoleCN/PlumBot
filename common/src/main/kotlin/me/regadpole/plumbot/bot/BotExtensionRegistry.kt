@@ -20,27 +20,15 @@ import me.regadpole.plumbot.api.PublicApi
  * Obtain via [PlumBotAPI.getExtensionRegistry].
  */
 @PublicApi
-class BotExtensionRegistry internal constructor(
+class DefaultBotExtensionRegistry internal constructor(
     private val provider: BotProvider,
-) {
+) : BotExtensionRegistry {
     /** Tracks (type, plugin) → factory for batch cleanup on plugin disable. */
     private val registrations: MutableMap<Pair<String, Plugin>, BotFactory> = linkedMapOf()
     private val lock = Any()
 
-    /**
-     * Register an external [BotFactory] supplied by [plugin].
-     *
-     * @return `true` on success, `false` when:
-     *  - the type is already registered (either built-in or by another plugin),
-     *  - the factory's [BotAdapterMetadata.supportedPlatforms] is not compatible
-     *    (the registry needs a [me.regadpole.plumbot.platform.PlatformContext];
-     *    here we accept all factories and let [me.regadpole.plumbot.platform.PlatformContext]
-     *    decide at load time, which is consistent with [BotProvider.registerFactory]).
-     *
-     * Failures are logged but never throw.
-     */
     @PublicApi
-    fun registerExternalFactory(factory: BotFactory, plugin: Plugin): Boolean {
+    override fun registerExternalFactory(factory: BotFactory, plugin: Plugin): Boolean {
         val type = factory.metadata.type
         synchronized(lock) {
             val key = type.lowercase() to plugin
@@ -81,7 +69,7 @@ class BotExtensionRegistry internal constructor(
      * @return `true` if a registration was removed, `false` otherwise.
      */
     @PublicApi
-    fun unregisterExternalFactory(type: String, plugin: Plugin): Boolean {
+    override fun unregisterExternalFactory(type: String, plugin: Plugin): Boolean {
         val key = type.lowercase() to plugin
         synchronized(lock) {
             val factory = registrations.remove(key) ?: return false
@@ -112,7 +100,7 @@ class BotExtensionRegistry internal constructor(
      * @return number of registrations removed.
      */
     @PublicApi
-    fun unregisterAllFor(plugin: Plugin): Int {
+    override fun unregisterAllFor(plugin: Plugin): Int {
         synchronized(lock) {
             val keys = registrations.keys.filter { it.second === plugin || it.second == plugin }
             if (keys.isEmpty()) return 0
@@ -144,7 +132,7 @@ class BotExtensionRegistry internal constructor(
      * Snapshot of registered (type, plugin) pairs. Useful for diagnostics / tests.
      */
     @PublicApi
-    fun snapshot(): List<Pair<String, Plugin>> = synchronized(lock) {
+    override fun snapshot(): List<Pair<String, Plugin>> = synchronized(lock) {
         registrations.keys.toList()
     }
 

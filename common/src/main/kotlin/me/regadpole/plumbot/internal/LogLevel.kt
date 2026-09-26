@@ -1,10 +1,3 @@
 package me.regadpole.plumbot.internal
 
-enum class LogLevel {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    FATAL
-}
+typealias LogLevel = me.regadpole.plumbot.platform.LogLevel

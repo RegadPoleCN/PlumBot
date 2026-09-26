@@ -17,7 +17,7 @@ class MessageForwardService(private val service: BotCommandService) {
         val resolved = MessageModeResolver.resolve(message, mode, prefix) ?: return
 
         val isBypass = service.isAdmin(userId)
-        val filterResult = service.context.filterManager?.process(resolved, isBypass = isBypass)
+        val filterResult = me.regadpole.plumbot.filter.FilterManagerHolder.manager?.process(resolved, isBypass = isBypass)
         if (filterResult?.isBlocked == true) {
             return
         }

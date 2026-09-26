@@ -21,8 +21,4 @@ class YamlConfigurator(config: ConfigurationNode) : AbstractConfigurator<YamlCon
             return AbstractConfigurator.createConfig(folder, fileName, ::YamlConfigurator, YamlConfigurationLoader::builder)
         }
     }
-
-    public override fun clone(): YamlConfigurator {
-        return YamlConfigurator(config.copy())
-    }
 }

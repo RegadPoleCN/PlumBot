@@ -24,7 +24,7 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
     )
 
     private val commands: List<CommandRegistration> by lazy {
-        val keys = commandService.config.getConfigMaker("keys")
+        val keys = commandService.config.getSubConfig("keys")
         listOf(
             CommandRegistration(
                 keys.getStringList("list"),

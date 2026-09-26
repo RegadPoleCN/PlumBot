@@ -14,6 +14,7 @@ import me.regadpole.plumbot.bot.AbstractBotAdapter
 import me.regadpole.plumbot.bot.BotEventDispatcher
 import me.regadpole.plumbot.bot.BotExtensionRegistry
 import me.regadpole.plumbot.bot.BotProvider
+import me.regadpole.plumbot.bot.DefaultBotExtensionRegistry
 import me.regadpole.plumbot.bot.MemberInfo
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.task.TaskProviderImpl
@@ -21,12 +22,14 @@ import java.io.File
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
 
+fun createPlumBotApi(plugin: PlumBot): PlumBotAPI = PlumBotApiImpl(plugin)
+
 internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
 
     private val playerNameRegex = Regex("""^[a-zA-Z0-9_\.*]{3,16}$""")
 
     override val extensionRegistry: BotExtensionRegistry by lazy {
-        BotExtensionRegistry(BotProvider)
+        DefaultBotExtensionRegistry(BotProvider)
     }
 
     override val boundGroupIds: Set<Long>

@@ -44,7 +44,7 @@ class BotExtensionRegistryTest {
         val oneBot = FakeFactory("onebotx")
         BotProvider.registerFactory(oneBot)
         val pluginA = FakePlugin("pluginA")
-        val registry = BotExtensionRegistry(BotProvider)
+        val registry = DefaultBotExtensionRegistry(BotProvider)
         kotlin.test.assertFailsWith<me.regadpole.plumbot.api.exception.AdapterRegistrationException> {
             registry.registerExternalFactory(FakeFactory("onebotx"), pluginA)
         }
@@ -55,7 +55,7 @@ class BotExtensionRegistryTest {
     fun `same plugin can register and unregister its own factory`() {
         val pluginA = FakePlugin("pluginA")
         val factory = FakeFactory("mycool")
-        val registry = BotExtensionRegistry(BotProvider)
+        val registry = DefaultBotExtensionRegistry(BotProvider)
         assertTrue(registry.registerExternalFactory(factory, pluginA))
         assertEquals(listOf("mycool" to pluginA), registry.snapshot())
         assertTrue(registry.unregisterExternalFactory("mycool", pluginA))
@@ -68,7 +68,7 @@ class BotExtensionRegistryTest {
         val pluginB = FakePlugin("pluginB")
         val factoryA = FakeFactory("factA")
         val factoryB = FakeFactory("factB")
-        val registry = BotExtensionRegistry(BotProvider)
+        val registry = DefaultBotExtensionRegistry(BotProvider)
         registry.registerExternalFactory(factoryA, pluginA)
         registry.registerExternalFactory(factoryB, pluginB)
         val removed = registry.unregisterAllFor(pluginA)
@@ -78,7 +78,7 @@ class BotExtensionRegistryTest {
 
     @Test
     fun `unregisterAllFor on unknown plugin returns zero`() {
-        val registry = BotExtensionRegistry(BotProvider)
+        val registry = DefaultBotExtensionRegistry(BotProvider)
         val removed = registry.unregisterAllFor(FakePlugin("nope"))
         assertEquals(0, removed)
     }

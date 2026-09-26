@@ -11,7 +11,7 @@ import kotlin.io.path.exists
 
 abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected constructor(
     protected val config: ConfigurationNode
-) : Cloneable {
+) : me.regadpole.plumbot.platform.PlatformConfig {
 
     protected abstract fun createConfigurator(node: ConfigurationNode): C
     protected abstract fun loaderBuilder(): AbstractConfigurationLoader.Builder<*, *>
@@ -33,27 +33,31 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         return createConfigurator(getNode(*nodePath))
     }
 
-    fun getStringList(vararg nodePath: String?): List<String?> {
+    override fun getSubConfig(vararg path: String?): me.regadpole.plumbot.platform.PlatformConfig {
+        return getConfigMaker(*path)
+    }
+
+    override fun getStringList(vararg nodePath: String?): List<String?> {
         return resolveNode(*nodePath).childrenList().map { it.string }
     }
 
-    fun getLongList(vararg nodePath: String?): List<Long> {
+    override fun getLongList(vararg nodePath: String?): List<Long> {
         return resolveNode(*nodePath).childrenList().map { it.long }
     }
 
-    fun getBoolean(vararg nodePath: String?): Boolean {
+    override fun getBoolean(vararg nodePath: String?): Boolean {
         return resolveNode(*nodePath).boolean
     }
 
-    fun getInteger(vararg nodePath: String?): Int {
+    override fun getInteger(vararg nodePath: String?): Int {
         return resolveNode(*nodePath).int
     }
 
-    fun getString(vararg nodePath: String?): String? {
+    override fun getString(vararg nodePath: String?): String? {
         return resolveNode(*nodePath).string
     }
 
-    fun getLong(vararg nodePath: String?): Long {
+    override fun getLong(vararg nodePath: String?): Long {
         return resolveNode(*nodePath).long
     }
 
@@ -67,8 +71,6 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
             e.printStackTrace()
         }
     }
-
-    public abstract override fun clone(): C
 
     companion object {
         @JvmStatic
