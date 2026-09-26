@@ -90,7 +90,6 @@ tasks.register("checkApiContract") {
             "me/regadpole/plumbot/platform/PlatformPlayerService.kt",
             "me/regadpole/plumbot/platform/PlatformTaskHandle.kt",
             "me/regadpole/plumbot/platform/PlatformType.kt",
-            "me/regadpole/plumbot/task/TaskProvider.kt",
             "me/regadpole/plumbot/task/TaskProviderImpl.kt",
         )
         requiredApis.forEach { rel ->

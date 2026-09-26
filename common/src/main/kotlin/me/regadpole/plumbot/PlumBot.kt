@@ -10,7 +10,6 @@ import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.platform.PlatformContext
-import me.regadpole.plumbot.task.TaskProvider
 import me.regadpole.plumbot.task.TaskProviderImpl
 import me.regadpole.plumbot.utils.TextToImg
 import net.kyori.adventure.text.Component
@@ -21,7 +20,7 @@ import kotlin.io.path.pathString
 import kotlin.reflect.KMutableProperty
 
 @StableApi
-interface PlumBot: TaskProvider {
+interface PlumBot {
 
     var datasource: YamlConfigurator
     var config: YamlConfigurator
@@ -84,6 +83,21 @@ interface PlumBot: TaskProvider {
     }
 
     fun loadConfig() {
+        val configFile = dataDirectory.resolve("config.yml").toFile()
+        if (configFile.exists()) {
+            val updated = me.regadpole.plumbot.internal.config.ConfigMigrator.completeMissingDefaults(configFile, "/config.yml")
+            if (updated) {
+                log(LogLevel.INFO, "检测到 config.yml 存在新增功能配置，已自动补齐默认项！")
+            }
+        }
+        val messagesFile = dataDirectory.resolve("messages.yml").toFile()
+        if (messagesFile.exists()) {
+            val updated = me.regadpole.plumbot.internal.config.ConfigMigrator.completeMissingDefaults(messagesFile, "/messages.yml")
+            if (updated) {
+                log(LogLevel.INFO, "检测到 messages.yml 存在新增消息模板，已自动补齐默认项！")
+            }
+        }
+
         config = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
         datasource = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
         val messagesConf = YamlConfigurator.createConfig(dataDirectory, "messages.yml")

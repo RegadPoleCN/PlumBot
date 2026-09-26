@@ -19,9 +19,10 @@ import org.bukkit.event.player.PlayerQuitEvent
 
 class ServerListener(private val plugin: PlumBot) : Listener {
 
-    private val chatService = ServerChatService(plugin.platform)
-    private val loginService = PlayerLoginService(plugin.platform)
-    private val gameEvents = PlayerGameEventService(plugin.platform)
+    private val messageSender = me.regadpole.plumbot.server.ServerMessageSender(plugin.platform)
+    private val chatService = ServerChatService(plugin.platform, messageSender)
+    private val loginService = PlayerLoginService(plugin.platform, messageSender)
+    private val gameEvents = PlayerGameEventService(plugin.platform, messageSender)
 
     private fun resolveServerName(): String {
         val configured = plugin.config.getString("server", "name")
@@ -56,7 +57,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
     @EventHandler
     fun onJoin(event: PlayerJoinEvent) {
         val playerName = event.player.name
-        plugin.submitAsync {
+        plugin.platform.scheduler.runAsync {
             gameEvents.notifyJoin(playerName)
         }
     }
@@ -65,7 +66,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
     fun onLeave(event: PlayerQuitEvent) {
         val playerName = event.player.name
         val serverName = resolveServerName()
-        plugin.submitAsync {
+        plugin.platform.scheduler.runAsync {
             gameEvents.notifyLeave(playerName, serverName)
         }
     }
@@ -78,7 +79,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
         val cleanMessage = stripMinecraftFormatting(deathMessage)
         val serverName = resolveServerName()
 
-        plugin.submitAsync {
+        plugin.platform.scheduler.runAsync {
             gameEvents.notifyDeath(playerName, serverName, cleanMessage)
         }
     }
@@ -119,7 +120,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
         val playerName = event.player.name
         val serverName = resolveServerName()
 
-        plugin.submitAsync {
+        plugin.platform.scheduler.runAsync {
             gameEvents.notifyAdvancement(playerName, serverName, titleText)
         }
     }

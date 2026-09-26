@@ -17,7 +17,7 @@ class MiraiMCListener(private val plugin: PlumBot): Listener {
         val rawMessage = event.message
         val groupId = event.groupID
         val senderId = event.senderID
-        plugin.submitAsync {
+        plugin.platform.scheduler.runAsync {
             val bot = BotProvider.getBot()
             val parsedMessage = MiraiCodeParser.parse(rawMessage) { targetQq ->
                 bot?.getGroupUserCard(groupId, targetQq) ?: targetQq.toString()
@@ -32,7 +32,7 @@ class MiraiMCListener(private val plugin: PlumBot): Listener {
 
         val groupId = event.groupID
         val targetId = event.targetID
-        plugin.submitAsync {
+        plugin.platform.scheduler.runAsync {
             BotEventDispatcher.dispatchUserDecrease(groupId, targetId)
         }
     }

@@ -7,37 +7,37 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 
 @PublicApi
-object TaskProviderImpl : TaskProvider {
+object TaskProviderImpl {
     private val mainScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val asyncScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
-    override fun submit(task: Runnable): Future<*> {
+    fun submit(task: Runnable): Future<*> {
         return launchAsFuture(mainScope) {
             task.run()
         }
     }
 
-    override fun submitAsync(task: Runnable): Future<*> {
+    fun submitAsync(task: Runnable): Future<*> {
         return launchAsFuture(asyncScope) {
             task.run()
         }
     }
 
-    override fun submitLater(delay: Long, task: Runnable): Future<*> {
+    fun submitLater(delay: Long, task: Runnable): Future<*> {
         return launchAsFuture(mainScope) {
             delay(delay)
             task.run()
         }
     }
 
-    override fun submitLaterAsync(delay: Long, task: Runnable): Future<*> {
+    fun submitLaterAsync(delay: Long, task: Runnable): Future<*> {
         return launchAsFuture(asyncScope) {
             delay(delay)
             task.run()
         }
     }
 
-    override fun submitTimer(delay: Long, period: Long, task: Runnable): Future<*> {
+    fun submitTimer(delay: Long, period: Long, task: Runnable): Future<*> {
         return launchAsFuture(mainScope) {
             delay(delay)
             while (isActive) {
@@ -47,7 +47,7 @@ object TaskProviderImpl : TaskProvider {
         }
     }
 
-    override fun submitTimerAsync(delay: Long, period: Long, task: Runnable): Future<*> {
+    fun submitTimerAsync(delay: Long, period: Long, task: Runnable): Future<*> {
         return launchAsFuture(asyncScope) {
             delay(delay)
             while (isActive) {

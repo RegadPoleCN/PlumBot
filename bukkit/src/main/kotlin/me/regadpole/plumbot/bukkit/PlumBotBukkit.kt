@@ -107,7 +107,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
         val filterThesaurus = me.regadpole.plumbot.filter.FilterThesaurusManager(platformContext)
         me.regadpole.plumbot.filter.FilterManagerHolder.manager = filterThesaurus
-        submitAsync {
+        platformScheduler.runAsync {
             kotlinx.coroutines.runBlocking {
                 filterThesaurus.reload()
             }
@@ -129,7 +129,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             me.regadpole.plumbot.utils.TextToImg.ttfFile = java.io.File(fontPath)
             me.regadpole.plumbot.utils.TextToImg.reset()
         }
-        submitAsync {
+        platformScheduler.runAsync {
             kotlinx.coroutines.runBlocking {
                 me.regadpole.plumbot.filter.FilterManagerHolder.manager?.reload()
             }
@@ -172,36 +172,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         return playerService.listPlayerString()
     }
 
-    override fun submit(task: Runnable): Future<*> {
-        return platformScheduler.run(task).asFuture()
-    }
-
-    override fun submitAsync(task: Runnable): Future<*> {
-        return platformScheduler.runAsync(task).asFuture()
-    }
-
-    override fun submitLater(delay: Long, task: Runnable): Future<*> {
-        return platformScheduler.runLater(delay, task).asFuture()
-    }
-
-    override fun submitLaterAsync(delay: Long, task: Runnable): Future<*> {
-        return platformScheduler.runLaterAsync(delay, task).asFuture()
-    }
-
-    override fun submitTimer(delay: Long, period: Long, task: Runnable): Future<*> {
-        return platformScheduler.runTimer(delay, period, task).asFuture()
-    }
-
-    override fun submitTimerAsync(delay: Long, period: Long, task: Runnable): Future<*> {
-        return platformScheduler.runTimerAsync(delay, period, task).asFuture()
-    }
-
     override fun loadDependencies() {
         dependencyLoader.loadDependencies()
-    }
-
-    private fun PlatformTaskHandle.asFuture(): Future<*> {
-        val handle = this as? BukkitTaskHandle
-        return handle?.completionFuture ?: CompletableFuture.completedFuture(null)
     }
 }
