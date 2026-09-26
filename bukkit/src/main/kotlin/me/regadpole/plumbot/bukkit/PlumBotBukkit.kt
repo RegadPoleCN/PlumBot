@@ -16,7 +16,6 @@ import me.regadpole.plumbot.bukkit.platform.BukkitPlatformLogger
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformMessenger
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformScheduler
 import me.regadpole.plumbot.bukkit.platform.BukkitPlayerService
-import me.regadpole.plumbot.bukkit.platform.BukkitTaskHandle
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.platform.PlatformContext

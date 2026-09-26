@@ -32,8 +32,11 @@ class DebugProvider(private val plugin: PlumBot) {
 
             val saveInterval = config.getLong("debug", "save_interval")
             if (saveInterval >= 1L) {
-                // 绑定任务句柄，确保 unload 时能彻底 cancel 取消
-                val handle = plugin.platform.scheduler.runTimerAsync(0L, saveInterval * 20L) {
+                // 绑定任务句柄，采用标准 Duration，避免时间单位混淆
+                val handle = plugin.platform.scheduler.runRepeatingAsync(
+                    kotlin.time.Duration.ZERO,
+                    kotlin.time.Duration.parse("${saveInterval}s")
+                ) {
                     flushLogsToDisk()
                 }
                 timerHandle = handle

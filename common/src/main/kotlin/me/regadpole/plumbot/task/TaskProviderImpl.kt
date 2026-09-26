@@ -90,15 +90,20 @@ object TaskProviderImpl {
 
     private class JobFuture : CompletableFuture<Unit>(), PlatformTaskHandle {
         private var _job: Job? = null
-        override val job: Job get() = _job ?: throw IllegalStateException("Job is not initialized")
+        val job: Job get() = _job ?: throw IllegalStateException("Job is not initialized")
 
         fun initJob(job: Job) {
             this._job = job
         }
 
+        override fun cancel(): Boolean {
+            _job?.cancel()
+            return super.cancel(false)
+        }
+
         override fun cancel(mayInterruptIfRunning: Boolean): Boolean {
-            job.cancel()
-            return super<CompletableFuture>.cancel(mayInterruptIfRunning)
+            _job?.cancel()
+            return super.cancel(mayInterruptIfRunning)
         }
 
         override fun isCancelled(): Boolean =
