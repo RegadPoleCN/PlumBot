@@ -3,9 +3,9 @@ package me.regadpole.plumbot.adapter.miraimc
 import me.dreamvoid.miraimc.api.MiraiBot
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.bot.AbstractBotAdapter
-import me.regadpole.plumbot.bot.BotAdapterMetadata
-import me.regadpole.plumbot.bot.MemberInfo
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.MemberInfo
+import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.utils.TextToImg
 import java.util.concurrent.CompletableFuture
 

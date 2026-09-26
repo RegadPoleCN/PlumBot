@@ -2,11 +2,11 @@ package me.regadpole.plumbot.adapter.miraimc
 
 import me.regadpole.plumbot.api.PublicApi
 import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.bot.BotAdapterMetadata
-import me.regadpole.plumbot.bot.BotCapability
-import me.regadpole.plumbot.bot.BotFactory
-import me.regadpole.plumbot.platform.PlatformContext
-import me.regadpole.plumbot.platform.PlatformType
+import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.BotCapability
+import me.regadpole.plumbot.api.bot.BotFactory
+import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformType
 
 @PublicApi
 object MiraiMCFactory: BotFactory {

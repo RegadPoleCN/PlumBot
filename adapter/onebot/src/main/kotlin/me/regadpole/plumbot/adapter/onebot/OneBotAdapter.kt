@@ -2,14 +2,14 @@ package me.regadpole.plumbot.adapter.onebot
 
 import com.google.gson.JsonArray
 import kotlinx.coroutines.*
-import me.regadpole.plumbot.api.config.Messages
+import me.regadpole.plumbot.api.bot.IBot
+import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.bot.AbstractBotAdapter
-import me.regadpole.plumbot.bot.BotAdapterMetadata
-import me.regadpole.plumbot.bot.BotImpl
-import me.regadpole.plumbot.bot.MemberInfo
+import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.listener.DefaultBotHandler
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.utils.TextToImg
 import top.alazeprt.aonebot.action.GetGroupInfo
 import top.alazeprt.aonebot.action.GetGroupMemberInfo
@@ -26,7 +26,7 @@ class OneBotAdapter(
     override val metadata: BotAdapterMetadata
 ) : AbstractBotAdapter() {
 
-    private val logger get() = context.logger
+    private fun log(level: LogLevel, message: String) = context.log(level, message)
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val isRunning = AtomicBoolean(false)
     private val isPreloaded = AtomicBoolean(false)
@@ -34,7 +34,7 @@ class OneBotAdapter(
     @Volatile
     private var connectionMonitorJob: Job? = null
 
-    override fun start(): BotImpl {
+    override fun start(): IBot {
         handler = DefaultBotHandler(context, this)
         doStart()
 
@@ -66,10 +66,10 @@ class OneBotAdapter(
     private fun startConnectionWorkflow() {
         scope.launch {
             try {
-                logger.log(LogLevel.INFO, "[OneBot] 正在建立 WebSocket 连接...")
+                log(LogLevel.INFO, "[OneBot] 正在建立 WebSocket 连接...")
                 client.connect()
             } catch (e: Exception) {
-                logger.log(LogLevel.WARN, "[OneBot] 初始连接尝试失败: ${e.message}")
+                log(LogLevel.WARN, "[OneBot] 初始连接尝试失败: ${e.message}")
             }
             startConnectionMonitor()
         }
@@ -83,22 +83,22 @@ class OneBotAdapter(
                 if (client.isConnected) {
                     // 连接就绪且首次/重连成功后触发预热
                     if (isPreloaded.compareAndSet(false, true)) {
-                        logger.log(LogLevel.INFO, "[OneBot] WebSocket 连接已建立，开始后台异步预热群组与成员缓存...")
+                        log(LogLevel.INFO, "[OneBot] WebSocket 连接已建立，开始后台异步预热群组与成员缓存...")
                         preloadGroupCaches()
                     }
                     retryDelaySeconds = 5L
                     delay(3000L) // 正常在线时，每隔 3 秒检测一次连接心跳
                 } else {
                     isPreloaded.set(false)
-                    logger.log(LogLevel.WARN, "[OneBot] 检测到 WebSocket 未处于连接状态，${retryDelaySeconds} 秒后尝试自动重连...")
+                    log(LogLevel.WARN, "[OneBot] 检测到 WebSocket 未处于连接状态，${retryDelaySeconds} 秒后尝试自动重连...")
                     delay(retryDelaySeconds * 1000L)
 
                     if (!isRunning.get()) break
                     try {
-                        logger.log(LogLevel.INFO, "[OneBot] 正在尝试重新连接 WebSocket...")
+                        log(LogLevel.INFO, "[OneBot] 正在尝试重新连接 WebSocket...")
                         client.connect()
                     } catch (e: Exception) {
-                        logger.log(LogLevel.WARN, "[OneBot] 重连失败 (${e.message})")
+                        log(LogLevel.WARN, "[OneBot] 重连失败 (${e.message})")
                     }
 
                     // 指数退避：5s -> 10s -> 20s -> 40s -> 最大 60s
