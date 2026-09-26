@@ -4,10 +4,12 @@ import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.platform.PlatformCapability
 import me.regadpole.plumbot.platform.PlatformContext
 
-class PlayerGameEventService(private val context: PlatformContext) {
+class PlayerGameEventService(
+    private val context: PlatformContext,
+    private val sender: ServerMessageSender = ServerMessageSender(context)
+) {
 
     private val config get() = context.config
-    private val sender = ServerMessageSender(context)
 
     fun notifyJoin(playerName: String) {
         val totalEnabled = config.getBoolean("feature", "joinAndLeave", "enable")

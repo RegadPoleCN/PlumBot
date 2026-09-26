@@ -6,10 +6,12 @@ import me.regadpole.plumbot.platform.PlatformContext
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
 
-class PlayerLoginService(private val context: PlatformContext) {
+class PlayerLoginService(
+    private val context: PlatformContext,
+    private val sender: ServerMessageSender = ServerMessageSender(context)
+) {
 
     private val config get() = context.config
-    private val sender = ServerMessageSender(context)
 
     fun check(playerName: String): PreLoginResult {
         if (config.getBoolean("feature", "bind", "whitelist")) {

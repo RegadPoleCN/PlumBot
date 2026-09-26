@@ -5,10 +5,12 @@ import me.regadpole.plumbot.bot.command.MessageModeResolver
 import me.regadpole.plumbot.platform.PlatformContext
 import me.regadpole.plumbot.utils.stripMinecraftFormatting
 
-class ServerChatService(private val context: PlatformContext) {
+class ServerChatService(
+    private val context: PlatformContext,
+    private val sender: ServerMessageSender = ServerMessageSender(context)
+) {
 
     private val config get() = context.config
-    private val sender = ServerMessageSender(context)
 
     fun handleChat(playerName: String, serverName: String, rawMessage: String) {
         if (!config.getBoolean("feature", "message", "enable")) return
