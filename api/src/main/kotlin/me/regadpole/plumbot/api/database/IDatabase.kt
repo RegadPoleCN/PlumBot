@@ -1,28 +1,18 @@
 package me.regadpole.plumbot.api.database
 
-import me.regadpole.plumbot.database.Binding
+import me.regadpole.plumbot.api.PublicApi
 import java.sql.SQLException
 import java.util.UUID
 import javax.sql.DataSource
 
-
+@PublicApi
 interface IDatabase {
-    /**
-     * initialize the database
-     */
     @Throws(ClassNotFoundException::class)
     fun initialize()
 
-    /**
-     * close the database
-     */
     @Throws(SQLException::class)
     fun close()
 
-    /**
-     * get the database connection
-     * @return the DataSource
-     */
     @Throws(SQLException::class)
     fun getConnection(): DataSource
 
@@ -35,10 +25,6 @@ interface IDatabase {
     fun removeBindByNum(user: Long, id: Int): String?
     fun removeBind(user: Long)
     fun removeBind(name: String)
-//
-//    fun getBind(user: Long): MutableMap<String, Int>?
-//    fun getBind(name: String): Long?
-//    fun getBind(user: Long, id: Int): String?
-//
+
     fun setUUID(name: String, uuid: UUID)
 }

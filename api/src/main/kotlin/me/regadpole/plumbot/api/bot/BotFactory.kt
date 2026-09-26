@@ -1,8 +1,7 @@
-package me.regadpole.plumbot.bot
+package me.regadpole.plumbot.api.bot
 
 import me.regadpole.plumbot.api.StableApi
-import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 
 @StableApi
 interface BotFactory {

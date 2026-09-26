@@ -6,6 +6,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     api(libs.adventureApi)
     api(libs.kotlinxCoroutines)
+    api(libs.kotlinxDatetime)
 }
 
 tasks.register("checkApiContract") {

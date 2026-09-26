@@ -1,4 +1,4 @@
-package me.regadpole.plumbot.listener
+package me.regadpole.plumbot.api.bot
 
 import me.regadpole.plumbot.api.PublicApi
 

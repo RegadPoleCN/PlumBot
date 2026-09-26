@@ -1,4 +1,4 @@
-package me.regadpole.plumbot.platform
+package me.regadpole.plumbot.api.platform
 
 import me.regadpole.plumbot.api.StableApi
 import kotlin.time.Duration

@@ -1,8 +1,6 @@
 package me.regadpole.plumbot.api.bot
 
 import me.regadpole.plumbot.api.StableApi
-import me.regadpole.plumbot.bot.BotAdapterMetadata
-import me.regadpole.plumbot.listener.BotHandler
 
 @StableApi
 interface IBot {
@@ -41,7 +39,7 @@ interface IBot {
     /**
      * Send message to the group/user.
      *
-     * When [isPic] is `true`, [BotImpl] internally delegates to
+     * When [isPic] is `true`, this internally delegates to
      * [sendGroupPicWithText] (for [isGroup] = `true`) or
      * [sendUserPicWithText] (for [isGroup] = `false`), preserving the
      * exact behavior of the previously public `sendPictureWithText`.

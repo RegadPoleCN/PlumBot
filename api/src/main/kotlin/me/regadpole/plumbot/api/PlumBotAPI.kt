@@ -4,8 +4,8 @@ import me.regadpole.plumbot.api.event.GroupMemberDecreaseEvent
 import me.regadpole.plumbot.api.event.GroupMessageEvent
 import me.regadpole.plumbot.api.exception.BotMessageSendException
 import me.regadpole.plumbot.api.exception.BotNotReadyException
-import me.regadpole.plumbot.bot.BotExtensionRegistry
-import me.regadpole.plumbot.bot.MemberInfo
+import me.regadpole.plumbot.api.bot.BotExtensionRegistry
+import me.regadpole.plumbot.api.bot.MemberInfo
 import java.io.File
 import java.util.UUID
 import java.util.concurrent.CompletableFuture
