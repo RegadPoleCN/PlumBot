@@ -32,7 +32,8 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-// 只保留需要的模块
+// 模块清单
+include(":api")
 include(":common") 
 include(":bukkit")
 include(":adapter:onebot")
