@@ -1,6 +1,6 @@
 package me.regadpole.plumbot
 
-import me.regadpole.plumbot.platform.PlatformTaskHandle
+import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date

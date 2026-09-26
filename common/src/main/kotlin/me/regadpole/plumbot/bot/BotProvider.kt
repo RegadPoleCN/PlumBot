@@ -2,9 +2,11 @@ package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.StableApi
+import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.BotFactory
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.internal.LogLevel
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 
 @StableApi
 object BotProvider {
@@ -64,14 +66,14 @@ object BotProvider {
 
         try {
             bot = factory.create(context).start()
-            context.logger.log(
+            context.log(
                 LogLevel.INFO,
                 "Loaded bot ${factory.metadata.type} with capabilities: ${factory.metadata.capabilities.joinToString()}"
             )
             hasLoaded = true
         } catch (e: Exception) {
-            context.logger.log(LogLevel.ERROR, "Failed to load bot ${factory.metadata.type}: ${e.message ?: e.javaClass.name}")
-            context.logger.log(LogLevel.ERROR, e.stackTraceToString())
+            context.log(LogLevel.ERROR, "Failed to load bot ${factory.metadata.type}: ${e.message ?: e.javaClass.name}")
+            context.log(LogLevel.ERROR, e.stackTraceToString())
             hasLoaded = false
             throw IllegalStateException("Failed to load bot ${factory.metadata.type}", e)
         }
@@ -82,7 +84,7 @@ object BotProvider {
         val factory = registry.find(requestedType)
         if (factory != null) return factory
 
-        context.logger.log(LogLevel.ERROR, "Unknown bot type: $requestedType! Using OneBot...")
+        context.log(LogLevel.ERROR, "Unknown bot type: $requestedType! Using OneBot...")
         return registry.find(DEFAULT_TYPE)
             ?: throw IllegalStateException("No bot factory registered for requested type '$requestedType' or fallback '$DEFAULT_TYPE'")
     }

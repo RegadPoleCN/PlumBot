@@ -12,10 +12,10 @@ import me.regadpole.plumbot.api.exception.BotMessageSendException
 import me.regadpole.plumbot.api.exception.BotNotReadyException
 import me.regadpole.plumbot.bot.AbstractBotAdapter
 import me.regadpole.plumbot.bot.BotEventDispatcher
-import me.regadpole.plumbot.bot.BotExtensionRegistry
+import me.regadpole.plumbot.api.bot.BotExtensionRegistry
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.bot.DefaultBotExtensionRegistry
-import me.regadpole.plumbot.bot.MemberInfo
+import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.task.TaskProviderImpl
 import java.io.File

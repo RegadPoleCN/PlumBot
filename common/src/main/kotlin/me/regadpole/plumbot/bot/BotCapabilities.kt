@@ -1,5 +1,6 @@
 package me.regadpole.plumbot.bot
 
+import me.regadpole.plumbot.api.bot.BotCapability
 import me.regadpole.plumbot.api.bot.IBot
 
 /**

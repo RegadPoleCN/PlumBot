@@ -2,14 +2,14 @@ package me.regadpole.plumbot
 
 import me.regadpole.config.DatabaseSource
 import me.regadpole.plumbot.api.StableApi
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.api.config.YamlConfigurator
+import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.LogLevel
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.task.TaskProviderImpl
 import me.regadpole.plumbot.utils.TextToImg
 import net.kyori.adventure.text.Component

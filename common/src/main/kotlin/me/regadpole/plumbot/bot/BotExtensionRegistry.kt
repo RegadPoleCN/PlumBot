@@ -2,6 +2,10 @@ package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.PublicApi
+import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.BotExtensionRegistry
+import me.regadpole.plumbot.api.bot.BotFactory
+import me.regadpole.plumbot.internal.LogLevel
 
 /**
  * Runtime registry for **third-party** bot adapters.

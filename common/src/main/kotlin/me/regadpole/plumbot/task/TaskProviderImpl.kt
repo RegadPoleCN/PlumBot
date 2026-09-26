@@ -2,7 +2,7 @@ package me.regadpole.plumbot.task
 
 import kotlinx.coroutines.*
 import me.regadpole.plumbot.api.PublicApi
-import me.regadpole.plumbot.platform.PlatformTaskHandle
+import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
 

@@ -1,16 +1,14 @@
-package me.regadpole.plumbot.bot.command.whitelist
+﻿package me.regadpole.plumbot.bot.command.whitelist
 
-import me.regadpole.plumbot.api.config.Messages
+import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.database.DatabaseProvider
 import java.sql.SQLException
 
 class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
 
-    override fun execute(message: String, groupId: Long, userId: Long) {
-        try {
-            requireDatabase()
-            val trimmedMessage = message.trim()
+    override fun handle(message: String, groupId: Long, userId: Long) {
+        val trimmedMessage = message.trim()
             if (trimmedMessage.isEmpty()) {
                 service.sendWrongUsage(groupId)
                 return
@@ -114,12 +112,5 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
                 "%num%" to remaining.size.toString(),
                 "%current%" to remainingNames
             )
-        } catch (e: IllegalStateException) {
-            sendInternalError(groupId, e)
-        } catch (e: SQLException) {
-            sendInternalError(groupId, e)
-        } catch (e: Exception) {
-            sendInternalError(groupId, e)
         }
     }
-}

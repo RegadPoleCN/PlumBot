@@ -1,11 +1,11 @@
 package me.regadpole.plumbot.bot.command
 
 import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.bot.BotCapability
+import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.api.bot.BotCapability
 import me.regadpole.plumbot.bot.requireCapability
 import me.regadpole.plumbot.database.DatabaseProvider
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 
 class BotCommandService(val context: PlatformContext, val bot: IBot) {
     val config = context.config

@@ -1,6 +1,6 @@
-package me.regadpole.plumbot.bot.command
+﻿package me.regadpole.plumbot.bot.command
 
-import me.regadpole.plumbot.api.config.Messages
+import me.regadpole.plumbot.config.Messages
 
 class PlayerListCommandService(private val service: BotCommandService) {
     fun list(message: String, groupId: Long, userId: Long) {

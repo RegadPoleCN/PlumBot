@@ -1,9 +1,9 @@
 package me.regadpole.plumbot.server
 
 import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.api.config.YamlConfigurator
+import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 
 /**
  * 负责向所有配置互通的群广播消息的发送组件。

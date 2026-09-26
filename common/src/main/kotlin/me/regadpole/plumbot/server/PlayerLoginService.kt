@@ -1,8 +1,8 @@
 package me.regadpole.plumbot.server
 
-import me.regadpole.plumbot.api.config.Messages
+import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.database.DatabaseProvider
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
 

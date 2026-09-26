@@ -1,14 +1,15 @@
 package me.regadpole.plumbot.listener
 
+import me.regadpole.plumbot.api.bot.BotCapability
+import me.regadpole.plumbot.api.bot.BotHandler
 import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.bot.BotCapability
+import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.bot.command.MessageForwardService
 import me.regadpole.plumbot.bot.command.PlayerListCommandService
 import me.regadpole.plumbot.bot.command.WhitelistCommandService
 import me.regadpole.plumbot.bot.requireCapability
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 
 class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
     private val commandService = BotCommandService(context, bot)

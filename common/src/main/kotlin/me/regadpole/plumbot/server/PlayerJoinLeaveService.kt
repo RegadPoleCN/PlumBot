@@ -1,7 +1,7 @@
-package me.regadpole.plumbot.server
+﻿package me.regadpole.plumbot.server
 
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.api.config.YamlConfigurator
+import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.config.YamlConfigurator
 
 object PlayerJoinLeaveService {
     fun notifyJoin(playerName: String, config: YamlConfigurator) {

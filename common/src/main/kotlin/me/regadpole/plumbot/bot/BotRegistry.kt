@@ -1,7 +1,8 @@
 package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.api.PublicApi
-import me.regadpole.plumbot.platform.PlatformType
+import me.regadpole.plumbot.api.bot.BotFactory
+import me.regadpole.plumbot.api.platform.PlatformType
 
 @PublicApi
 class BotRegistry {

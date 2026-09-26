@@ -1,7 +1,7 @@
 package me.regadpole.plumbot.bot.command
 
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.bot.BotCapability
+import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.api.bot.BotCapability
 import me.regadpole.plumbot.bot.requireCapability
 import me.regadpole.plumbot.utils.escapeMiniMessageTags
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
@@ -42,6 +42,6 @@ class MessageForwardService(private val service: BotCommandService) {
             "%user_name%" to escapeMiniMessageTags(userName)
         )
 
-        service.context.messenger.sendMessage(getComponentFromMiniMsg(rendered))
+        service.context.sendMessage(getComponentFromMiniMsg(rendered))
     }
 }

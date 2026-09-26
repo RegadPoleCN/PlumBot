@@ -1,8 +1,11 @@
 package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.api.Plugin
+import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.BotFactory
 import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformType
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -20,7 +23,7 @@ class BotExtensionRegistryTest {
 
     private class FakeFactory(
         type: String,
-        private val platformSupports: me.regadpole.plumbot.platform.PlatformType? = null,
+        private val platformSupports: PlatformType? = null,
     ) : BotFactory {
         override val metadata: BotAdapterMetadata = BotAdapterMetadata(
             type = type,

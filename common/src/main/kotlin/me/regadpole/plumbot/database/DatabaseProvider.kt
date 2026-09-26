@@ -1,6 +1,7 @@
-package me.regadpole.plumbot.database
+﻿package me.regadpole.plumbot.database
 
 import me.regadpole.plumbot.api.database.IDatabase
+import me.regadpole.plumbot.api.database.Binding
 import java.util.UUID
 
 object DatabaseProvider {
@@ -30,7 +31,7 @@ object DatabaseProvider {
 
     /**
      * Get the database instance
-     * @see me.regadpole.plumbot.api.database.IDatabase
+     * @see me.regadpole.plumbot.database.IDatabase
      * @return the object of IDatabase
      */
     fun getDatabase(): IDatabase? {

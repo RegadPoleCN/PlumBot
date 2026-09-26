@@ -1,6 +1,7 @@
-package me.regadpole.plumbot.database
+﻿package me.regadpole.plumbot.database
 
 import me.regadpole.plumbot.api.database.IDatabase
+import me.regadpole.plumbot.api.database.Binding
 import taboolib.module.database.ColumnBuilder
 import taboolib.module.database.Host
 import taboolib.module.database.Table

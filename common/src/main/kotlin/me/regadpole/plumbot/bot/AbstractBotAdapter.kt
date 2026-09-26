@@ -1,18 +1,22 @@
 package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.api.StableApi
+import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.BotHandler
 import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.listener.BotHandler
+import me.regadpole.plumbot.api.bot.MemberInfo
+import me.regadpole.plumbot.cache.DefaultBotCache
+import me.regadpole.plumbot.cache.DefaultGroupMemberCache
+import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.listener.DefaultBotHandler
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 import java.util.concurrent.CompletableFuture
 
 /**
  * Adapter 公共模板基类，封装 handler 创建、加载/卸载广播、缓存刷新、成员查询 fallback。
  */
 @StableApi
-abstract class AbstractBotAdapter : BotImpl {
+abstract class AbstractBotAdapter : IBot {
 
     abstract val context: PlatformContext
     abstract override val metadata: BotAdapterMetadata
@@ -21,6 +25,20 @@ abstract class AbstractBotAdapter : BotImpl {
 
     val groupMemberCache: DefaultGroupMemberCache by lazy { DefaultGroupMemberCache(::fetchMember) }
     private val groupNameCache = DefaultBotCache<Long, String>(::loadGroupName)
+
+    override fun sendMsg(isGroup: Boolean, targetId: Long, message: String?, isPic: Boolean) {
+        if (message.isNullOrEmpty()) return
+        if (isGroup) {
+            if (isPic) sendGroupPicWithText(targetId, message)
+            else sendGroupMsg(targetId, stripColorCodes(message))
+        } else {
+            if (isPic) sendUserPicWithText(targetId, message)
+            else sendUserMsg(targetId, stripColorCodes(message))
+        }
+    }
+
+    fun stripColorCodes(message: String): String =
+        message.replace(COLOR_CODE_AMP, "").replace(COLOR_CODE_SECTION, "")
 
     override fun start(): IBot {
         handler = DefaultBotHandler(context, this)
@@ -157,6 +175,9 @@ abstract class AbstractBotAdapter : BotImpl {
         MemberInfo(userId, userId.toString(), userId.toString())
 
     companion object {
+        private val COLOR_CODE_AMP = Regex("&([0-9a-fklmnor])")
+        private val COLOR_CODE_SECTION = Regex("§([0-9a-fklmnor])")
+
         /**
          * Adapter 层默认同步等待超时（毫秒）。
          *
