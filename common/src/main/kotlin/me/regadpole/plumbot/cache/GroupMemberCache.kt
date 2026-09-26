@@ -1,8 +1,9 @@
-package me.regadpole.plumbot.bot
+package me.regadpole.plumbot.cache
 
 import com.sksamuel.aedile.core.LoadingCache
 import com.sksamuel.aedile.core.cacheBuilder
 import kotlinx.coroutines.future.await
+import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.task.TaskProviderImpl
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit

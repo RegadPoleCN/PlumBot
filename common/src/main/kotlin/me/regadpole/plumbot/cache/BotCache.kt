@@ -1,4 +1,4 @@
-package me.regadpole.plumbot.bot
+package me.regadpole.plumbot.cache
 
 import com.sksamuel.aedile.core.LoadingCache
 import com.sksamuel.aedile.core.cacheBuilder

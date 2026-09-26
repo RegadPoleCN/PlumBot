@@ -6,7 +6,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import me.regadpole.plumbot.internal.LogLevel
-import me.regadpole.plumbot.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformContext
 import java.io.File
 import java.net.HttpURLConnection
 import java.net.URI
@@ -15,7 +15,7 @@ import java.security.MessageDigest
 class FilterThesaurusManager(private val context: PlatformContext) {
 
     private val gson = Gson()
-    private val logger get() = context.logger
+    private fun log(level: LogLevel, message: String) = context.log(level, message)
 
     @Volatile
     private var matcher: AhoCorasickMatcher? = null
@@ -71,7 +71,7 @@ class FilterThesaurusManager(private val context: PlatformContext) {
 
         matcher = if (effectiveWords.isNotEmpty()) AhoCorasickMatcher(effectiveWords) else null
 
-        logger.log(
+        log(
             LogLevel.INFO,
             "[PlumBot] 敏感词库加载完成: 聚合云端 ${cloudWords.size} 词, 本地补充 ${localWords.size} 词, 排除白名单 ${ignoredWords.size} 词 -> 最终生效词数: ${effectiveWords.size}"
         )
@@ -110,10 +110,10 @@ class FilterThesaurusManager(private val context: PlatformContext) {
                 cacheFile.writeText(jsonText)
                 return parseWordsFromJson(jsonText)
             } else {
-                logger.log(LogLevel.WARN, "[PlumBot] 云端源响应非 200 ($url, code=${connection.responseCode})，将尝试读取本地缓存。")
+                log(LogLevel.WARN, "[PlumBot] 云端源响应非 200 ($url, code=${connection.responseCode})，将尝试读取本地缓存。")
             }
         } catch (e: Exception) {
-            logger.log(LogLevel.WARN, "[PlumBot] 云端源拉取失败 ($url): ${e.message}，将尝试读取本地缓存。")
+            log(LogLevel.WARN, "[PlumBot] 云端源拉取失败 ($url): ${e.message}，将尝试读取本地缓存。")
         }
 
         // 降级：读取该源的历史本地快照文件
@@ -121,7 +121,7 @@ class FilterThesaurusManager(private val context: PlatformContext) {
             return try {
                 parseWordsFromJson(cacheFile.readText())
             } catch (e: Exception) {
-                logger.log(LogLevel.ERROR, "[PlumBot] 本地缓存快照损坏 (${cacheFile.name}): ${e.message}")
+                log(LogLevel.ERROR, "[PlumBot] 本地缓存快照损坏 (${cacheFile.name}): ${e.message}")
                 emptySet()
             }
         }
@@ -153,14 +153,14 @@ class FilterThesaurusManager(private val context: PlatformContext) {
         return when (action) {
             FilterAction.BLOCK -> {
                 if (logMatches) {
-                    logger.log(LogLevel.INFO, "[敏感词拦截] 消息触发违规词阻断: $matchedWords | 原文: $rawText")
+                    log(LogLevel.INFO, "[敏感词拦截] 消息触发违规词阻断: $matchedWords | 原文: $rawText")
                 }
                 FilterProcessResult(isBlocked = true, matchedWords = matchedWords, sanitizedText = "")
             }
             FilterAction.REPLACE -> {
                 val replacedText = currentMatcher.replace(rawText, replacement)
                 if (logMatches) {
-                    logger.log(LogLevel.INFO, "[敏感词脱敏] 替换词: $matchedWords -> $replacedText")
+                    log(LogLevel.INFO, "[敏感词脱敏] 替换词: $matchedWords -> $replacedText")
                 }
                 FilterProcessResult(isBlocked = false, matchedWords = matchedWords, sanitizedText = replacedText)
             }
@@ -171,4 +171,12 @@ class FilterThesaurusManager(private val context: PlatformContext) {
         val bytes = MessageDigest.getInstance("SHA-256").digest(input.toByteArray())
         return bytes.joinToString("") { "%02x".format(it) }
     }
+}
+
+/**
+ * 内部单例持有器，供聊天桥接服务获取敏感词过滤器。
+ */
+object FilterManagerHolder {
+    @Volatile
+    var manager: FilterThesaurusManager? = null
 }

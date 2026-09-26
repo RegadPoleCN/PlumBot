@@ -1,4 +1,4 @@
-package me.regadpole.plumbot.api.config
+package me.regadpole.plumbot.config
 
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.loader.AbstractConfigurationLoader

@@ -1,4 +1,4 @@
-package me.regadpole.plumbot.api.config
+package me.regadpole.plumbot.config
 
 import me.regadpole.plumbot.PlumBot
 import org.spongepowered.configurate.ConfigurationNode
@@ -11,7 +11,7 @@ import kotlin.io.path.exists
 
 abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected constructor(
     protected val config: ConfigurationNode
-) : me.regadpole.plumbot.platform.PlatformConfig {
+) : me.regadpole.plumbot.api.platform.PlatformConfig {
 
     protected abstract fun createConfigurator(node: ConfigurationNode): C
     protected abstract fun loaderBuilder(): AbstractConfigurationLoader.Builder<*, *>
@@ -33,7 +33,7 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         return createConfigurator(getNode(*nodePath))
     }
 
-    override fun getSubConfig(vararg path: String?): me.regadpole.plumbot.platform.PlatformConfig {
+    override fun getSubConfig(vararg path: String?): me.regadpole.plumbot.api.platform.PlatformConfig {
         return getConfigMaker(*path)
     }
 
