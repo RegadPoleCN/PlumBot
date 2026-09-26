@@ -1,6 +1,7 @@
 package me.regadpole.plumbot.listener
 
 import me.regadpole.plumbot.api.bot.IBot
+import me.regadpole.plumbot.api.config.Messages
 import me.regadpole.plumbot.bot.BotCapability
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.bot.command.MessageForwardService
@@ -56,11 +57,25 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
     override fun onGroupMessage(message: String, groupId: Long, userId: Long) {
         commandService.bot.requireCapability(BotCapability.GROUP_MESSAGE_RECEIVE)
 
-        val prefix = commandService.config.getString("feature", "cmdPrefix") ?: ""
+        val prefix = commandService.config.getString("feature", "cmdPrefix") ?: "/"
+        val trimmed = message.trim()
+
+        // 1. 前缀快速短路：若不是以命令前缀开头，直通消息转发，跳过无谓的正则遍历匹配
+        if (!trimmed.startsWith(prefix)) {
+            messageForwardService.forward(message, groupId, userId)
+            return
+        }
+
+        // 2. 补齐帮助指令响应 (/help 或 /帮助)
+        val commandBody = trimmed.removePrefix(prefix).trim()
+        if (commandBody.equals("help", ignoreCase = true) || commandBody == "帮助") {
+            sendHelpMessage(groupId, prefix)
+            return
+        }
 
         for (cmd in commands) {
             if (handleCommand(
-                    message,
+                    trimmed,
                     prefix,
                     cmd.keys,
                     cmd.feature,
@@ -74,6 +89,32 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
         }
 
         messageForwardService.forward(message, groupId, userId)
+    }
+
+    private fun sendHelpMessage(groupId: Long, prefix: String) {
+        val helpLines = Messages.help.ifEmpty {
+            listOf(
+                "PlumBot 帮助",
+                "%cmdprefix%\$list   - 查看在线人数",
+                "%cmdprefix%\$addBind <游戏名>   - 申请白名单",
+                "%cmdprefix%\$deleteBind <游戏名>   - 移除白名单",
+                "%cmdprefix%\$queryBind   - 查询自己申请的所有白名单"
+            )
+        }
+        val keys = commandService.config.getSubConfig("keys")
+        val listKey = keys.getStringList("list").firstOrNull() ?: "在线人数"
+        val addBindKey = keys.getStringList("addBind").firstOrNull() ?: "申请白名单"
+        val deleteBindKey = keys.getStringList("deleteBind").firstOrNull() ?: "删除白名单"
+        val queryBindKey = keys.getStringList("queryBind").firstOrNull() ?: "查询白名单"
+
+        val formatted = helpLines.joinToString("\n")
+            .replace("%cmdprefix%", prefix)
+            .replace("\$list", listKey)
+            .replace("\$addBind", addBindKey)
+            .replace("\$deleteBind", deleteBindKey)
+            .replace("\$queryBind", queryBindKey)
+
+        commandService.sendBindMessage(groupId, formatted)
     }
 
     override fun onWhitelistApply(message: String, groupId: Long, userId: Long) {
