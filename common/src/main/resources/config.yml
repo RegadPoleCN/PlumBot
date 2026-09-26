@@ -1,5 +1,20 @@
 ver: "1.0"
 
+# =========================================================================
+# 依赖动态下载源配置 (Runtime Dependencies Download Repositories)
+# 用于插件首次开服时自动下载运行所需的基础驱动与组件
+# =========================================================================
+libraries:
+    # 是否优先使用国内阿里云加速镜像（国内推荐开启，海外推荐关闭）
+    use_aliyun_mirror: true
+
+    # 是否启用 PaperMC 官方公共仓库作为补充兜底源（默认开启）
+    use_papermc_repo: true
+
+    # 服主自定义追加的 Maven 仓库列表（第一优先级优先尝试）
+    custom_repositories: []
+        # - "https://repo.papermc.io/repository/maven-public"
+
 server:
     name: ""
 

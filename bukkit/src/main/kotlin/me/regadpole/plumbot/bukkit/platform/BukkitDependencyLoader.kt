@@ -1,26 +1,47 @@
 package me.regadpole.plumbot.bukkit.platform
 
-/**
- * 通过 Libby 在 Bukkit 运行时下载依赖。
- * 依赖版本统一取自 [RuntimeLibraryVersions]，请确保其与 gradle/libs.versions.toml 保持一致。
- */
 import com.alessiodp.libby.BukkitLibraryManager
 import com.alessiodp.libby.Library
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
+import me.regadpole.plumbot.platform.PlatformConfig
 import org.bukkit.plugin.java.JavaPlugin
 
 class BukkitDependencyLoader(
     plugin: JavaPlugin,
+    private val configProvider: () -> PlatformConfig?
 ) {
     private val libraryManager: BukkitLibraryManager by lazy { BukkitLibraryManager(plugin) }
 
     fun loadDependencies() {
-//        val adventureBukkitLib = Library.builder()
-//            .groupId("net{}kyori")
-//            .artifactId("adventure-platform-bukkit")
-//            .version("4.3.4")
-//            .resolveTransitiveDependencies(true)
-//            .build()
+        val config = configProvider()
+
+        // 1. 【第一优先级】：服主明确自定义配置的仓库列表
+        config?.getStringList("libraries", "custom_repositories")
+            ?.filterNotNull()
+            ?.map { it.trim().removeSuffix("/") }
+            ?.filter { it.isNotBlank() }
+            ?.forEach { customRepo ->
+                libraryManager.addRepository(customRepo)
+            }
+
+        // 2. 【第二优先级】：国内阿里云公共镜像（默认开启，国内机房秒拉取）
+        val useAliyun = config?.getBoolean("libraries", "use_aliyun_mirror") ?: true
+        if (useAliyun) {
+            libraryManager.addRepository("https://maven.aliyun.com/repository/public")
+        }
+
+        // 3. 【核心基础源】：Maven Central（官方中央仓库，必须保留兜底）
+        libraryManager.addMavenCentral()
+
+        // 4. 【专属构建源】：JitPack（AOneBot 与 taboolib-database 托管于此，任何环境均必须在列）
+        libraryManager.addJitPack()
+
+        // 5. 【Minecraft 生态源】：PaperMC 官方公共仓库（保障领域构件高可用）
+        val usePaperMc = config?.getBoolean("libraries", "use_papermc_repo") ?: true
+        if (usePaperMc) {
+            libraryManager.addRepository("https://repo.papermc.io/repository/maven-public")
+        }
+
         val databaseLib = Library.builder()
             .groupId("com{}github{}RegadPoleCN")
             .artifactId("taboolib-database")
@@ -71,12 +92,6 @@ class BukkitDependencyLoader(
             .version(RuntimeLibraryVersions.CONFIGURATE_YAML)
             .resolveTransitiveDependencies(true)
             .build()
-        val configurateHoconLib = Library.builder()
-            .groupId("org{}spongepowered")
-            .artifactId("configurate-hocon")
-            .version(RuntimeLibraryVersions.CONFIGURATE_HOCON)
-            .resolveTransitiveDependencies(true)
-            .build()
         val configurateExtraKotlinLib = Library.builder()
             .groupId("org{}spongepowered")
             .artifactId("configurate-extra-kotlin")
@@ -84,9 +99,9 @@ class BukkitDependencyLoader(
             .resolveTransitiveDependencies(true)
             .build()
 
-        libraryManager.addRepository("https://maven.aliyun.com/repository/public")
-        libraryManager.addMavenCentral()
-        libraryManager.addJitPack()
-        libraryManager.loadLibraries(guavaLib, hikaricpLib, sqliteLib, mysqlLib, databaseLib, aonebotLib, gsonLib, configurateYamlLib, configurateHoconLib, configurateExtraKotlinLib)
+        libraryManager.loadLibraries(
+            guavaLib, hikaricpLib, sqliteLib, mysqlLib, databaseLib,
+            aonebotLib, gsonLib, configurateYamlLib, configurateExtraKotlinLib
+        )
     }
 }
