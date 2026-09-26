@@ -1,48 +1,54 @@
 package me.regadpole.plumbot
 
-import me.regadpole.plumbot.task.TaskProviderImpl
+import me.regadpole.plumbot.platform.PlatformTaskHandle
 import java.io.File
+import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.io.path.pathString
 
 class DebugProvider(private val plugin: PlumBot) {
     private val loggerList = ConcurrentLinkedQueue<String>()
+    private val diskWriteLock = ReentrantLock()
 
     private lateinit var loggerFile: File
 
     @Volatile
     private var initialized = false
 
+    @Volatile
+    private var timerHandle: PlatformTaskHandle? = null
+
     fun load() {
-        TaskProviderImpl.submitAsync {
-            if (plugin.config.getBoolean("debug", "enable")) {
-                loggerFile = File(
-                    plugin.config.getString("debug.file")?.replace("%plugin_folder%", plugin.dataDirectory.pathString)
-                        ?: (plugin.dataDirectory.pathString + "debug.log")
-                )
-                if (plugin.config.getLong("debug.save_interval") >= 1L) {
-                    plugin.submitTimerAsync(0L, plugin.config.getLong("debug.save_interval") * 20L) {
-                        val logs = drainLogs()
-                        if (logs.isNotEmpty()) {
-                            loggerFile.appendText(logs.joinToString(""))
-                        }
-                    }
+        val config = plugin.config
+        if (config.getBoolean("debug", "enable")) {
+            val filePath = config.getString("debug", "file")
+                ?.replace("%plugin_folder%", plugin.dataDirectory.pathString)
+                ?: (plugin.dataDirectory.pathString + "/debug.log")
+            loggerFile = File(filePath)
+            loggerFile.parentFile?.mkdirs()
+
+            val saveInterval = config.getLong("debug", "save_interval")
+            if (saveInterval >= 1L) {
+                // 绑定任务句柄，确保 unload 时能彻底 cancel 取消
+                val handle = plugin.platform.scheduler.runTimerAsync(0L, saveInterval * 20L) {
+                    flushLogsToDisk()
                 }
-                initialized = true
+                timerHandle = handle
             }
+            initialized = true
         }
     }
 
     fun unload() {
-        if (!plugin.config.getBoolean("debug", "enable")) return
-        if (!::loggerFile.isInitialized) return
-        if (plugin.config.getLong("debug.save_interval") != 0L) {
-            val logs = drainLogs()
-            if (logs.isNotEmpty()) {
-                loggerFile.appendText(logs.joinToString(""))
-            }
-        }
+        if (!initialized) return
+
+        timerHandle?.cancel()
+        timerHandle = null
+
+        flushLogsToDisk()
         initialized = false
     }
 
@@ -54,25 +60,37 @@ class DebugProvider(private val plugin: PlumBot) {
     }
 
     fun log(message: String) {
-        TaskProviderImpl.submitAsync {
-            if (!plugin.config.getBoolean("debug.enable")) return@submitAsync
-            if (!initialized || !::loggerFile.isInitialized) return@submitAsync
-            val time = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
-            if (plugin.config.getLong("debug.save_interval") == 0L) {
-                loggerFile.appendText("[$time] $message\n")
-            } else {
-                loggerList.add("[$time] $message\n")
+        if (!initialized || !::loggerFile.isInitialized) return
+        val time = SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date())
+        val entry = "[$time] $message\n"
+
+        if (plugin.config.getLong("debug", "save_interval") == 0L) {
+            // 实时写入：互斥锁保护，防止多协程写坏文件或 Windows 报占用异常
+            diskWriteLock.withLock {
+                try {
+                    loggerFile.appendText(entry)
+                } catch (e: Exception) {
+                    System.err.println("[PlumBot-Debug] 实时写入日志失败: ${e.message}")
+                }
             }
+        } else {
+            loggerList.add(entry)
         }
     }
 
-    private fun drainLogs(): List<String> {
-        val logs = mutableListOf<String>()
-        val iterator = loggerList.iterator()
-        while (iterator.hasNext()) {
-            logs.add(iterator.next())
-            iterator.remove()
+    private fun flushLogsToDisk() {
+        if (!::loggerFile.isInitialized) return
+        if (loggerList.isEmpty()) return
+
+        diskWriteLock.withLock {
+            val logs = generateSequence { loggerList.poll() }.toList()
+            if (logs.isNotEmpty()) {
+                try {
+                    loggerFile.appendText(logs.joinToString(""))
+                } catch (e: Exception) {
+                    System.err.println("[PlumBot-Debug] 批量落盘日志失败: ${e.message}")
+                }
+            }
         }
-        return logs
     }
 }
