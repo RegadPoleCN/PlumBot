@@ -1,10 +1,9 @@
 package me.regadpole.plumbot.bukkit.listener
 
 import me.regadpole.plumbot.PlumBot
-import me.regadpole.plumbot.platform.PlatformCapability
-import me.regadpole.plumbot.server.PlayerGameEventService
+import me.regadpole.plumbot.api.platform.PlatformCapability
+import me.regadpole.plumbot.server.GameEventBridge
 import me.regadpole.plumbot.server.PlayerLoginService
-import me.regadpole.plumbot.server.ServerChatService
 import me.regadpole.plumbot.utils.getPlainTextFromComponent
 import me.regadpole.plumbot.utils.stripMinecraftFormatting
 import org.bukkit.Bukkit
@@ -20,9 +19,8 @@ import org.bukkit.event.player.PlayerQuitEvent
 class ServerListener(private val plugin: PlumBot) : Listener {
 
     private val messageSender = me.regadpole.plumbot.server.ServerMessageSender(plugin.platform)
-    private val chatService = ServerChatService(plugin.platform, messageSender)
+    private val bridge = GameEventBridge(plugin.platform, messageSender)
     private val loginService = PlayerLoginService(plugin.platform, messageSender)
-    private val gameEvents = PlayerGameEventService(plugin.platform, messageSender)
 
     private fun resolveServerName(): String {
         val configured = plugin.config.getString("server", "name")
@@ -32,7 +30,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
     @EventHandler
     fun onChat(event: AsyncPlayerChatEvent) {
         if (event.isCancelled) return
-        chatService.handleChat(
+        bridge.onChat(
             event.player.name,
             resolveServerName(),
             event.message
@@ -58,7 +56,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
     fun onJoin(event: PlayerJoinEvent) {
         val playerName = event.player.name
         plugin.platform.scheduler.runAsync {
-            gameEvents.notifyJoin(playerName)
+            bridge.onJoin(playerName)
         }
     }
 
@@ -67,7 +65,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
         val playerName = event.player.name
         val serverName = resolveServerName()
         plugin.platform.scheduler.runAsync {
-            gameEvents.notifyLeave(playerName, serverName)
+            bridge.onLeave(playerName, serverName)
         }
     }
 
@@ -76,11 +74,11 @@ class ServerListener(private val plugin: PlumBot) : Listener {
         if (!plugin.platform.hasCapability(PlatformCapability.PLAYER_DEATH_BROADCAST)) return
         val playerName = event.entity.name
         val deathMessage = event.deathMessage ?: return
-        val cleanMessage = stripMinecraftFormatting(deathMessage)
+        val cleanMessage = deathMessage.stripMinecraftFormatting()
         val serverName = resolveServerName()
 
         plugin.platform.scheduler.runAsync {
-            gameEvents.notifyDeath(playerName, serverName, cleanMessage)
+            bridge.onDeath(playerName, serverName, cleanMessage)
         }
     }
 
@@ -121,7 +119,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
         val serverName = resolveServerName()
 
         plugin.platform.scheduler.runAsync {
-            gameEvents.notifyAdvancement(playerName, serverName, titleText)
+            bridge.onAdvancement(playerName, serverName, titleText)
         }
     }
 }

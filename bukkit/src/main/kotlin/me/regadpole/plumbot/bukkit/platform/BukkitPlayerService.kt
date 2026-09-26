@@ -1,8 +1,8 @@
 package me.regadpole.plumbot.bukkit.platform
 
-import me.regadpole.plumbot.api.config.Messages
-import me.regadpole.plumbot.api.config.YamlConfigurator
-import me.regadpole.plumbot.platform.PlatformPlayerService
+import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.config.YamlConfigurator
+import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
 import org.bukkit.Server

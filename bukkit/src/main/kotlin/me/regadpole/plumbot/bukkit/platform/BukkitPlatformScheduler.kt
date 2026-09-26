@@ -1,8 +1,8 @@
 package me.regadpole.plumbot.bukkit.platform
 
-import me.regadpole.plumbot.platform.PlatformScheduler
-import me.regadpole.plumbot.platform.PlatformTaskHandle
-import me.regadpole.plumbot.platform.toTicks
+import me.regadpole.plumbot.api.platform.PlatformScheduler
+import me.regadpole.plumbot.api.platform.PlatformTaskHandle
+import me.regadpole.plumbot.api.platform.toTicks
 import org.bukkit.Bukkit
 import org.bukkit.plugin.Plugin
 import org.bukkit.scheduler.BukkitTask

@@ -1,11 +1,13 @@
 package me.regadpole.plumbot.bukkit.platform
 
-import me.regadpole.plumbot.api.config.YamlConfigurator
-import me.regadpole.plumbot.platform.PlatformContext
-import me.regadpole.plumbot.platform.PlatformMessenger
-import me.regadpole.plumbot.platform.PlatformPlayerService
-import me.regadpole.plumbot.platform.PlatformScheduler
-import me.regadpole.plumbot.platform.PlatformType
+import me.regadpole.plumbot.config.YamlConfigurator
+import me.regadpole.plumbot.internal.LogLevel
+import me.regadpole.plumbot.api.platform.PlatformCapability
+import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformPlayerService
+import me.regadpole.plumbot.api.platform.PlatformScheduler
+import me.regadpole.plumbot.api.platform.PlatformType
+import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import java.nio.file.Path
 
@@ -13,10 +15,10 @@ class BukkitPlatformContext(
     private val configProvider: () -> YamlConfigurator,
     private val datasourceProvider: () -> YamlConfigurator,
     override val dataDirectory: Path,
-    override val logger: BukkitPlatformLogger,
+    val logger: BukkitPlatformLogger,
     override val scheduler: PlatformScheduler,
     override val playerService: PlatformPlayerService,
-    override val messenger: PlatformMessenger,
+    val messenger: BukkitPlatformMessenger,
 ): PlatformContext {
     override val config: YamlConfigurator
         get() = configProvider()
@@ -26,17 +28,25 @@ class BukkitPlatformContext(
 
     override val platformType: PlatformType = PlatformType.BUKKIT
 
-    override val supportedCapabilities: Set<me.regadpole.plumbot.platform.PlatformCapability> = setOf(
-        me.regadpole.plumbot.platform.PlatformCapability.CHAT_RECEIVE,
-        me.regadpole.plumbot.platform.PlatformCapability.CHAT_BROADCAST,
-        me.regadpole.plumbot.platform.PlatformCapability.PRE_LOGIN_INTERCEPT,
-        me.regadpole.plumbot.platform.PlatformCapability.PLAYER_JOIN_BROADCAST,
-        me.regadpole.plumbot.platform.PlatformCapability.PLAYER_QUIT_BROADCAST,
-        me.regadpole.plumbot.platform.PlatformCapability.PLAYER_DEATH_BROADCAST,
-        me.regadpole.plumbot.platform.PlatformCapability.PLAYER_ADVANCEMENT_BROADCAST,
-        me.regadpole.plumbot.platform.PlatformCapability.SERVER_TPS_METRICS,
-        me.regadpole.plumbot.platform.PlatformCapability.COMMAND_DISPATCH
+    override val supportedCapabilities: Set<PlatformCapability> = setOf(
+        PlatformCapability.CHAT_RECEIVE,
+        PlatformCapability.CHAT_BROADCAST,
+        PlatformCapability.PRE_LOGIN_INTERCEPT,
+        PlatformCapability.PLAYER_JOIN_BROADCAST,
+        PlatformCapability.PLAYER_QUIT_BROADCAST,
+        PlatformCapability.PLAYER_DEATH_BROADCAST,
+        PlatformCapability.PLAYER_ADVANCEMENT_BROADCAST,
+        PlatformCapability.SERVER_TPS_METRICS,
+        PlatformCapability.COMMAND_DISPATCH
     )
+
+    override fun log(level: LogLevel, message: String) {
+        logger.log(level, message)
+    }
+
+    override fun sendMessage(message: Component) {
+        messenger.sendMessage(message)
+    }
 
     override fun isPluginAvailable(name: String): Boolean {
         return Bukkit.getPluginManager().isPluginEnabled(name)

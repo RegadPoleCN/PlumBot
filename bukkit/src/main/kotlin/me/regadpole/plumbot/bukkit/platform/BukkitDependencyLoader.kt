@@ -3,7 +3,7 @@ package me.regadpole.plumbot.bukkit.platform
 import com.alessiodp.libby.BukkitLibraryManager
 import com.alessiodp.libby.Library
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
-import me.regadpole.plumbot.platform.PlatformConfig
+import me.regadpole.plumbot.api.platform.PlatformConfig
 import org.bukkit.plugin.java.JavaPlugin
 
 class BukkitDependencyLoader(

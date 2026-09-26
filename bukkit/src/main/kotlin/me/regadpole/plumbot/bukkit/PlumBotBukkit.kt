@@ -5,7 +5,7 @@ import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.adapter.miraimc.MiraiMCFactory
 import me.regadpole.plumbot.adapter.onebot.OneBotFactory
-import me.regadpole.plumbot.api.config.YamlConfigurator
+import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.bukkit.listener.MiraiMCListener
 import me.regadpole.plumbot.bukkit.listener.PluginListener
@@ -18,8 +18,8 @@ import me.regadpole.plumbot.bukkit.platform.BukkitPlatformScheduler
 import me.regadpole.plumbot.bukkit.platform.BukkitPlayerService
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.LogLevel
-import me.regadpole.plumbot.platform.PlatformContext
-import me.regadpole.plumbot.platform.PlatformTaskHandle
+import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import org.bukkit.plugin.ServicePriority

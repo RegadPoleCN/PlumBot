@@ -2,14 +2,13 @@ package me.regadpole.plumbot.bukkit.platform
 
 import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.internal.LogLevel
-import me.regadpole.plumbot.platform.PlatformLogger
 import java.util.logging.Logger
 
 class BukkitPlatformLogger(
     private val logger: Logger,
     private val debugProvider: DebugProvider,
-): PlatformLogger {
-    override fun log(level: LogLevel, message: String) {
+) {
+    fun log(level: LogLevel, message: String) {
         when (level) {
             LogLevel.TRACE -> {
                 logger.finest(message)
