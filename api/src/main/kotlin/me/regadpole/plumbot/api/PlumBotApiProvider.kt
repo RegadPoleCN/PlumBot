@@ -4,6 +4,7 @@ package me.regadpole.plumbot.api
  * 跨平台 API 单例持有者。
  * 供 PlumBot 核心在启动时注册实例，外部插件通过 [PlumBotAPI.get] 访问。
  */
+@PublicApi
 object PlumBotApiProvider {
 
     @Volatile

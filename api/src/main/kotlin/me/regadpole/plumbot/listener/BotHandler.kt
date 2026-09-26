@@ -1,5 +1,8 @@
 package me.regadpole.plumbot.listener
 
+import me.regadpole.plumbot.api.PublicApi
+
+@PublicApi
 interface BotHandler {
     fun onGroupMessage(message: String, groupId: Long, userId: Long)
 
