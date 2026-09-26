@@ -28,7 +28,6 @@ kotlinxSerialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-j
 kotlinxCoroutines = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinxCoroutines" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 configurateYaml = { module = "org.spongepowered:configurate-yaml", version.ref = "configurateVersion" }
-configurateHocon = { module = "org.spongepowered:configurate-hocon", version.ref = "configurateVersion" }
 configurateExtraKotlin = { module = "org.spongepowered:configurate-extra-kotlin", version.ref = "configurateVersion" }
 taboolibDatabase = { module = "com.github.RegadPoleCN:taboolib-database", version.ref = "taboolibDatabaseVersion" }
 sqlite = { module = "org.xerial:sqlite-jdbc", version.ref = "sqlite" }
