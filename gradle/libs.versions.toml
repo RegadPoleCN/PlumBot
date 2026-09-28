@@ -20,6 +20,7 @@ adventureVersion = "4.21.0"
 adventurePlatformBukkitVersion = "4.4.0"
 libbyVersion = "2.0.0-SNAPSHOT"
 aedileVersion = "2.0.3"
+shadowVersion = "9.1.0"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -44,6 +45,7 @@ adventurePlatformBukkit = { module = "net.kyori:adventure-platform-bukkit", vers
 libbyCore = { module = "com.alessiodp.libby:libby-core", version.ref = "libbyVersion" }
 libbyBukkit = { module = "com.alessiodp.libby:libby-bukkit", version.ref = "libbyVersion" }
 aedile = { module = "com.sksamuel.aedile:aedile-core", version.ref = "aedileVersion" }
+shadowGradlePlugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadowVersion" }
 
 # Libraries can be bundled together for easier import
 [bundles]
@@ -51,3 +53,4 @@ kotlinxEcosystem = ["kotlinxDatetime", "kotlinxSerialization", "kotlinxCoroutine
 
 [plugins]
 kotlinPluginSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadowVersion" }
