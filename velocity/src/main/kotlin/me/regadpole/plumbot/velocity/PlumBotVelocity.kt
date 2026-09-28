@@ -86,6 +86,7 @@ class PlumBotVelocity @Inject constructor(
         VelocityPlatformContext(
             server = server,
             slf4jLogger = slf4jLogger,
+            debugProvider = debugProvider,
             dataDirectory = dataDirectory,
             configProvider = { config },
             datasourceProvider = { datasource },

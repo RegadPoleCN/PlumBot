@@ -19,6 +19,7 @@
 package me.regadpole.plumbot.velocity.platform
 
 import com.velocitypowered.api.proxy.ProxyServer
+import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.api.platform.*
 import me.regadpole.plumbot.config.YamlConfigurator
 import net.kyori.adventure.text.Component
@@ -29,6 +30,7 @@ import java.util.concurrent.CompletableFuture
 class VelocityPlatformContext(
     val server: ProxyServer,
     private val slf4jLogger: Logger,
+    private val debugProvider: DebugProvider,
     override val dataDirectory: Path,
     private val configProvider: () -> YamlConfigurator,
     private val datasourceProvider: () -> YamlConfigurator,
@@ -52,7 +54,14 @@ class VelocityPlatformContext(
 
     override fun log(level: LogLevel, message: String) {
         when (level) {
-            LogLevel.TRACE, LogLevel.DEBUG -> slf4jLogger.debug(message)
+            LogLevel.TRACE -> {
+                slf4jLogger.trace(message)
+                debugProvider.log(message)
+            }
+            LogLevel.DEBUG -> {
+                slf4jLogger.debug(message)
+                debugProvider.log(message)
+            }
             LogLevel.INFO -> slf4jLogger.info(message)
             LogLevel.WARN -> slf4jLogger.warn(message)
             LogLevel.ERROR, LogLevel.FATAL -> slf4jLogger.error(message)

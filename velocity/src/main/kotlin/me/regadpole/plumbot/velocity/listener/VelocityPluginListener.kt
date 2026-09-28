@@ -19,27 +19,10 @@
 package me.regadpole.plumbot.velocity.listener
 
 import com.velocitypowered.api.plugin.PluginContainer
-import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.bot.BotEventDispatcher
-import me.regadpole.plumbot.bot.BotProvider
+import me.regadpole.plumbot.velocity.platform.VelocityPlugin
 import org.slf4j.Logger
-
-/**
- * 包装 Velocity 原生 [PluginContainer] 为 PlumBot 内部通用的 [Plugin] 凭据。
- */
-class VelocityPluginWrapper(
-    private val container: PluginContainer
-) : Plugin {
-    override val name: String = container.description.id
-    override val version: String = container.description.version.orElse("unknown")
-    override val isEnabled: Boolean = true
-
-    override fun equals(other: Any?): Boolean =
-        other is Plugin && other.name.equals(name, ignoreCase = true)
-
-    override fun hashCode(): Int = name.lowercase().hashCode()
-}
 
 /**
  * Velocity 第三方扩展生态守护管理器。
@@ -54,7 +37,7 @@ class VelocityPluginListener(
 ) {
 
     fun onPluginUnload(container: PluginContainer) {
-        val plugin = VelocityPluginWrapper(container)
+        val plugin = VelocityPlugin(container)
         val api = runCatching { PlumBotAPI.get() }.getOrNull()
         if (api != null) {
             val removedFactories = api.extensionRegistry.unregisterAllFor(plugin)
