@@ -135,6 +135,13 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         if (useMirai) {
             server.pluginManager.registerEvents(MiraiMCListener(this), this)
         }
+
+        val mainCommand = me.regadpole.plumbot.bukkit.command.PlumBotCommand(this)
+        getCommand("plumbot")?.apply {
+            setExecutor(mainCommand)
+            tabCompleter = mainCommand
+        }
+
         logger.info("PlumBot has been enabled!")
     }
 
