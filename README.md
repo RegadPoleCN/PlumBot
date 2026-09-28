@@ -1,7 +1,13 @@
 # PlumBot
 
+***升级版本时请提前备份配置文件，以防数据丢失***
+
+插件交流群：[825894832](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=-PcufP7TIjLBMOte4H8bHoNmMkP5xZT0&authKey=aPKkGldknKtdCUfX7hhWMFkAOuOpOUYuNZihsUZi9DXvIHVzJhuIRLVfTdCsobZt&noverify=0&group_code=825894832)
+
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
-[![Build Status](https://github.com/RegadPole/PlumBot/actions/workflows/build.yml/badge.svg?branch=v3)](https://github.com/RegadPole/PlumBot/actions/workflows/build.yml)
+[![Build & Verify v3](https://github.com/RegadPoleCN/PlumBot/actions/workflows/build.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/build.yml)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/RegadPoleCN/PlumBot/total?logo=github)](https://github.com/RegadPoleCN/PlumBot)
+[![Modrinth Downloads](https://img.shields.io/modrinth/dt/PlumBot?logo=modrinth&label=modrinth)](https://modrinth.com/plugin/plumbot)
 
 现代化、高内聚、模块化的 Minecraft 服务器与 QQ/IM 机器人双向互通插件。
 
