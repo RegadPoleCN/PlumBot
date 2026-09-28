@@ -47,6 +47,25 @@ interface PlatformContext {
 
     fun isPluginAvailable(name: String): Boolean
 
+    /**
+     * 获取最近的 TPS 采样数组（通常为 1m, 5m, 15m）。
+     * 若平台不支持 [PlatformCapability.SERVER_TPS_METRICS] 则返回 null。
+     */
+    fun getRecentTps(): DoubleArray? = null
+
+    /**
+     * 获取当前平均每 Tick 耗时 (MSPT, Milliseconds Per Tick)。
+     * 若平台不支持或无法采样则返回 null。
+     */
+    fun getMspt(): Double? = null
+
+    /**
+     * 在平台控制台异步执行指令，并返回执行后的控制台文本回显内容。
+     * 需受 [PlatformCapability.COMMAND_DISPATCH] 约束。
+     */
+    fun dispatchConsoleCommand(command: String): java.util.concurrent.CompletableFuture<String> =
+        java.util.concurrent.CompletableFuture.completedFuture("当前平台不支持指令执行回显。")
+
     /** 校验当前平台是否具备某个能力 */
     fun hasCapability(capability: PlatformCapability): Boolean =
         capability in supportedCapabilities
