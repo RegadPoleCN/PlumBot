@@ -7,8 +7,10 @@ plugins {
 dependencies {
     implementation(project(":common"))
     implementation(project(":adapter:onebot"))
+    implementation(project(":adapter:miraimc"))
 
     compileOnly(libs.velocityApi)
+    compileOnly(libs.miraimcVelocity)
     kapt(libs.velocityApi)
 
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")

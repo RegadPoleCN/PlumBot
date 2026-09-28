@@ -23,12 +23,14 @@ import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent
 import com.velocitypowered.api.event.proxy.ProxyReloadEvent
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent
+import com.velocitypowered.api.plugin.Dependency
 import com.velocitypowered.api.plugin.Plugin
 import com.velocitypowered.api.plugin.PluginManager
 import com.velocitypowered.api.plugin.annotation.DataDirectory
 import com.velocitypowered.api.proxy.ProxyServer
 import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.PlumBot
+import me.regadpole.plumbot.adapter.miraimc.MiraiMCFactory
 import me.regadpole.plumbot.adapter.onebot.OneBotFactory
 import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.api.PlumBotApiProvider
@@ -44,6 +46,7 @@ import me.regadpole.plumbot.server.GameEventBridge
 import me.regadpole.plumbot.server.PlayerLoginService
 import me.regadpole.plumbot.utils.TextToImg
 import me.regadpole.plumbot.velocity.command.PlumBotVelocityCommand
+import me.regadpole.plumbot.velocity.listener.VelocityMiraiMCListener
 import me.regadpole.plumbot.velocity.listener.VelocityPluginListener
 import me.regadpole.plumbot.velocity.listener.VelocityServerListener
 import me.regadpole.plumbot.velocity.platform.*
@@ -58,7 +61,10 @@ import kotlin.io.path.pathString
     name = "PlumBot",
     version = "3.0.0",
     description = "Minecraft and QQ Bot cross-platform sync bridge",
-    authors = ["RegadPole"]
+    authors = ["RegadPole"],
+    dependencies = [
+        Dependency(id = "miraimc", optional = true)
+    ]
 )
 class PlumBotVelocity @Inject constructor(
     val server: ProxyServer,
@@ -116,8 +122,21 @@ class PlumBotVelocity @Inject constructor(
             return
         }
 
+        val botType = config.getString("bot", "type") ?: "onebot"
+        val useMirai = botType.equals("miraimc", ignoreCase = true)
+        val miraiAvailable = server.pluginManager.isLoaded("miraimc")
+
+        if (useMirai && !miraiAvailable) {
+            slf4jLogger.error("[PlumBot] MiraiMC 插件未加载！若要使用 Mirai bot，请在 Velocity 代理端安装 MiraiMC。")
+            return
+        }
+
         BotProvider.clearFactories()
         BotProvider.registerFactory(OneBotFactory)
+        if (useMirai && miraiAvailable) {
+            BotProvider.registerFactory(MiraiMCFactory)
+            server.eventManager.register(this, VelocityMiraiMCListener(this))
+        }
 
         val apiImpl = createPlumBotApi(this)
         PlumBotApiProvider.register(apiImpl)

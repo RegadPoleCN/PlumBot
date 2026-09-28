@@ -39,6 +39,7 @@ guava = { module = "com.google.guava:guava", version.ref = "guava" }
 aonebot = { module = "com.github.alazeprt:AOneBot", version.ref = "aonebot" }
 miraimcIntegration = { module = "io.github.dreamvoid:MiraiMC-Integration", version.ref = "miraimcVersion" }
 miraimcBukkit = { module = "io.github.dreamvoid:MiraiMC-Bukkit", version.ref = "miraimcVersion" }
+miraimcVelocity = { module = "io.github.dreamvoid:MiraiMC-Velocity", version.ref = "miraimcVersion" }
 adventureApi = { module = "net.kyori:adventure-api", version.ref = "adventureVersion" }
 adventureTextMinimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventureVersion" }
 adventureTextSerializerLegacy = { module = "net.kyori:adventure-text-serializer-legacy", version.ref = "adventureVersion" }

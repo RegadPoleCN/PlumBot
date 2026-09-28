@@ -31,7 +31,7 @@ object MiraiMCFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(
         type = "miraimc",
         displayName = "MiraiMC",
-        supportedPlatforms = setOf(PlatformType.BUKKIT),
+        supportedPlatforms = setOf(PlatformType.BUKKIT, PlatformType.VELOCITY),
         requiredPlugins = setOf("MiraiMC"),
         capabilities = setOf(
             BotCapability.GROUP_MESSAGE_SEND,
