@@ -32,4 +32,11 @@ class BukkitPlugin(
     override val name: String get() = plugin.name
     override val version: String get() = plugin.description.version
     override val isEnabled: Boolean get() = plugin.isEnabled
+
+    override fun equals(other: Any?): Boolean =
+        other is Plugin && other.name.equals(name, ignoreCase = true)
+
+    override fun hashCode(): Int = name.lowercase().hashCode()
+
+    override fun toString(): String = "BukkitPlugin(name=$name, version=$version)"
 }
