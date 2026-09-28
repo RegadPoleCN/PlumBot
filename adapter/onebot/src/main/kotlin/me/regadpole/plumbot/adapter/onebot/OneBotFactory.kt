@@ -33,8 +33,7 @@ object OneBotFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(
         type = "onebot",
         displayName = "OneBot",
-        // Explicitly limited to Bukkit as it is the only platform currently implemented.
-        supportedPlatforms = setOf(PlatformType.BUKKIT),
+        supportedPlatforms = setOf(PlatformType.BUKKIT, PlatformType.VELOCITY),
         requiredPlugins = emptySet(),
         capabilities = setOf(
             BotCapability.GROUP_MESSAGE_SEND,

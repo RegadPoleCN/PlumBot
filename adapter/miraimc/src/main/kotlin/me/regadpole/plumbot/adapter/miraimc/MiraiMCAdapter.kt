@@ -23,9 +23,12 @@ import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.bot.AbstractBotAdapter
 import me.regadpole.plumbot.api.bot.BotAdapterMetadata
 import me.regadpole.plumbot.api.bot.MemberInfo
+import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.utils.TextToImg
+import java.io.File
 import java.util.concurrent.CompletableFuture
+import java.util.concurrent.atomic.AtomicBoolean
 
 class MiraiMCAdapter(
     override val context: PlatformContext,
@@ -34,6 +37,7 @@ class MiraiMCAdapter(
 
     val botId = context.config.getLong("bot", "miraimc", "botId")
     private lateinit var bot: MiraiBot
+    private val isRunning = AtomicBoolean(false)
 
     override fun start(): IBot {
         super.start()
@@ -41,79 +45,119 @@ class MiraiMCAdapter(
     }
 
     override fun doStart() {
+        if (!isRunning.compareAndSet(false, true)) return
         bot = try {
             MiraiBot.getBot(botId)
         } catch (e: Exception) {
+            isRunning.set(false)
             throw IllegalStateException("MiraiMC bot $botId is not logged in or does not exist", e)
         }
     }
 
     override fun doShutdown() {
-        // MiraiMC bot lifecycle由外部插件管理，Adapter无需额外处理。
+        isRunning.set(false)
     }
 
     override fun sendGroupMsg(targetId: Long, message: String) {
-        bot.getGroup(targetId).sendMessage(message)
+        if (!isRunning.get()) return
+        runCatching {
+            bot.getGroup(targetId).sendMessage(message)
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 发送群消息失败 ($targetId): ${e.message}")
+        }
     }
 
     override fun sendUserMsg(targetId: Long, message: String) {
-        bot.getFriend(targetId).sendMessage(message)
+        if (!isRunning.get()) return
+        runCatching {
+            bot.getFriend(targetId).sendMessage(message)
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 发送私聊消息失败 ($targetId): ${e.message}")
+        }
     }
 
     override fun sendGroupPicWithText(targetId: Long, message: String) {
-        val group = bot.getGroup(targetId)
-        val tempFile = TextToImg.toFile(message)
-        try {
-            val imageId = group.uploadImage(tempFile)
-            group.sendMessageMirai("[mirai:image:$imageId]")
-        } finally {
-            runCatching { tempFile.delete() }
+        if (!isRunning.get()) return
+        runCatching {
+            val group = bot.getGroup(targetId)
+            val tempFile = TextToImg.toFile(message)
+            try {
+                val imageId = group.uploadImage(tempFile)
+                group.sendMessageMirai("[mirai:image:$imageId]")
+            } finally {
+                runCatching { tempFile.delete() }
+            }
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 发送群图片消息失败 ($targetId): ${e.message}")
         }
     }
 
     override fun sendUserPicWithText(targetId: Long, message: String) {
-        val friend = bot.getFriend(targetId)
-        val tempFile = TextToImg.toFile(message)
-        try {
-            val imageId = friend.uploadImage(tempFile)
-            friend.sendMessageMirai("[mirai:image:$imageId]")
-        } finally {
-            runCatching { tempFile.delete() }
+        if (!isRunning.get()) return
+        runCatching {
+            val friend = bot.getFriend(targetId)
+            val tempFile = TextToImg.toFile(message)
+            try {
+                val imageId = friend.uploadImage(tempFile)
+                friend.sendMessageMirai("[mirai:image:$imageId]")
+            } finally {
+                runCatching { tempFile.delete() }
+            }
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 发送私聊图片消息失败 ($targetId): ${e.message}")
         }
     }
 
-    override fun sendGroupImage(targetId: Long, imageFile: java.io.File) {
-        val group = bot.getGroup(targetId)
-        val imageId = group.uploadImage(imageFile)
-        group.sendMessageMirai("[mirai:image:$imageId]")
+    override fun sendGroupImage(targetId: Long, imageFile: File) {
+        if (!isRunning.get()) return
+        runCatching {
+            val group = bot.getGroup(targetId)
+            val imageId = group.uploadImage(imageFile)
+            group.sendMessageMirai("[mirai:image:$imageId]")
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 上传并发送群图片失败 ($targetId): ${e.message}")
+        }
     }
 
     override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) {
-        val group = bot.getGroup(targetId)
-        group.sendMessageMirai("[mirai:at:$userId] $message")
+        if (!isRunning.get()) return
+        runCatching {
+            val group = bot.getGroup(targetId)
+            group.sendMessageMirai("[mirai:at:$userId] $message")
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 发送群 @ 消息失败 ($targetId): ${e.message}")
+        }
     }
 
     override fun sendGroupMsgAtAll(targetId: Long, message: String) {
-        val group = bot.getGroup(targetId)
-        group.sendMessageMirai("[mirai:at:all] $message")
+        if (!isRunning.get()) return
+        runCatching {
+            val group = bot.getGroup(targetId)
+            group.sendMessageMirai("[mirai:at:all] $message")
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 发送群 @全体 消息失败 ($targetId): ${e.message}")
+        }
     }
 
     override fun preloadGroupCaches() {
-        context.config.getLongList("groups").forEach { groupId ->
-            bot.getGroup(groupId).members.forEach {
-                primeGroupMember(
-                    groupId,
-                    MemberInfo(it.id, it.nick, it.nameCard, permissionToRole(it.permission))
-                )
+        if (!isRunning.get()) return
+        runCatching {
+            context.config.getLongList("groups").forEach { groupId ->
+                bot.getGroup(groupId).members.forEach {
+                    primeGroupMember(
+                        groupId,
+                        MemberInfo(it.id, it.nick, it.nameCard, permissionToRole(it.permission))
+                    )
+                }
             }
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 预热群成员缓存时出现异常: ${e.message}")
         }
     }
 
     override fun loadGroupName(groupId: Long): CompletableFuture<String> {
         val future = CompletableFuture<String>()
         try {
-            // MiraiMC 协议层（Bot.getGroup(name)）为同步调用，无异步回调。
-            // 直接 complete 与 OneBot 异步回调路径在外部观察者侧保持一致语义。
             future.complete(bot.getGroup(groupId).name)
         } catch (e: Exception) {
             future.completeExceptionally(e)
