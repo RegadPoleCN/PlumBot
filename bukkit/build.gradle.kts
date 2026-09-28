@@ -1,7 +1,6 @@
 plugins {
-    id("buildsrc.convention.kotlin-jvm")
+    id("buildsrc.convention.platform-distribution")
     alias(libs.plugins.kotlinPluginSerialization)
-    id("com.gradleup.shadow") version "9.1.0"
 }
 
 dependencies {
@@ -32,24 +31,7 @@ tasks {
     }
     
     shadowJar {
-        dependencies {
-            exclude(dependency("com.mojang:brigadier"))
-//            include(dependency("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT"))
-        }
-
-        relocate("com.alessiodp.libby", "me.regadpole.plumbot.lib.com.alessiodp.libby")
-        relocate("me.lucko.commodore", "me.regadpole.plumbot.lib.me.lucko.commodore")
-        relocate("net.kyori.adventure", "me.regadpole.plumbot.lib.net.kyori.adventure")
-
-        minimize()
-
         archiveBaseName.set("PlumBot-Bukkit")
         archiveVersion.set("")
-        archiveClassifier.set("")
-//        archiveFile.get().asFile.copyTo(File("${rootProject.buildDir}/libs/PlumBot-Bukkit.jar"), overwrite = true)
-    }
-    
-    build {
-        dependsOn(shadowJar)
     }
 }

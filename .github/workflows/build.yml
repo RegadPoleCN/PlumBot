@@ -35,12 +35,12 @@ jobs:
       - name: Run Tests & Verification
         run: ./gradlew test check checkApiContract
 
-      - name: Assemble ShadowJar
-        run: ./gradlew :bukkit:shadowJar
+      - name: Assemble Distribution Jars
+        run: ./gradlew dist
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PlumBot-Bukkit
-          path: bukkit/build/libs/
+          name: PlumBot-Distributions
+          path: dist/*.jar
           if-no-files-found: error
