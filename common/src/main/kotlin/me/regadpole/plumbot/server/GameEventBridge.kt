@@ -73,6 +73,18 @@ class GameEventBridge(
         sender.broadcast(rendered, config.getBoolean("feature", "joinAndLeave", "pic"))
     }
 
+    fun onChangeServer(playerName: String, originServer: String, targetServer: String) {
+        if (!context.hasCapability(PlatformCapability.SERVER_SWITCH_BROADCAST)) return
+        val totalEnabled = config.getBoolean("feature", "joinAndLeave", "enable")
+        if (!totalEnabled || !config.getBoolean("feature", "joinAndLeave", "changeServer")) return
+
+        val rendered = Messages.changeServer
+            .replace("%player_name%", playerName)
+            .replace("%origin_server%", originServer)
+            .replace("%target_server%", targetServer)
+        sender.broadcast(rendered, config.getBoolean("feature", "joinAndLeave", "pic"))
+    }
+
     fun onDeath(playerName: String, serverName: String, deathMessage: String) {
         if (!context.hasCapability(PlatformCapability.PLAYER_DEATH_BROADCAST)) return
         if (!config.getBoolean("feature", "death", "enable")) return

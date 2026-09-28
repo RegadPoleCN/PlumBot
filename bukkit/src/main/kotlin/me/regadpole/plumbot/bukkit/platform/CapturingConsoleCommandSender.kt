@@ -18,24 +18,20 @@
 
 package me.regadpole.plumbot.bukkit.platform
 
-import me.regadpole.plumbot.utils.toPlainText
+import me.regadpole.plumbot.utils.OutputCapturingBuffer
 import net.kyori.adventure.audience.Audience
-import net.kyori.adventure.text.Component
 import org.bukkit.command.ConsoleCommandSender
 
 /**
- * 远程控制台代理 Sender，双通道捕获 String 与 Adventure Component 输出。
+ * 远程控制台代理 Sender，委托给通用的 [OutputCapturingBuffer]，双通道捕获 String 与 Adventure Component 输出。
  */
 class CapturingConsoleCommandSender(
     private val delegate: ConsoleCommandSender,
-    private val buffer: StringBuilder = StringBuilder()
-) : ConsoleCommandSender by delegate, Audience {
-
-    private val ansiRegex = Regex("\u001B\\[[;\\d]*m")
+    private val capturer: OutputCapturingBuffer = OutputCapturingBuffer(delegate as? Audience)
+) : ConsoleCommandSender by delegate, Audience by capturer {
 
     override fun sendMessage(message: String) {
-        val clean = message.replace(ansiRegex, "")
-        buffer.appendLine(clean)
+        capturer.appendString(message)
         delegate.sendMessage(message)
     }
 
@@ -45,16 +41,5 @@ class CapturingConsoleCommandSender(
         }
     }
 
-    override fun sendMessage(message: Component) {
-        val plain = message.toPlainText()
-        buffer.appendLine(plain)
-
-        if (delegate is Audience) {
-            (delegate as Audience).sendMessage(message)
-        } else {
-            delegate.sendMessage(plain)
-        }
-    }
-
-    fun getOutput(): String = buffer.toString().trim()
+    fun getOutput(): String = capturer.getResult()
 }
