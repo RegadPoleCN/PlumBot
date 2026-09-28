@@ -18,12 +18,14 @@
 
 package me.regadpole.plumbot.cache
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.sksamuel.aedile.core.LoadingCache
-import com.sksamuel.aedile.core.cacheBuilder
+import com.sksamuel.aedile.core.asLoadingCache
 import kotlinx.coroutines.future.await
 import me.regadpole.plumbot.task.TaskProviderImpl
 import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
 
 /**
  * 通用缓存抽象，结合 [com.sksamuel.aedile.core.LoadingCache] 实现挂起函数与 CompletableFuture 双契约。
@@ -50,17 +52,17 @@ open class DefaultBotCache<K : Any, V : Any>(
     private val loader: (K) -> CompletableFuture<V>
 ) : BotCache<K, V> {
 
-    private val cache: LoadingCache<K, V> = cacheBuilder<K, V> {
-        refreshAfterWrite = 10.minutes
-        expireAfterWrite = 30.minutes
-    }.build { key ->
-        try {
-            loader(key).await()
-        } catch (e: Throwable) {
-            invalidate(key)
-            throw e
+    private val cache: LoadingCache<K, V> = Caffeine.newBuilder()
+        .refreshAfterWrite(10.minutes.toJavaDuration())
+        .expireAfterWrite(30.minutes.toJavaDuration())
+        .asLoadingCache { key ->
+            try {
+                loader(key).await()
+            } catch (e: Throwable) {
+                invalidate(key)
+                throw e
+            }
         }
-    }
 
     override suspend fun getAsync(key: K): V = cache.get(key)
 

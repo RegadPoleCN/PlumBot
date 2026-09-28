@@ -18,14 +18,16 @@
 
 package me.regadpole.plumbot.cache
 
+import com.github.benmanes.caffeine.cache.Caffeine
 import com.sksamuel.aedile.core.LoadingCache
-import com.sksamuel.aedile.core.cacheBuilder
+import com.sksamuel.aedile.core.asLoadingCache
 import kotlinx.coroutines.future.await
 import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.task.TaskProviderImpl
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.toJavaDuration
 
 /**
  * 群成员缓存抽象，结合 aedile 提供协程异步与 CompletableFuture 契约。
@@ -56,18 +58,18 @@ open class DefaultGroupMemberCache(
     private val fetchMember: (groupId: Long, userId: Long) -> CompletableFuture<MemberInfo?>
 ) : GroupMemberCache {
 
-    private val cache: LoadingCache<Pair<Long, Long>, MemberInfo> = cacheBuilder<Pair<Long, Long>, MemberInfo> {
-        refreshAfterWrite = 10.minutes
-        expireAfterWrite = 30.minutes
-    }.build { (groupId, userId) ->
-        try {
-            val result = fetchMember(groupId, userId).await()
-            result ?: throw NoSuchElementException("Member not found")
-        } catch (e: Throwable) {
-            invalidate(groupId, userId)
-            throw e
+    private val cache: LoadingCache<Pair<Long, Long>, MemberInfo> = Caffeine.newBuilder()
+        .refreshAfterWrite(10.minutes.toJavaDuration())
+        .expireAfterWrite(30.minutes.toJavaDuration())
+        .asLoadingCache { (groupId, userId) ->
+            try {
+                val result = fetchMember(groupId, userId).await()
+                result ?: throw NoSuchElementException("Member not found")
+            } catch (e: Throwable) {
+                invalidate(groupId, userId)
+                throw e
+            }
         }
-    }
 
     override suspend fun getAsync(groupId: Long, userId: Long): MemberInfo? =
         try {

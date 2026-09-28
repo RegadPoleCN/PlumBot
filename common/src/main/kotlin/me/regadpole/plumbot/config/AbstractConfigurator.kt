@@ -55,28 +55,28 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         return getConfigMaker(*path)
     }
 
-    override fun getStringList(vararg nodePath: String?): List<String?> {
-        return resolveNode(*nodePath).childrenList().map { it.string }
+    override fun getStringList(vararg path: String?): List<String?> {
+        return resolveNode(*path).childrenList().map { it.string }
     }
 
-    override fun getLongList(vararg nodePath: String?): List<Long> {
-        return resolveNode(*nodePath).childrenList().map { it.long }
+    override fun getLongList(vararg path: String?): List<Long> {
+        return resolveNode(*path).childrenList().map { it.long }
     }
 
-    override fun getBoolean(vararg nodePath: String?): Boolean {
-        return resolveNode(*nodePath).boolean
+    override fun getBoolean(vararg path: String?): Boolean {
+        return resolveNode(*path).boolean
     }
 
-    override fun getInteger(vararg nodePath: String?): Int {
-        return resolveNode(*nodePath).int
+    override fun getInteger(vararg path: String?): Int {
+        return resolveNode(*path).int
     }
 
-    override fun getString(vararg nodePath: String?): String? {
-        return resolveNode(*nodePath).string
+    override fun getString(vararg path: String?): String? {
+        return resolveNode(*path).string
     }
 
-    override fun getLong(vararg nodePath: String?): Long {
-        return resolveNode(*nodePath).long
+    override fun getLong(vararg path: String?): Long {
+        return resolveNode(*path).long
     }
 
     fun saveConfig(configFile: Path) {
