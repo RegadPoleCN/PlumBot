@@ -61,6 +61,12 @@ object Messages {
 
     var help: List<String> = emptyList()
 
+    var serverStatus: String = "<missing:serverStatus>"
+    var statusUnavailable: String = "<missing:statusUnavailable>"
+    var remoteCommandDenied: String = "<missing:remoteCommandDenied>"
+    var remoteCommandDisabled: String = "<missing:remoteCommandDisabled>"
+    var remoteCommandExecuted: String = "<missing:remoteCommandExecuted>"
+
     var noCommandFound: String = "<missing:noCommandFound>"
     var commandAddBind: String = "<missing:commandAddBind>"
     var commandDeleteBindById: String = "<missing:commandDeleteBindById>"

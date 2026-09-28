@@ -25,6 +25,8 @@ import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.bot.command.MessageForwardService
 import me.regadpole.plumbot.bot.command.PlayerListCommandService
+import me.regadpole.plumbot.bot.command.RemoteConsoleCommandService
+import me.regadpole.plumbot.bot.command.StatusCommandService
 import me.regadpole.plumbot.bot.command.WhitelistCommandService
 import me.regadpole.plumbot.bot.requireCapability
 import me.regadpole.plumbot.api.platform.PlatformContext
@@ -34,6 +36,8 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
     private val whitelistCommandService = WhitelistCommandService(commandService)
     private val playerListCommandService = PlayerListCommandService(commandService)
     private val messageForwardService = MessageForwardService(commandService)
+    private val statusCommandService = StatusCommandService(commandService)
+    private val remoteConsoleCommandService = RemoteConsoleCommandService(commandService)
 
     private class CommandRegistration(
         val keys: List<String?>,
@@ -69,7 +73,19 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
                 "bind",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
                 { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
-            ) { message, groupId, userId -> onWhitelistQuery(message, groupId, userId) }
+            ) { message, groupId, userId -> onWhitelistQuery(message, groupId, userId) },
+            CommandRegistration(
+                keys.getStringList("status"),
+                "status",
+                { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}$""" },
+                { cmdPrefix, key, message -> "" }
+            ) { message, groupId, userId -> statusCommandService.showStatus(message, groupId, userId) },
+            CommandRegistration(
+                keys.getStringList("remote_console"),
+                "remote_console",
+                { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
+                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
+            ) { message, groupId, userId -> remoteConsoleCommandService.execute(message, groupId, userId) }
         )
     }
 
@@ -125,6 +141,8 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
         val addBindKey = keys.getStringList("addBind").firstOrNull() ?: "申请白名单"
         val deleteBindKey = keys.getStringList("deleteBind").firstOrNull() ?: "删除白名单"
         val queryBindKey = keys.getStringList("queryBind").firstOrNull() ?: "查询白名单"
+        val statusKey = keys.getStringList("status").firstOrNull() ?: "status"
+        val remoteConsoleKey = keys.getStringList("remote_console").firstOrNull() ?: "cmd"
 
         val formatted = helpLines.joinToString("\n")
             .replace("%cmdprefix%", prefix)
@@ -132,6 +150,8 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
             .replace("\$addBind", addBindKey)
             .replace("\$deleteBind", deleteBindKey)
             .replace("\$queryBind", queryBindKey)
+            .replace("\$status", statusKey)
+            .replace("\$remote_console", remoteConsoleKey)
 
         commandService.sendBindMessage(groupId, formatted)
     }

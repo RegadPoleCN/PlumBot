@@ -61,6 +61,12 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
         sendBindMessage(groupId, Messages.wrongUsage)
     }
 
+    fun sendRawMessage(groupId: Long, message: String, pic: Boolean = false) {
+        bot.requireCapability(BotCapability.GROUP_MESSAGE_SEND)
+        if (pic) bot.requireCapability(BotCapability.IMAGE_SEND)
+        bot.sendMsg(true, groupId, message, pic)
+    }
+
     fun groupMemberNameCard(groupId: Long, userId: Long): Pair<String, String> {
         bot.requireCapability(BotCapability.GROUP_MEMBER_QUERY)
         return bot.getGroupUserName(groupId, userId) to bot.getGroupUserCard(groupId, userId)

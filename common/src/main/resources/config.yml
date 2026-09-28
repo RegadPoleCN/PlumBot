@@ -74,6 +74,21 @@ feature:
     advancement:
         enable: true
         pic: false
+    # =========================================================================
+    # 服务器运行状态与性能监控 (/status /tps)
+    # 【声明平台】：仅限具备 SERVER_TPS_METRICS 能力的平台
+    # =========================================================================
+    status:
+        enable: true
+        pic: false
+    # =========================================================================
+    # 管理员远程控制台指令通道 (/cmd /console)
+    # 【高危安全功能】：严格校验发送者是否在 admins 列表中；默认关闭
+    # =========================================================================
+    remote_console:
+        enable: false
+        # 回显最大字符数限制（防止刷屏封号）
+        max_output_length: 1500
     img:
         file: "%plugin_folder%/MiSans-Normal.ttf"
 
@@ -94,6 +109,8 @@ keys:
     addBind: ["申请白名单"]
     deleteBind: ["删除白名单"]
     queryBind: ["查询白名单"]
+    status: ["status", "tps", "状态"]
+    remote_console: ["cmd", "console", "执行"]
 
 # 调试选项
 debug:

@@ -65,6 +65,17 @@ help:
   - "%cmdprefix%$addBind <游戏名>   - 申请白名单"
   - "%cmdprefix%$deleteBind <游戏名>   - 移除白名单"
   - "%cmdprefix%$queryBind   - 查询自己申请的所有白名单"
+  - "%cmdprefix%$status   - 查看服务器性能与状态"
+  - "%cmdprefix%$remote_console <指令>   - [管理员] 远程执行控制台指令"
+
+# tps_1m, tps_5m, tps_15m, mspt, used_mem, max_mem, online
+serverStatus: "服务器运行状态:\nTPS: %tps_1m%, %tps_5m%, %tps_15m%\nMSPT: %mspt% ms\n内存: %used_mem%MB / %max_mem%MB\n在线人数: %online%"
+statusUnavailable: "当前服务端平台不支持性能指标监控或尚未就绪。"
+
+# remote command
+remoteCommandDenied: "权限不足：您未在管理员名单内，无权远程执行控制台指令。"
+remoteCommandDisabled: "远程控制台通道当前处于关闭状态（可在配置中开启）。"
+remoteCommandExecuted: "控制台执行回显:\n%output%"
 
 noCommandFound: "<red>请正确输入命令"
 commandAddBind: "<green>已将<aqua>%player%<green>添加至<aqua>%target_id%<green>的白名单"
