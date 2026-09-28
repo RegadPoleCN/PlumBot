@@ -69,4 +69,62 @@ class BukkitPlatformContext(
     override fun isPluginAvailable(name: String): Boolean {
         return Bukkit.getPluginManager().isPluginEnabled(name)
     }
+
+    override fun getRecentTps(): DoubleArray? {
+        return runCatching {
+            val method = Bukkit.getServer().javaClass.getMethod("getTPS")
+            method.invoke(Bukkit.getServer()) as? DoubleArray
+        }.getOrNull()
+    }
+
+    override fun getMspt(): Double? {
+        // 1. 优先尝试 Paper 原生 getAverageTickTime()
+        runCatching {
+            val method = Bukkit.getServer().javaClass.getMethod("getAverageTickTime")
+            val result = method.invoke(Bukkit.getServer())
+            if (result is Number) return result.toDouble()
+        }
+        // 2. 尝试 Paper getTickTimes()
+        runCatching {
+            val method = Bukkit.getServer().javaClass.getMethod("getTickTimes")
+            val times = method.invoke(Bukkit.getServer()) as? LongArray
+            if (times != null && times.isNotEmpty()) {
+                return times.average() * 1.0E-6
+            }
+        }
+        // 3. 尝试 NMS MinecraftServer.tickTimes 反射兜底
+        return runCatching {
+            val mcServerClass = Class.forName("net.minecraft.server.MinecraftServer")
+            val getServerMethod = mcServerClass.getMethod("getServer")
+            val mcServer = getServerMethod.invoke(null)
+            val field = mcServer.javaClass.getField("tickTimes")
+            val times = field.get(mcServer) as? LongArray
+            if (times != null && times.isNotEmpty()) {
+                times.average() * 1.0E-6
+            } else null
+        }.getOrNull()
+    }
+
+    override fun dispatchConsoleCommand(command: String): java.util.concurrent.CompletableFuture<String> {
+        val future = java.util.concurrent.CompletableFuture<String>()
+        // 强制在游戏主线程调度执行，保证线程安全
+        scheduler.runSync {
+            try {
+                val consoleSender = Bukkit.getConsoleSender()
+                val capturingSender = CapturingConsoleCommandSender(consoleSender)
+                logger.log(LogLevel.WARN, "[PlumBot-Security] 远程控制台正在执行指令: /$command")
+                val success = Bukkit.dispatchCommand(capturingSender, command)
+                val output = capturingSender.getOutput()
+                val resultText = when {
+                    output.isNotBlank() -> output
+                    success -> "指令已在主线程执行成功（无控制台回显）。"
+                    else -> "指令执行失败或未识别此指令。"
+                }
+                future.complete(resultText)
+            } catch (e: Throwable) {
+                future.complete("执行指令出现异常: ${e.message}")
+            }
+        }
+        return future
+    }
 }
