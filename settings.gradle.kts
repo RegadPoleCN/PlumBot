@@ -36,6 +36,7 @@ plugins {
 include(":api")
 include(":common") 
 include(":bukkit")
+include(":velocity")
 include(":adapter:onebot")
 include(":adapter:miraimc")
 

@@ -21,6 +21,7 @@ adventurePlatformBukkitVersion = "4.4.0"
 libbyVersion = "2.0.0-SNAPSHOT"
 aedileVersion = "2.0.3"
 shadowVersion = "9.1.0"
+velocityVersion = "3.5.1"
 
 [libraries]
 kotlinGradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
@@ -44,6 +45,8 @@ adventureTextSerializerLegacy = { module = "net.kyori:adventure-text-serializer-
 adventurePlatformBukkit = { module = "net.kyori:adventure-platform-bukkit", version.ref = "adventurePlatformBukkitVersion" }
 libbyCore = { module = "com.alessiodp.libby:libby-core", version.ref = "libbyVersion" }
 libbyBukkit = { module = "com.alessiodp.libby:libby-bukkit", version.ref = "libbyVersion" }
+libbyVelocity = { module = "com.alessiodp.libby:libby-velocity", version.ref = "libbyVersion" }
+velocityApi = { module = "com.velocitypowered:velocity-api", version.ref = "velocityVersion" }
 aedile = { module = "com.sksamuel.aedile:aedile-core", version.ref = "aedileVersion" }
 shadowGradlePlugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadowVersion" }
 
