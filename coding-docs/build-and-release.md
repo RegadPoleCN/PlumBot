@@ -43,8 +43,8 @@
    ```
    PlumBot/
    └── dist/
-       ├── PlumBot-Bukkit.jar
-       └── (未来新增平台的产物如 PlumBot-Velocity.jar ...)
+       ├── PlumBot-Bukkit.jar     # 用于 Paper/Spigot 实体后端子服
+       └── PlumBot-Velocity.jar   # 用于 Velocity 跨服代理端
    ```
 
 ---

@@ -12,7 +12,7 @@
 |---|---|---|
 | **[本文 (README.md)](#)** | 全员 | 架构分层拓扑、模块职责、公开 API 契约分级、Bot 能力与兼容矩阵 |
 | **[附属插件开发手册](./extension-guide.md)** | 外部开发者 | 接入 `:api`、获取 `PlumBotAPI`、收发消息、事件监听、扩展 BotAdapter、轻量单元测试 Mock |
-| **[内部核心开发手册](./internal-dev.md)** | 内部维护者 | 新增端到端功能/指令闭环、消息与 MiniMessage 安全转义、数据库持久层扩展 |
+| **[内部核心开发手册](./internal-dev.md)** | 内部维护者 | 新增端到端功能/指令闭环、消息与 MiniMessage 安全转义、数据库持久层扩展、远程控制台与换服广播 |
 | **[新平台接入技术规范](./adding-platform.md)** | 架构师 / 平台适配者 | 以 Bukkit 为黄金蓝图的 7 大核心构件拆解、生命周期时序与完备性核对清单 |
 | **[构建与发布规范](./build-and-release.md)** | 全员 / DevOps | Gradle `buildSrc` 双约定插件架构、统一产物输出 (`./gradlew dist`)、契约守护校验 |
 
@@ -42,19 +42,21 @@ PlumBot 采用标准的**分层门面 + 适配器架构（Layered Facade & Adapt
 │  - 协程缓存: BotCache, GroupMemberCache (Caffeine)     │
 │  - 持久层: DatabaseProvider, AbstractBindingDatabase  │
 │  - 指令与消息分发: BotCommandService, DefaultBotHandler│
+│  - 跨平台回显捕获: OutputCapturingBuffer (双通道拦截)   │
 └──────────────▲──────────────────────────▲──────────────┘
                │ 宿主接入                 │ 协议挂载
 ┌──────────────┴──────────────┐ ┌─────────┴──────────────┐
-│  :bukkit (服务端平台实现)    │ │  :adapter:* (Bot 协议适配)│
+│  :bukkit / :velocity 宿主实现│ │  :adapter:* (Bot 协议适配)│
 │  - BukkitPlatformContext    │ │  - :adapter:onebot     │
-│  - Libby 类库动态回退链加载  │ │    (WebSocket 协程全异步)│
-│  - 服务发现与宿主生命周期管理│ │  - :adapter:miraimc    │
+│  - VelocityPlatformContext  │ │    (WebSocket 协程全异步)│
+│  - Libby 动态多源回退链加载  │ │  - :adapter:miraimc    │
+│  - 服务发现与全生命周期管理  │ │    (Mirai 原生桥接服务)│
 └─────────────────────────────┘ └────────────────────────┘
 ```
 
 ### 模块边界守则
 1. **`:api` 模块纯粹度**：严禁引入任何具体服务实现或包含重度依赖的第三方库（仅允许 `adventure-api` 与 `kotlinx-datetime` 等基础契约库）。任何对外公开类型必须冠以 `me.regadpole.plumbot.api.*`。
-2. **`:common` 平台无关性**：严禁出现任何特定游戏服务端（如 Bukkit/Spigot/Paper）的类导入。所有平台能力均通过 `PlatformContext` 抽象注入。
+2. **`:common` 平台无关性**：严禁出现任何特定游戏服务端（如 Bukkit/Paper 或 Velocity）的类导入。所有平台能力均通过 `PlatformContext` 抽象注入。
 3. **`:adapter:*` 隔离性**：每个适配器只负责将外部 IM 协议转化为 PlumBot 标准事件和消息模型，不可直接耦合具体游戏业务逻辑。
 
 ---
@@ -66,7 +68,7 @@ PlumBot 采用标准的**分层门面 + 适配器架构（Layered Facade & Adapt
 | 契约注解 | 稳定性承诺 | 代表性接口 / 类型 |
 |---|---|---|
 | **`@StableApi`** | **长期稳定**。发版后不破坏二进制兼容，严禁无故修改签名或删除方法。 | `PlumBotAPI`<br>`IBot`<br>`BotFactory`<br>`PlatformContext`<br>`PlatformScheduler`<br>`PlatformPlayerService`<br>`AbstractBotAdapter` |
-| **`@PublicApi`** | **公开可用**。主版本号内保证兼容，允许合理扩展新方法与新模型。 | `BotAdapterMetadata`<br>`BotCapability`<br>`MemberInfo`<br>`PlatformCapability`<br>`PlatformType`<br>`LogLevel`<br>`Binding`<br>`IDatabase`<br>`ListenerHandle`<br>`Plugin`<br>`GroupMessageEvent`<br>`GroupMemberDecreaseEvent` |
+| **`@PublicApi`** | **公开可用**。主版本号内保证兼容，允许合理扩展新方法与新模型。 | `BotAdapterMetadata`<br>`BotCapability`<br>`MemberInfo`<br>`PlatformCapability`<br>`PlatformType` (`BUKKIT`, `VELOCITY` 等)<br>`LogLevel`<br>`Binding`<br>`IDatabase`<br>`ListenerHandle`<br>`Plugin`<br>`GroupMessageEvent`<br>`GroupMemberDecreaseEvent` |
 | **内部实现** | **严禁外部引用**。随时可能发生变动或重构，外部调用后果自负。 | 所有位于 `me.regadpole.plumbot.internal.*` 下的类，以及 `:common` 内部类。 |
 
 ---
@@ -76,16 +78,19 @@ PlumBot 采用标准的**分层门面 + 适配器架构（Layered Facade & Adapt
 不同的 Bot 框架具备不同的协议特性（例如：某些协议无法拉取群成员名片，某些协议不支持发送图片）。为了防止业务层出现盲目调用导致的运行时崩溃，PlumBot 采用 **能力声明（BotCapability）守卫机制**。
 
 ### 1. 核心能力枚举 (`me.regadpole.plumbot.api.bot.BotCapability`)
-- `SEND_GROUP_MSG`: 支持发送普通群文本消息。
-- `SEND_IMAGE`: 支持在群内发送图片。
-- `FETCH_GROUP_MEMBER_INFO`: 支持获取指定群成员的详细资料（昵称、名片、群权限）。
-- `EXECUTE_COMMAND`: 支持执行群管理指令。
+- `GROUP_MESSAGE_SEND`: 支持发送普通群文本消息。
+- `USER_MESSAGE_SEND`: 支持发送好友私聊消息。
+- `IMAGE_SEND`: 支持在群/私聊内发送图片。
+- `GROUP_MEMBER_QUERY`: 支持拉取群成员名片与昵称信息。
+- `GROUP_MEMBER_CHECK`: 支持校验指定用户是否在群内。
+- `GROUP_MESSAGE_RECEIVE`: 支持监听并接收群消息。
+- `GROUP_MEMBER_DECREASE_RECEIVE`: 支持监听群成员退群/被踢事件。
 
 ### 2. 官方适配器能力支持矩阵
 
-| 适配器类型 (`type`) | 运行传输协议 | `SEND_GROUP_MSG` | `SEND_IMAGE` | `FETCH_GROUP_MEMBER_INFO` | 具备平台依赖 |
+| 适配器类型 (`type`) | 运行传输协议 | `GROUP_MESSAGE_SEND` | `IMAGE_SEND` | `GROUP_MEMBER_QUERY` | 支持平台矩阵 |
 |---|---|:---:|:---:|:---:|---|
-| **`onebot`** | 原生 WebSocket (反向/正向) | ✅ | ✅ | ✅ | 跨平台纯独立 |
-| **`miraimc`** | MiraiMC 本地桥接服务 | ✅ | ✅ | ✅ | 仅限 Bukkit 宿主 |
+| **`onebot`** | 原生 WebSocket (反向/正向) | ✅ | ✅ | ✅ | **Bukkit / Velocity** (全跨平台支持) |
+| **`miraimc`** | MiraiMC 本地桥接服务 | ✅ | ✅ | ✅ | **Bukkit / Velocity** (双端均原生支持) |
 
 > 业务层在调用特定功能（如根据群名片识别玩家）前，应先通过 `bot.metadata.capabilities` 校验是否声明了对应能力。

@@ -56,6 +56,15 @@ val registration = Bukkit.getServicesManager().getRegistration(PlumBotAPI::class
 val api: PlumBotAPI? = registration?.provider
 ```
 
+### 途径 C：Velocity 代理端插件获取
+在 Velocity 代理端插件中，同样在 `ProxyInitializeEvent` 触发后直接调用跨平台门面：
+```kotlin
+import me.regadpole.plumbot.api.PlumBotAPI
+
+// Velocity 插件可在代理端全局初始化后直接安全调用
+val api: PlumBotAPI = PlumBotAPI.get()
+```
+
 ---
 
 ## 🚀 3. 核心功能调用示例

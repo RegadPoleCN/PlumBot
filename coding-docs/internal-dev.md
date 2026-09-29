@@ -29,6 +29,24 @@ val component = getComponentFromMiniMsg(safeMini)
 context.sendMessage(component)
 ```
 
+### 跨服换服广播 (Proxy Server Switch)
+在代理端（如 Velocity）环境下，捕获玩家跨服跳转时，调用 `GameEventBridge.onChangeServer` 触发群广播，底层自动由 `PlatformCapability.SERVER_SWITCH_BROADCAST` 守卫：
+```kotlin
+eventBridge.onChangeServer(playerName, previousServerName, currentServerName)
+```
+
+### 控制台回显双通道捕获 (`OutputCapturingBuffer`)
+执行远程指令（`/cmd`）时，为实现 ANSI 剥除、字数截断并兼顾字符串与 Adventure Component，统一采用 `common/utils/OutputCapturingBuffer` 包装平台的 CommandSender/CommandSource：
+```kotlin
+val capturer = OutputCapturingBuffer(originalAudience)
+// 通道 1: 纯字符串输出
+capturer.appendString(legacyOutput)
+// 通道 2: Adventure Component 输出
+capturer.sendMessage(componentOutput)
+// 导出最终回显文本
+val finalOutput = capturer.getResult()
+```
+
 ### 第三步：注册群响应指令 (`DefaultBotHandler`)
 在 `common/.../listener/DefaultBotHandler.kt` 的 `init` 块中通过轻量 DSL 注册指令：
 ```kotlin
