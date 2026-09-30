@@ -24,6 +24,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import me.regadpole.plumbot.internal.LogLevel
+import me.regadpole.plumbot.utils.HttpConstants
 import me.regadpole.plumbot.api.platform.PlatformContext
 import java.io.File
 import java.net.HttpURLConnection
@@ -121,7 +122,8 @@ class FilterThesaurusManager(private val context: PlatformContext) {
             connection.requestMethod = "GET"
             connection.connectTimeout = timeoutMs
             connection.readTimeout = timeoutMs
-            connection.setRequestProperty("User-Agent", "PlumBot/3.0.0 (Minecraft-QQ-Bridge)")
+            connection.setRequestProperty("User-Agent", HttpConstants.BROWSER_USER_AGENT)
+            connection.setRequestProperty("Accept", HttpConstants.ACCEPT_JSON_OR_TEXT)
 
             if (connection.responseCode in 200..299) {
                 val jsonText = connection.inputStream.bufferedReader().use { it.readText() }
