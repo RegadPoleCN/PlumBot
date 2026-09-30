@@ -33,7 +33,7 @@ object OneBotFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(
         type = "onebot",
         displayName = "OneBot",
-        supportedPlatforms = setOf(PlatformType.BUKKIT, PlatformType.VELOCITY),
+        supportedPlatforms = setOf(PlatformType.BUKKIT, PlatformType.VELOCITY, PlatformType.HYTALE),
         requiredPlugins = emptySet(),
         capabilities = setOf(
             BotCapability.GROUP_MESSAGE_SEND,

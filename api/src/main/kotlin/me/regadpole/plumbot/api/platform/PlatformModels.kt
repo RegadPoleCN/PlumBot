@@ -25,7 +25,8 @@ enum class PlatformType {
     BUKKIT,
     VELOCITY,
     BUNGEE,
-    STANDALONE
+    STANDALONE,
+    HYTALE
 }
 
 @PublicApi
