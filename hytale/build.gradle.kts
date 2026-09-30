@@ -13,6 +13,8 @@ dependencies {
     testImplementation(kotlin("test"))
     // hytale
     compileOnly("com.hypixel.hytale:Server:+")
+    // adventure
+    implementation(libs.adventureHytale)
     // libby
     implementation(libs.libbyHytale)
     // bstats

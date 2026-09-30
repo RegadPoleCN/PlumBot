@@ -14,7 +14,7 @@ dependencies {
     testImplementation(kotlin("test"))
     // bukkit
     compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")
-//    implementation(libs.adventureBukkit)
+    implementation(libs.adventureBukkit)
     // libby
     implementation(libs.libbyBukkit)
     // miraimc
