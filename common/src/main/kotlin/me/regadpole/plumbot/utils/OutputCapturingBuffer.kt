@@ -20,14 +20,18 @@ package me.regadpole.plumbot.utils
 
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.ComponentLike
 
 /**
  * 跨平台通用的控制台回显捕获器，纯基于 JVM 和 Adventure 文本契约。
  * 天然兼顾纯 String 平台（如老 Spigot、未来异构游戏 Hytale）与原生 Adventure 平台（Paper、Velocity）。
+ *
+ * 优化支持保留颜色代码（§ 颜色码或 ANSI），配合 TextToImg 可直接在群内生成真实色彩的控制台回显卡片。
  */
 class OutputCapturingBuffer(
     private val forwardTo: Audience? = null,
-    private val maxLength: Int = 1500
+    private val maxLength: Int = 2000,
+    private val preserveColors: Boolean = true
 ) : Audience {
 
     private val buffer = StringBuilder()
@@ -35,15 +39,27 @@ class OutputCapturingBuffer(
 
     /** 通道 1：纯文本行输入（供所有非 Adventure 平台或传统 API 调用） */
     fun appendString(message: String) {
-        val clean = message.replace(ansiRegex, "")
-        buffer.appendLine(clean)
+        val formatted = if (preserveColors) {
+            message
+        } else {
+            message.replace(ansiRegex, "").stripMinecraftFormatting()
+        }
+        buffer.appendLine(formatted)
     }
 
     /** 通道 2：Adventure 富文本组件输入（供原生 Adventure 平台调用） */
     override fun sendMessage(message: Component) {
-        val plain = message.toPlainText()
-        buffer.appendLine(plain)
+        val formatted = if (preserveColors) {
+            message.toLegacyAmpersand()
+        } else {
+            message.toPlainText()
+        }
+        buffer.appendLine(formatted)
         forwardTo?.sendMessage(message)
+    }
+
+    override fun sendMessage(message: ComponentLike) {
+        sendMessage(message.asComponent())
     }
 
     /** 导出最终供群聊回复的文本（自动处理空输出与超长截断） */
