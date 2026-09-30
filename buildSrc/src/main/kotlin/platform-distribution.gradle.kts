@@ -1,13 +1,11 @@
 package buildsrc.convention
 
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-
 plugins {
     id("buildsrc.convention.kotlin-jvm")
     id("com.gradleup.shadow")
 }
 
-tasks.named<ShadowJar>("shadowJar") {
+tasks.shadowJar {
     archiveClassifier.set("")
 
     dependencies {
@@ -20,8 +18,11 @@ tasks.named<ShadowJar>("shadowJar") {
     relocate("com.alessiodp.libby", "me.regadpole.plumbot.lib.com.alessiodp.libby")
     relocate("me.lucko.commodore", "me.regadpole.plumbot.lib.me.lucko.commodore")
     relocate("net.kyori.adventure", "me.regadpole.plumbot.lib.net.kyori.adventure")
+    relocate("org.bstats", project.group.toString())
 
-    minimize()
+    minimize {
+        exclude(dependency("org.bstats:.*"))
+    }
 
     exclude("META-INF/*.SF")
     exclude("META-INF/*.DSA")

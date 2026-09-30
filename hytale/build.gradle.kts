@@ -15,6 +15,8 @@ dependencies {
     compileOnly("com.hypixel.hytale:Server:+")
     // libby
     implementation(libs.libbyHytale)
+    // bstats
+    implementation(libs.bstatsHytale)
 }
 
 tasks {

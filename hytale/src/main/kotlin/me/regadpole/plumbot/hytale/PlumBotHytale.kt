@@ -42,6 +42,7 @@ import me.regadpole.plumbot.server.GameEventBridge
 import me.regadpole.plumbot.server.PlayerLoginService
 import me.regadpole.plumbot.utils.TextToImg
 import net.kyori.adventure.text.Component
+import org.bstats.hytale.Metrics
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.pathString
@@ -49,6 +50,8 @@ import kotlin.io.path.pathString
 class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
 
     val plumBotPlugin: me.regadpole.plumbot.api.Plugin by lazy { HytalePlugin(this) }
+
+    private val metrics: Metrics by lazy { Metrics(this, 34424)}
 
     override lateinit var datasource: YamlConfigurator
     override lateinit var config: YamlConfigurator
@@ -86,6 +89,7 @@ class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
         dependencyLoader.loadDependencies()
         // 2. 加载与自愈补齐配置文件
         loadConfig()
+        metrics
     }
 
     override fun start() {

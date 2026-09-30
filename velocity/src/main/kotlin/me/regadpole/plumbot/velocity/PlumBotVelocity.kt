@@ -32,7 +32,6 @@ import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.adapter.miraimc.MiraiMCFactory
 import me.regadpole.plumbot.adapter.onebot.OneBotFactory
-import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.api.PlumBotApiProvider
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
@@ -52,6 +51,7 @@ import me.regadpole.plumbot.velocity.listener.VelocityPluginListener
 import me.regadpole.plumbot.velocity.listener.VelocityServerListener
 import me.regadpole.plumbot.velocity.platform.*
 import net.kyori.adventure.text.Component
+import org.bstats.velocity.Metrics
 import org.slf4j.Logger
 import java.io.File
 import java.nio.file.Path
@@ -71,7 +71,8 @@ class PlumBotVelocity @Inject constructor(
     val server: ProxyServer,
     val slf4jLogger: Logger,
     @DataDirectory override var dataDirectory: Path,
-    val pluginManager: PluginManager
+    val pluginManager: PluginManager,
+    private val metricsFactory: Metrics.Factory
 ) : PlumBot, me.regadpole.plumbot.api.Plugin {
 
     override val name: String = BuildConstants.NAME
@@ -122,6 +123,8 @@ class PlumBotVelocity @Inject constructor(
             slf4jLogger.error("[PlumBot] 基础配置加载失败: ${e.message}")
             return
         }
+
+        val metrics = metricsFactory.make(this, 19428)
 
         val botType = config.getString("bot", "type") ?: "onebot"
         val useMirai = botType.equals("miraimc", ignoreCase = true)

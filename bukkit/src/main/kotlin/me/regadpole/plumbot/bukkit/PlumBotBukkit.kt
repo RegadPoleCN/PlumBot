@@ -20,33 +20,25 @@ package me.regadpole.plumbot.bukkit
 
 import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.PlumBot
-import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.adapter.miraimc.MiraiMCFactory
 import me.regadpole.plumbot.adapter.onebot.OneBotFactory
-import me.regadpole.plumbot.config.YamlConfigurator
+import me.regadpole.plumbot.api.PlumBotAPI
+import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.bukkit.listener.MiraiMCListener
 import me.regadpole.plumbot.bukkit.listener.PluginListener
 import me.regadpole.plumbot.bukkit.listener.ServerListener
-import me.regadpole.plumbot.bukkit.platform.BukkitDependencyLoader
-import me.regadpole.plumbot.bukkit.platform.BukkitPlatformContext
-import me.regadpole.plumbot.bukkit.platform.BukkitPlatformLogger
-import me.regadpole.plumbot.bukkit.platform.BukkitPlatformMessenger
-import me.regadpole.plumbot.bukkit.platform.BukkitPlatformScheduler
-import me.regadpole.plumbot.bukkit.platform.BukkitPlayerService
+import me.regadpole.plumbot.bukkit.platform.*
+import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.LogLevel
-import me.regadpole.plumbot.api.platform.PlatformContext
-import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import net.kyori.adventure.text.Component
+import org.bstats.bukkit.Metrics
 import org.bukkit.Bukkit
 import org.bukkit.plugin.ServicePriority
 import org.bukkit.plugin.java.JavaPlugin
 import java.nio.file.Path
 import kotlin.io.path.pathString
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Future
-import java.util.concurrent.TimeUnit
 
 class PlumBotBukkit: JavaPlugin(), PlumBot{
     private val dependencyLoader: BukkitDependencyLoader by lazy {
@@ -95,6 +87,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
             Bukkit.getPluginManager().disablePlugin(this)
             return
         }
+
+        val metrics = Metrics(this, 19427)
 
         val botType = config.getString("bot", "type") ?: "onebot"
         val useMirai = botType.equals("miraimc", ignoreCase = true)

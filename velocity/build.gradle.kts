@@ -16,6 +16,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation(libs.bundles.kotlinxEcosystem)
     implementation(libs.libbyVelocity)
+    implementation(libs.bstatsVelocity)
 }
 
 tasks {
