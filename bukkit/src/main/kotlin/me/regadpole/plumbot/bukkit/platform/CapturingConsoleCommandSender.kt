@@ -20,10 +20,12 @@ package me.regadpole.plumbot.bukkit.platform
 
 import me.regadpole.plumbot.utils.OutputCapturingBuffer
 import net.kyori.adventure.audience.Audience
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.ComponentLike
 import org.bukkit.command.ConsoleCommandSender
 
 /**
- * 远程控制台代理 Sender，委托给通用的 [OutputCapturingBuffer]，双通道捕获 String 与 Adventure Component 输出。
+ * 远程控制台代理 Sender，委托给通用的 [OutputCapturingBuffer]，覆盖所有消息发送变体，确保零遗漏。
  */
 class CapturingConsoleCommandSender(
     private val delegate: ConsoleCommandSender,
@@ -39,6 +41,14 @@ class CapturingConsoleCommandSender(
         for (msg in messages) {
             sendMessage(msg)
         }
+    }
+
+    override fun sendMessage(message: Component) {
+        capturer.sendMessage(message)
+    }
+
+    override fun sendMessage(message: ComponentLike) {
+        capturer.sendMessage(message)
     }
 
     fun getOutput(): String = capturer.getResult()

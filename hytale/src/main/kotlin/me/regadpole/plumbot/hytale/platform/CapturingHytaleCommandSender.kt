@@ -20,28 +20,42 @@ package me.regadpole.plumbot.hytale.platform
 
 import com.hypixel.hytale.server.core.Message
 import com.hypixel.hytale.server.core.command.system.CommandSender
-import com.hypixel.hytale.server.core.permissions.PermissionHolder
+import com.hypixel.hytale.server.core.console.ConsoleSender
 import com.hypixel.hytale.server.core.permissions.PermissionQuery
 import me.regadpole.plumbot.utils.OutputCapturingBuffer
 import net.kyori.adventure.audience.Audience
-import java.util.UUID
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.ComponentLike
 
 class CapturingHytaleCommandSender(
-    private val capturer: OutputCapturingBuffer = OutputCapturingBuffer()
-) : CommandSender, Audience by capturer {
-
-    override fun getUsername(): String = "CONSOLE"
-    override fun getUuid(): UUID = UUID(0L, 0L)
+    private val delegate: CommandSender = ConsoleSender.INSTANCE,
+    private val capturer: OutputCapturingBuffer = OutputCapturingBuffer(delegate as? Audience)
+) : CommandSender by delegate, Audience by capturer {
 
     override fun sendMessage(message: Message) {
         val raw = message.rawText ?: message.ansiMessage
         capturer.appendString(raw)
+        delegate.sendMessage(message)
     }
 
-    override fun hasPermission(permission: String): Boolean = true
-    override fun hasPermission(permission: String, defaultVal: Boolean): Boolean = true
-    override fun hasPermission(query: PermissionQuery): Boolean = true
-    override fun hasPermission(query: PermissionQuery, defaultVal: Boolean): Boolean = true
+    override fun sendMessage(message: Component) {
+        capturer.sendMessage(message)
+    }
+
+    override fun sendMessage(message: ComponentLike) {
+        capturer.sendMessage(message)
+    }
 
     fun getOutput(): String = capturer.getResult()
+
+    override fun hasPermission(query: PermissionQuery): Boolean {
+        return true
+    }
+
+    override fun hasPermission(
+        query: PermissionQuery,
+        def: Boolean
+    ): Boolean {
+        return true
+    }
 }
