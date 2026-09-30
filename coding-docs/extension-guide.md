@@ -16,8 +16,8 @@ repositories {
 }
 
 dependencies {
-    // 仅依赖公开 API 契约，避免引入实现层脏依赖
-    compileOnly("me.regadpole.plumbot:api:3.0.0")
+    // 仅依赖公开 API 契约，版本号请填入当前发布的具体版本（如 3.0.0 或 3.0.1-beta1）
+    compileOnly("me.regadpole.plumbot:api:<version>")
 }
 ```
 
