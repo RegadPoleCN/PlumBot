@@ -1,0 +1,25 @@
+{
+  "Group": "RegadPole",
+  "Name": "PlumBot",
+  "Version": "${version}",
+  "Description": "A QQ/IM bot plugin",
+  "Authors": [
+    {
+      "Name": "RegadPole",
+      "Email": "1651233735@qq.com",
+      "Url": "https://github.com/RegadPoleCN"
+    }
+  ],
+  "Website": "https://blog.regadpole.top",
+  "DisabledByDefault": false,
+  "IncludesAssetPack": false,
+  "Dependencies": {
+  },
+  "OptionalDependencies": {
+  },
+  "ServerVersion": ">=0.5.3",
+  "Main": "me.regadpole.plumbot.hytale.PlumBotHytale",
+  "UpdateChecker": {
+    "CurseForge": ""
+  }
+}
