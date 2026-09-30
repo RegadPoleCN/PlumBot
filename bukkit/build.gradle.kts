@@ -18,7 +18,7 @@ dependencies {
     // libby
     implementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
     // miraimc
-    compileOnly("io.github.dreamvoid:MiraiMC-Bukkit:1.9")
+    compileOnly("io.github.dreamvoid:MiraiMC-Bukkit:1.9.2")
 }
 
 tasks {
