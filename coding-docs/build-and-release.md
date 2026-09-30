@@ -44,7 +44,8 @@
    PlumBot/
    └── dist/
        ├── PlumBot-Bukkit.jar     # 用于 Paper/Spigot 实体后端子服
-       └── PlumBot-Velocity.jar   # 用于 Velocity 跨服代理端
+       ├── PlumBot-Velocity.jar   # 用于 Velocity 跨服代理端
+       └── PlumBot-Hytale.jar     # 用于 Hytale 官方实体服务端
    ```
 
 ---

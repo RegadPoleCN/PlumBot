@@ -48,6 +48,7 @@ PlumBot/
 ├── common/         # 平台无关核心逻辑（敏感词过滤、白名单服务、数据库持久层、命令分发、回显捕获器）
 ├── bukkit/         # Paper/Bukkit 实体子服宿主实现、多源类库动态加载器
 ├── velocity/       # Velocity 跨服代理端宿主实现 (支持前置白名单鉴权、跨服换服广播)
+├── hytale/         # Hytale 官方实体服务端宿主实现 (支持握手鉴权、ECS 世界性能采样)
 └── adapter/
     ├── onebot/     # 基于纯协程 WebSocket 的 OneBot v11 独立适配层 (全平台支持)
     └── miraimc/    # MiraiMC 协议桥接适配层 (支持 Bukkit 与 Velocity)
@@ -77,6 +78,7 @@ PlumBot/
 构建完成后，`dist/` 目录将直接生成：
 - `dist/PlumBot-Bukkit.jar` (适用于 Spigot/Paper/Purpur 后端子服)
 - `dist/PlumBot-Velocity.jar` (适用于 Velocity 跨服代理端)
+- `dist/PlumBot-Hytale.jar` (适用于 Hytale 官方实体服务端)
 
 ---
 
