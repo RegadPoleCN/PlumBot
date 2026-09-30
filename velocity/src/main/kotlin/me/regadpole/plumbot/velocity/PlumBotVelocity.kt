@@ -41,6 +41,7 @@ import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.filter.FilterManagerHolder
 import me.regadpole.plumbot.filter.FilterThesaurusManager
+import me.regadpole.plumbot.internal.BuildConstants
 import me.regadpole.plumbot.internal.createPlumBotApi
 import me.regadpole.plumbot.server.GameEventBridge
 import me.regadpole.plumbot.server.PlayerLoginService
@@ -58,8 +59,8 @@ import kotlin.io.path.pathString
 
 @Plugin(
     id = "plumbot",
-    name = "PlumBot",
-    version = "3.0.0",
+    name = BuildConstants.NAME,
+    version = BuildConstants.VERSION,
     description = "Minecraft and QQ Bot cross-platform sync bridge",
     authors = ["RegadPole"],
     dependencies = [
@@ -73,8 +74,8 @@ class PlumBotVelocity @Inject constructor(
     val pluginManager: PluginManager
 ) : PlumBot, me.regadpole.plumbot.api.Plugin {
 
-    override val name: String = "PlumBot"
-    override val version: String = "3.0.0"
+    override val name: String = BuildConstants.NAME
+    override val version: String = BuildConstants.VERSION
     override var isEnabled: Boolean = false
 
     override lateinit var datasource: YamlConfigurator

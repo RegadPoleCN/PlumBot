@@ -32,6 +32,32 @@ kotlin {
     jvmToolchain(21)
 }
 
+val generateBuildConstants = tasks.register("generateBuildConstants") {
+    val outputDir = layout.buildDirectory.dir("generated/sources/buildConstants/kotlin")
+    val projectVersion = rootProject.version.toString()
+    inputs.property("version", projectVersion)
+    outputs.dir(outputDir)
+
+    doLast {
+        val dir = outputDir.get().asFile.resolve("me/regadpole/plumbot/internal")
+        dir.mkdirs()
+        dir.resolve("BuildConstants.kt").writeText(
+            """
+            package me.regadpole.plumbot.internal
+
+            object BuildConstants {
+                const val VERSION: String = "$projectVersion"
+                const val NAME: String = "PlumBot"
+            }
+            """.trimIndent()
+        )
+    }
+}
+
+kotlin.sourceSets.named("main") {
+    kotlin.srcDir(generateBuildConstants)
+}
+
 tasks.withType<Test>().configureEach {
     // Configure all test Gradle tasks to use JUnitPlatform.
     useJUnitPlatform()
