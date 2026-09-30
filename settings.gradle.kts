@@ -16,14 +16,26 @@ dependencyResolutionManagement {
         maven("https://repo.opencollab.dev/main/") {
             name = "opencollab-snapshot"
         }
-        maven("https://repo.alessiodp.com/releases/") {
-            name = "AlessioDP"
+        maven {
+            name = "hytalemoddingSnapshots"
+            url = uri("https://maven.hytalemodding.dev/snapshots")
         }
-        maven("https://repo.alessiodp.com/snapshots/") {
-            name = "AlessioDP Snapshots"
-        }
+//        maven("https://repo.alessiodp.com/releases/") {
+//            name = "AlessioDP"
+//        }
+//        maven("https://repo.alessiodp.com/snapshots/") {
+//            name = "AlessioDP Snapshots"
+//        }
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") {
             name = "maven-snapshots"
+        }
+        maven {
+            name = "hytale"
+            url = uri("https://maven.hytale.com/release") // Or "hytale-pre-release" for pre-release versions
+        }
+        maven {
+            name = "ArikSquad"
+            url = uri("https://repo.codemc.io/repository/ArikSquad/")
         }
     }
 }
@@ -37,6 +49,7 @@ include(":api")
 include(":common") 
 include(":bukkit")
 include(":velocity")
+include(":hytale")
 include(":adapter:onebot")
 include(":adapter:miraimc")
 

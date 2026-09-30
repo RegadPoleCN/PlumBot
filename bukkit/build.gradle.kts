@@ -14,11 +14,11 @@ dependencies {
     testImplementation(kotlin("test"))
     // bukkit
     compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")
-    implementation("net.kyori:adventure-platform-bukkit:4.4.0")
+    implementation(libs.adventureBukkit)
     // libby
-    implementation("com.alessiodp.libby:libby-bukkit:2.0.0-SNAPSHOT")
+    implementation(libs.libbyBukkit)
     // miraimc
-    compileOnly("io.github.dreamvoid:MiraiMC-Bukkit:1.9")
+    compileOnly(libs.miraimcBukkit)
 }
 
 tasks {

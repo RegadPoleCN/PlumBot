@@ -17,8 +17,9 @@ guava = "21.0"
 aonebot = "1.0.11-beta"
 miraimcVersion = "1.9"
 adventureVersion = "4.21.0"
-adventurePlatformBukkitVersion = "4.4.0"
-libbyVersion = "2.0.0-SNAPSHOT"
+adventureBukkit = "4.4.0"
+adventureHytale = "1.1.0"
+libbyVersion = "2.0.2-SNAPSHOT"
 aedileVersion = "2.0.3"
 shadowVersion = "9.1.0"
 velocityVersion = "3.5.1"
@@ -43,10 +44,12 @@ miraimcVelocity = { module = "io.github.dreamvoid:MiraiMC-Velocity", version.ref
 adventureApi = { module = "net.kyori:adventure-api", version.ref = "adventureVersion" }
 adventureTextMinimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventureVersion" }
 adventureTextSerializerLegacy = { module = "net.kyori:adventure-text-serializer-legacy", version.ref = "adventureVersion" }
-adventurePlatformBukkit = { module = "net.kyori:adventure-platform-bukkit", version.ref = "adventurePlatformBukkitVersion" }
+adventureBukkit = { module = "net.kyori:adventure-platform-bukkit", version.ref = "adventureBukkit" }
+adventureHytale = { module = "eu.mikart.adventure:adventure-platform-hytale", version.ref = "adventureHytale" }
 libbyCore = { module = "com.alessiodp.libby:libby-core", version.ref = "libbyVersion" }
 libbyBukkit = { module = "com.alessiodp.libby:libby-bukkit", version.ref = "libbyVersion" }
 libbyVelocity = { module = "com.alessiodp.libby:libby-velocity", version.ref = "libbyVersion" }
+libbyHytale = { module = "com.alessiodp.libby:libby-hytale", version.ref = "libbyVersion" }
 velocityApi = { module = "com.velocitypowered:velocity-api", version.ref = "velocityVersion" }
 aedile = { module = "com.sksamuel.aedile:aedile-core", version.ref = "aedileVersion" }
 shadowGradlePlugin = { module = "com.gradleup.shadow:shadow-gradle-plugin", version.ref = "shadowVersion" }
