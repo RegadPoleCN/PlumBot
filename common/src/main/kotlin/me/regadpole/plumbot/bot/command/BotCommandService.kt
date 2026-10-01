@@ -91,11 +91,8 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
 
     fun checkPlayerExists(player: String): Boolean = DatabaseProvider.getBindByName(player) != null
 
-    fun checkUserBindingFull(userId: String): Boolean {
-        val wl = DatabaseProvider.getBindByUser(userId)
-        if (wl.isEmpty()) return false
-        return wl.size >= config.getInteger("feature", "bind", "maxNum")
-    }
+    fun checkUserBindingFull(userId: String): Boolean =
+        DatabaseProvider.getBindByUser(userId).size >= config.getInteger("feature", "bind", "maxNum")
 
     fun checkPlayerBelongToUser(player: String, userId: String): Boolean =
         DatabaseProvider.getBindByName(player).equals(userId)

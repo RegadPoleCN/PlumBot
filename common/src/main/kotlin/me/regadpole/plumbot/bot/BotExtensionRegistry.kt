@@ -20,10 +20,8 @@ package me.regadpole.plumbot.bot
 
 import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.PublicApi
-import me.regadpole.plumbot.api.bot.BotAdapterMetadata
 import me.regadpole.plumbot.api.bot.BotExtensionRegistry
 import me.regadpole.plumbot.api.bot.BotFactory
-import me.regadpole.plumbot.internal.LogLevel
 
 /**
  * Runtime registry for **third-party** bot adapters.
@@ -124,7 +122,7 @@ class DefaultBotExtensionRegistry internal constructor(
     @PublicApi
     override fun unregisterAllFor(plugin: Plugin): Int {
         synchronized(lock) {
-            val keys = registrations.keys.filter { it.second === plugin || it.second == plugin }
+            val keys = registrations.keys.filter { it.second == plugin }
             if (keys.isEmpty()) return 0
             keys.forEach { registrations.remove(it) }
             // Group remaining types: only call unregisterFactory for types where this
@@ -145,9 +143,7 @@ class DefaultBotExtensionRegistry internal constructor(
 
     private fun debug(message: String) {
         val plugin = BotEventDispatcher.attachedPlugin
-        if (plugin != null) {
-            plugin.log(me.regadpole.plumbot.internal.LogLevel.DEBUG, message)
-        }
+        plugin?.log(me.regadpole.plumbot.internal.LogLevel.DEBUG, message)
     }
 
     /**
