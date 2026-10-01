@@ -34,9 +34,7 @@ class HytalePluginListener {
         if (pluginBase !is JavaPlugin) return
         val plugin = HytalePlugin(pluginBase)
         val api = runCatching { PlumBotAPI.get() }.getOrNull()
-        if (api != null) {
-            api.extensionRegistry.unregisterAllFor(plugin)
-        }
+        api?.extensionRegistry?.unregisterAllFor(plugin)
         BotEventDispatcher.unregisterAllFor(plugin)
     }
 }

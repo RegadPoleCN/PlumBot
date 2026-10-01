@@ -94,17 +94,18 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         val useMirai = botType.equals("miraimc", ignoreCase = true)
         val miraiAvailable = Bukkit.getPluginManager().isPluginEnabled("MiraiMC")
 
-        if (useMirai && !miraiAvailable) {
-            logger.severe("MiraiMC is not enabled! Please install MiraiMC to use Mirai bot.")
-            Bukkit.getPluginManager().disablePlugin(this)
-            return
-        }
-
         BotProvider.clearFactories()
-        BotProvider.registerFactory(OneBotFactory)
-        if (useMirai && miraiAvailable) {
-            BotProvider.registerFactory(MiraiMCFactory)
+        if (useMirai) {
+            if (!miraiAvailable) {
+                logger.severe("MiraiMC is not enabled! Please install MiraiMC to use Mirai bot.")
+                Bukkit.getPluginManager().disablePlugin(this)
+                return
+            } else {
+                BotProvider.registerFactory(MiraiMCFactory)
+            }
         }
+        BotProvider.registerFactory(OneBotFactory)
+
 
         val apiImpl = me.regadpole.plumbot.internal.createPlumBotApi(this)
         me.regadpole.plumbot.api.PlumBotApiProvider.register(apiImpl)
@@ -132,7 +133,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
         val mainCommand = me.regadpole.plumbot.bukkit.command.PlumBotCommand(this)
         getCommand("plumbot")?.apply {
-            setExecutor(mainCommand)
+            executor = mainCommand
             tabCompleter = mainCommand
         }
 

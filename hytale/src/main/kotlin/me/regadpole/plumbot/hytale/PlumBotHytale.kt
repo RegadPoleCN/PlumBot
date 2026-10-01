@@ -24,7 +24,6 @@ import kotlinx.coroutines.runBlocking
 import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.adapter.onebot.OneBotFactory
-import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.api.PlumBotApiProvider
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext

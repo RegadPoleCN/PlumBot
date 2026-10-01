@@ -115,8 +115,7 @@ class ServerListener(private val plugin: PlumBot) : Listener {
             val displayObj = displayMethod?.invoke(advancement)
             if (displayObj != null) {
                 val titleMethod = displayObj.javaClass.methods.firstOrNull { it.name == "getTitle" || it.name == "title" }
-                val titleObj = titleMethod?.invoke(displayObj)
-                when (titleObj) {
+                when (val titleObj = titleMethod?.invoke(displayObj)) {
                     is net.kyori.adventure.text.Component -> getPlainTextFromComponent(titleObj)
                     is String -> titleObj
                     else -> titleObj?.toString() ?: ""

@@ -130,17 +130,18 @@ class PlumBotVelocity @Inject constructor(
         val useMirai = botType.equals("miraimc", ignoreCase = true)
         val miraiAvailable = server.pluginManager.isLoaded("miraimc")
 
-        if (useMirai && !miraiAvailable) {
-            slf4jLogger.error("[PlumBot] MiraiMC 插件未加载！若要使用 Mirai bot，请在 Velocity 代理端安装 MiraiMC。")
-            return
-        }
-
         BotProvider.clearFactories()
-        BotProvider.registerFactory(OneBotFactory)
-        if (useMirai && miraiAvailable) {
-            BotProvider.registerFactory(MiraiMCFactory)
-            server.eventManager.register(this, VelocityMiraiMCListener(this))
+        if (useMirai) {
+            if (!miraiAvailable) {
+                slf4jLogger.error("[PlumBot] MiraiMC 插件未加载！若要使用 Mirai bot，请在 Velocity 代理端安装 MiraiMC。")
+                pluginManager.getPlugin("plumbot").get().executorService.shutdown()
+                return
+            } else {
+                BotProvider.registerFactory(MiraiMCFactory)
+                server.eventManager.register(this, VelocityMiraiMCListener(this))
+            }
         }
+        BotProvider.registerFactory(OneBotFactory)
 
         val apiImpl = createPlumBotApi(this)
         PlumBotApiProvider.register(apiImpl)
