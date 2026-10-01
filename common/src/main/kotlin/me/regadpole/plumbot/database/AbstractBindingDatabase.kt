@@ -85,27 +85,30 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         }.firstOrNull { this })
     }
 
-    override fun addBind(user: Long, name: String) {
+    override fun addBind(user: String, name: String) {
         val cleanName = normalize(name)
+        val cleanUser = user.trim()
         val now = System.currentTimeMillis().toString()
         table.insert(dataSource, "user_id", "player_name", "binding_time") {
-            value(user, cleanName, now)
+            value(cleanUser, cleanName, now)
         }
     }
 
-    override fun removeBindByNum(user: Long, id: Int): String? {
+    override fun removeBindByNum(user: String, id: Int): String? {
+        val cleanUser = user.trim()
         val arg = table.select(dataSource) {
-            where { "user_id" eq user and ("id" eq id) }
+            where { "user_id" eq cleanUser and ("id" eq id) }
         }.firstOrNull { getString("player_name") }
         table.delete(dataSource) {
-            where { "user_id" eq user and ("id" eq id) }
+            where { "user_id" eq cleanUser and ("id" eq id) }
         }
         return arg
     }
 
-    override fun removeBind(user: Long) {
+    override fun removeBindByUser(user: String) {
+        val cleanUser = user.trim()
         table.delete(dataSource) {
-            where { "user_id" eq user }
+            where { "user_id" eq cleanUser }
         }
     }
 

@@ -19,8 +19,7 @@
 package me.regadpole.plumbot.database
 
 import me.regadpole.plumbot.api.database.IDatabase
-import me.regadpole.plumbot.api.database.Binding
-import java.util.UUID
+import java.util.*
 
 object DatabaseProvider {
 
@@ -61,10 +60,18 @@ object DatabaseProvider {
         val map: MutableMap<String, Int> = LinkedHashMap()
         val info = loadedDatabase.getByUser(user)
         info.forEach {
-            (map as java.util.LinkedHashMap<String, Int>)[it.playerName] = it.id
+            (map as LinkedHashMap<String, Int>)[it.playerName] = it.id
         }
         return map
     }
+
+    fun getBindByUser(user: Long): MutableMap<String, Int> = getBindByUser(user.toString())
+    fun addBind(user: Long, name: String) = loadedDatabase.addBind(user, name)
+    fun addBind(user: String, name: String) = loadedDatabase.addBind(user, name)
+    fun removeBindByUser(user: Long) = loadedDatabase.removeBindByUser(user.toString())
+    fun removeBindByUser(user: String) = loadedDatabase.removeBindByUser(user)
+    fun removeBind(user: Long) = loadedDatabase.removeBindByUser(user.toString())
+    fun removeBind(name: String) = loadedDatabase.removeBind(name)
     fun getBindByName(name: String): String? {
         return loadedDatabase.getByName(name)?.userId
     }

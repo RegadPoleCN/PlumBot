@@ -38,11 +38,16 @@ interface IDatabase {
     fun getByName(name: String): Binding?
     fun getById(id: Int): Binding?
 
-    fun addBind(user: Long, name: String)
-
-    fun removeBindByNum(user: Long, id: Int): String?
-    fun removeBind(user: Long)
+    fun addBind(user: String, name: String)
+    fun removeBindByNum(user: String, id: Int): String?
+    fun removeBindByUser(user: String)
     fun removeBind(name: String)
 
     fun setUUID(name: String, uuid: UUID)
+
+    fun getByUser(user: Long): List<Binding> = getByUser(user.toString())
+    fun addBind(user: Long, name: String) = addBind(user.toString(), name)
+    fun removeBindByNum(user: Long, id: Int): String? = removeBindByNum(user.toString(), id)
+    fun removeBindByUser(user: Long) = removeBindByUser(user.toString())
+    fun removeBind(user: Long) = removeBindByUser(user.toString())
 }

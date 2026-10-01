@@ -28,7 +28,7 @@ class MySQL(node: ConfigurationNode) : AbstractBindingDatabase<HostSQL, SQL>(Hos
 
     override val tableName = "binding"
     override fun SQL.configureIdColumn() = id()
-    override fun SQL.configureUserIdColumn() = type(ColumnTypeSQL.BIGINT)
+    override fun SQL.configureUserIdColumn() = type(ColumnTypeSQL.VARCHAR, 64)
     override fun SQL.configurePlayerNameColumn() = type(ColumnTypeSQL.VARCHAR, 64)
     override fun SQL.configureTextColumn() = type(ColumnTypeSQL.TEXT)
 }

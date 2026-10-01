@@ -27,7 +27,7 @@ class SQLite(path: String) : AbstractBindingDatabase<HostSQLite, SQLite>(HostSQL
 
     override val tableName = "binding"
     override fun SQLite.configureIdColumn() = id()
-    override fun SQLite.configureUserIdColumn() = type(ColumnTypeSQLite.INTEGER)
+    override fun SQLite.configureUserIdColumn() = type(ColumnTypeSQLite.TEXT)
     override fun SQLite.configurePlayerNameColumn() = type(ColumnTypeSQLite.TEXT)
     override fun SQLite.configureTextColumn() = type(ColumnTypeSQLite.TEXT)
 }
