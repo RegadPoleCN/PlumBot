@@ -44,7 +44,7 @@ fun createPlumBotApi(plugin: PlumBot): PlumBotAPI = PlumBotApiImpl(plugin)
 
 internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
 
-    private val playerNameRegex = Regex("""^[a-zA-Z0-9_\.*]{3,16}$""")
+    private val playerNameRegex = Regex("""^[a-zA-Z0-9_.*]{3,16}$""")
 
     override val extensionRegistry: BotExtensionRegistry by lazy {
         DefaultBotExtensionRegistry(BotProvider)

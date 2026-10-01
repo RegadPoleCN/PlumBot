@@ -23,6 +23,7 @@ import me.regadpole.plumbot.api.PublicApi
 import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Future
+import kotlin.time.Duration.Companion.milliseconds
 
 @PublicApi
 object TaskProviderImpl {
@@ -43,34 +44,34 @@ object TaskProviderImpl {
 
     fun submitLater(delay: Long, task: Runnable): Future<*> {
         return launchAsFuture(mainScope) {
-            delay(delay)
+            delay(delay.milliseconds)
             task.run()
         }
     }
 
     fun submitLaterAsync(delay: Long, task: Runnable): Future<*> {
         return launchAsFuture(asyncScope) {
-            delay(delay)
+            delay(delay.milliseconds)
             task.run()
         }
     }
 
     fun submitTimer(delay: Long, period: Long, task: Runnable): Future<*> {
         return launchAsFuture(mainScope) {
-            delay(delay)
+            delay(delay.milliseconds)
             while (isActive) {
                 task.run()
-                delay(period)
+                delay(period.milliseconds)
             }
         }
     }
 
     fun submitTimerAsync(delay: Long, period: Long, task: Runnable): Future<*> {
         return launchAsFuture(asyncScope) {
-            delay(delay)
+            delay(delay.milliseconds)
             while (isActive) {
                 task.run()
-                delay(period)
+                delay(period.milliseconds)
             }
         }
     }

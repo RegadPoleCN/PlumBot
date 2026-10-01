@@ -49,6 +49,3 @@ data class GroupMemberDecreaseEvent(
     val userId: Long,
     val timestamp: Long,
 )
-
-/** Alias for compatibility before v3 release if any */
-typealias UserDecreaseEvent = GroupMemberDecreaseEvent

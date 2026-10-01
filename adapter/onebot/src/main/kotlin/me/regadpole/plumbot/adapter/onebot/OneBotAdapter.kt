@@ -18,16 +18,15 @@
 
 package me.regadpole.plumbot.adapter.onebot
 
-import com.google.gson.JsonArray
 import kotlinx.coroutines.*
-import me.regadpole.plumbot.api.bot.IBot
-import me.regadpole.plumbot.config.Messages
-import me.regadpole.plumbot.bot.AbstractBotAdapter
 import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.bot.MemberInfo
+import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.bot.AbstractBotAdapter
+import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.listener.DefaultBotHandler
-import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.utils.TextToImg
 import top.alazeprt.aonebot.action.GetGroupInfo
 import top.alazeprt.aonebot.action.GetGroupMemberInfo
@@ -37,6 +36,7 @@ import top.alazeprt.aonebot.result.Group
 import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.time.Duration.Companion.milliseconds
 
 class OneBotAdapter(
     override val context: PlatformContext,
@@ -105,11 +105,11 @@ class OneBotAdapter(
                         preloadGroupCaches()
                     }
                     retryDelaySeconds = 5L
-                    delay(3000L) // 正常在线时，每隔 3 秒检测一次连接心跳
+                    delay(3000L.milliseconds) // 正常在线时，每隔 3 秒检测一次连接心跳
                 } else {
                     isPreloaded.set(false)
                     log(LogLevel.WARN, "[OneBot] 检测到 WebSocket 未处于连接状态，${retryDelaySeconds} 秒后尝试自动重连...")
-                    delay(retryDelaySeconds * 1000L)
+                    delay((retryDelaySeconds * 1000L).milliseconds)
 
                     if (!isRunning.get()) break
                     try {

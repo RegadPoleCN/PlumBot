@@ -20,8 +20,9 @@ package me.regadpole.plumbot.utils
 
 import java.awt.*
 import java.awt.image.BufferedImage
-import java.io.*
-import java.util.*
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.io.IOException
 import javax.imageio.ImageIO
 import javax.imageio.stream.MemoryCacheImageOutputStream
 

@@ -18,18 +18,10 @@
 
 package me.regadpole.plumbot
 
-import kotlinx.coroutines.runBlocking
 import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.api.PlumBotApiProvider
-import me.regadpole.plumbot.api.exception.BotNotReadyException
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 class PlumBotAPITest {
 

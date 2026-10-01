@@ -18,10 +18,9 @@
 
 package me.regadpole.plumbot.bot.command.whitelist
 
-import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.bot.command.BotCommandService
+import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.database.DatabaseProvider
-import java.sql.SQLException
 
 class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
 

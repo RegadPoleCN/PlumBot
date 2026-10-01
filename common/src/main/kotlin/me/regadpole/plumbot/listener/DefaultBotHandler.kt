@@ -130,10 +130,10 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
         val helpLines = Messages.help.ifEmpty {
             listOf(
                 "PlumBot 帮助",
-                "%cmdprefix%\$list   - 查看在线人数",
-                "%cmdprefix%\$addBind <游戏名>   - 申请白名单",
-                "%cmdprefix%\$deleteBind <游戏名>   - 移除白名单",
-                "%cmdprefix%\$queryBind   - 查询自己申请的所有白名单"
+                $$"%cmdprefix%$list   - 查看在线人数",
+                $$"%cmdprefix%$addBind <游戏名>   - 申请白名单",
+                $$"%cmdprefix%$deleteBind <游戏名>   - 移除白名单",
+                $$"%cmdprefix%$queryBind   - 查询自己申请的所有白名单"
             )
         }
         val keys = commandService.config.getSubConfig("keys")
@@ -146,12 +146,12 @@ class DefaultBotHandler(context: PlatformContext, bot: IBot): BotHandler {
 
         val formatted = helpLines.joinToString("\n")
             .replace("%cmdprefix%", prefix)
-            .replace("\$list", listKey)
-            .replace("\$addBind", addBindKey)
-            .replace("\$deleteBind", deleteBindKey)
-            .replace("\$queryBind", queryBindKey)
-            .replace("\$status", statusKey)
-            .replace("\$remote_console", remoteConsoleKey)
+            .replace($$"$list", listKey)
+            .replace($$"$addBind", addBindKey)
+            .replace($$"$deleteBind", deleteBindKey)
+            .replace($$"$queryBind", queryBindKey)
+            .replace($$"$status", statusKey)
+            .replace($$"$remote_console", remoteConsoleKey)
 
         commandService.sendBindMessage(groupId, formatted)
     }

@@ -42,7 +42,7 @@ abstract class AbstractBotAdapter : IBot {
     override var handler: BotHandler? = null
 
     val groupMemberCache: DefaultGroupMemberCache by lazy { DefaultGroupMemberCache(::fetchMember) }
-    private val groupNameCache = DefaultBotCache<Long, String>(::loadGroupName)
+    private val groupNameCache = DefaultBotCache(::loadGroupName)
 
     override fun sendMsg(isGroup: Boolean, targetId: Long, message: String?, isPic: Boolean) {
         if (message.isNullOrEmpty()) return

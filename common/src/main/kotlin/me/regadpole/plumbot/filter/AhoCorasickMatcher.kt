@@ -101,10 +101,10 @@ class AhoCorasickMatcher(words: Collection<String>) {
         val sb = StringBuilder()
         var lastIndex = 0
 
-        for (span in mergedSpans) {
-            sb.append(text, lastIndex, span.start)
+        for ((start, end) in mergedSpans) {
+            sb.append(text, lastIndex, start)
             sb.append(replacement)
-            lastIndex = span.end
+            lastIndex = end
         }
         if (lastIndex < text.length) {
             sb.append(text, lastIndex, text.length)

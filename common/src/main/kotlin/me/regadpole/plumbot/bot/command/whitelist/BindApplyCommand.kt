@@ -24,7 +24,7 @@ import me.regadpole.plumbot.database.DatabaseProvider
 
 class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
 
-    private val playerNameRegex = Regex("""^[a-zA-Z0-9_\.*]{3,16}$""")
+    private val playerNameRegex = Regex("""^[a-zA-Z0-9_.*]{3,16}$""")
 
     override fun handle(message: String, groupId: Long, userId: Long) {
         val args = message.trim().split(Regex("""\s+""")).filter { it.isNotEmpty() }

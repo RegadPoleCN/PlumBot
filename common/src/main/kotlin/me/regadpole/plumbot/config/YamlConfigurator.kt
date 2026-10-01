@@ -36,7 +36,7 @@ class YamlConfigurator(config: ConfigurationNode) : AbstractConfigurator<YamlCon
     companion object {
         @JvmStatic
         fun createConfig(folder: Path, fileName: String): YamlConfigurator? {
-            return AbstractConfigurator.createConfig(folder, fileName, ::YamlConfigurator, YamlConfigurationLoader::builder)
+            return createConfig(folder, fileName, ::YamlConfigurator, YamlConfigurationLoader::builder)
         }
     }
 }
