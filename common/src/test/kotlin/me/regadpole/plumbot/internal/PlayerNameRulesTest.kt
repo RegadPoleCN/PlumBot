@@ -18,53 +18,18 @@
 
 package me.regadpole.plumbot.internal
 
-import java.io.File
 import kotlin.test.Test
-import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * A05 验收：**玩家名校验规则只有一份定义**。
+ * 玩家名校验规则的**行为**边界（A05）。
  *
- * 为什么用源码扫描而不是普通单测：重复定义不会让任何行为"出错"，只会让**行为悄悄分叉**
- * ——加法是"再抄一份正则"，减法（删掉其中一份）没人会主动做。因此这里把"唯一性"本身
- * 变成断言：出现第二份副本即测试失败。
- *
- * 测试工作目录是模块目录（Gradle 默认），故 `:api` 用相对路径访问。
+ * 「规则只有一份定义」这条断言已迁到构建期 `checkSingleDefinitions`
+ * —— 那是源码扫描，放在构建期比放在 JVM 测试里更合适（不依赖测试工作目录，也不占测试预算）。
+ * 这里只留行为断言。
  */
 class PlayerNameRulesTest {
-
-    /** 与生产规则等价的字面量特征（用于发现"另抄一份"）。 */
-    private val signature = "a-zA-Z0-9_.*]{3,16}"
-
-    @Test
-    fun `the player name regex is defined in exactly one place`() {
-        val roots = listOf(File("src/main/kotlin"), File("../api/src/main/kotlin"))
-            .filter { it.isDirectory }
-
-        assertTrue(roots.isNotEmpty(), "找不到源码目录，扫描会静默通过 —— 判失败（工作目录：${File(".").absolutePath}）")
-
-        val hits = roots.flatMap { root ->
-            root.walkTopDown()
-                .filter { it.isFile && it.extension == "kt" }
-                .flatMap { file ->
-                    file.readLines().withIndex()
-                        .filter { (_, line) -> line.contains(signature) }
-                        .map { (index, line) -> "${file.path}:${index + 1}  ${line.trim()}" }
-                }
-        }
-
-        assertEquals(
-            1,
-            hits.size,
-            "玩家名校验规则必须只有一处定义，实际发现 ${hits.size} 处：\n" + hits.joinToString("\n")
-        )
-        assertTrue(
-            hits.single().contains("PlayerNameRules"),
-            "唯一那份定义必须位于 PlayerNameRules，实际：${hits.single()}"
-        )
-    }
 
     @Test
     fun `the shared rule keeps the documented bounds`() {

@@ -606,10 +606,77 @@ val checkRuntimeLibraries = tasks.register("checkRuntimeLibraries") {
  * 于是"本地全绿 / CI 全绿"并不包含模块边界与协议清单校验，纪律可以静默回退。
  * 与 `:api` 的 `checkApiContract`（已挂在 `:api:check`）保持一致。
  */
+/**
+ * 单一真源校验：某些"只应有一份"的定义不得在源码里出现第二份。
+ *
+ * 为什么放进构建期而不是 JVM 测试：这项断言原先写在 `PlayerNameRulesTest` 里（约 90 行，
+ * 且依赖"测试工作目录"这一脆弱前提）。同样的事在构建期只需一次目录扫描 —— **校验位置越靠边越好**。
+ *
+ * 与"5 个校验冻结数量"的关系：本任务不是新增安全面，而是**把一处测试断言搬到更合适的位置**
+ * （净减约 65 行），已按冻结规则说明理由。
+ *
+ * 防空转：源码目录缺失或没扫到任何 `.kt` 文件时**判失败**（否则"扫不到 → 通过"就是假绿）。
+ */
+val checkSingleDefinitions = tasks.register("checkSingleDefinitions") {
+    group = "verification"
+    description = "Asserts single-source definitions are not duplicated across modules."
+
+    val roots = listOf(
+        layout.projectDirectory.dir("common/src/main/kotlin"),
+        layout.projectDirectory.dir("api/src/main/kotlin"),
+    )
+    val needles = mapOf(
+        // 玩家名校验规则：只允许存在于 PlayerNameRules（A05）。两份副本会各自演化，
+        // 造成"群里能绑、走 API 绑不上"这类静默不一致。
+        "a-zA-Z0-9_.*]{3,16}" to "玩家名校验规则（应仅存在于 PlayerNameRules）",
+    )
+
+    doLast {
+        val missing = roots.filterNot { it.asFile.isDirectory }
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "checkSingleDefinitions: 源码目录缺失 —— 扫描会静默通过，判失败：\n" +
+                    missing.joinToString("\n") { "  - ${it.asFile.path}" }
+            )
+        }
+
+        var scanned = 0
+        needles.forEach { (needle, label) ->
+            val hits = mutableListOf<String>()
+            roots.forEach { root ->
+                root.asFile.walkTopDown()
+                    .filter { it.isFile && it.extension == "kt" }
+                    .forEach { file ->
+                        scanned++
+                        file.readLines().forEachIndexed { index, line ->
+                            if (line.contains(needle)) {
+                                hits += "${file.relativeTo(layout.projectDirectory.asFile)}:${index + 1}"
+                            }
+                        }
+                    }
+            }
+            if (scanned == 0) {
+                throw GradleException("checkSingleDefinitions: 未扫描到任何 .kt 文件 —— 判失败。")
+            }
+            if (hits.size != 1) {
+                throw GradleException(
+                    "checkSingleDefinitions failed: 「$label」应有且仅有一处定义，实际 ${hits.size} 处：\n" +
+                        hits.joinToString("\n") { "  - $it" }
+                )
+            }
+        }
+
+        println("checkSingleDefinitions: 单一真源校验通过（${needles.size} 条规则，扫描 $scanned 个文件）。")
+    }
+}
+
+/**
+ * 与 `:api` 的 `checkApiContract`（已挂在 `:api:check`）保持一致。
+ */
 subprojects {
     plugins.withId("base") {
         tasks.named("check") {
-            dependsOn(checkRenderBoundaries, checkRenderProtocol, checkRuntimeLibraries)
+            dependsOn(checkRenderBoundaries, checkRenderProtocol, checkRuntimeLibraries, checkSingleDefinitions)
         }
     }
 }

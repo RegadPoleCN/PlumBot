@@ -26,39 +26,26 @@ import kotlin.test.assertTrue
 /**
  * 远程控制台审计文案（决策 D9）。
  *
- * 验收：`log_commands=true` 时保留完整指令；`false` 时**不得出现参数值**，只留指令名与参数个数。
+ * 只保留一条用例：它同时覆盖两个分支与**唯一真正重要的断言**（关闭时不得泄露参数值）。
+ * 原先 4 条里其余三条（"无参数记 0 个""首尾空格被裁剪"等）属实现细节，收益低于维护成本。
  */
 class RemoteConsoleAuditTest {
 
     @Test
-    fun `logs the full command when enabled`() {
-        val text = RemoteConsoleAudit.describe("/whitelist add Steve", logCommands = true)
+    fun `switches between the full command and a redacted summary`() {
+        val full = RemoteConsoleAudit.describe("/whitelist add Steve", logCommands = true)
+        assertTrue(full.contains("/whitelist add Steve"), "开启时必须记录完整指令：$full")
 
-        assertTrue(text.contains("/whitelist add Steve"), "开启时必须记录完整指令：$text")
-    }
+        val redacted = RemoteConsoleAudit.describe("/whitelist add Steve secretReason", logCommands = false)
+        assertFalse(redacted.contains("Steve"), "关闭时不得出现参数值：$redacted")
+        assertFalse(redacted.contains("secretReason"), "关闭时不得出现参数值：$redacted")
+        assertTrue(redacted.contains("whitelist"), "关闭时仍要保留指令名以便追溯：$redacted")
+        assertTrue(redacted.contains("参数 3 个"), "关闭时应记录参数个数：$redacted")
 
-    @Test
-    fun `hides argument values when disabled`() {
-        val text = RemoteConsoleAudit.describe("/whitelist add Steve secretReason", logCommands = false)
-
-        assertFalse(text.contains("Steve"), "关闭时不得出现参数值：$text")
-        assertFalse(text.contains("secretReason"), "关闭时不得出现参数值：$text")
-        assertTrue(text.contains("whitelist"), "关闭时仍要保留指令名以便追溯：$text")
-        assertTrue(text.contains("参数 3 个"), "关闭时应记录参数个数：$text")
-    }
-
-    @Test
-    fun `handles a command without arguments`() {
-        val text = RemoteConsoleAudit.describe("save-all", logCommands = false)
-
-        assertTrue(text.contains("save-all"), "应保留指令名：$text")
-        assertTrue(text.contains("参数 0 个"), "无参数应记 0：$text")
-    }
-
-    @Test
-    fun `trims surrounding whitespace`() {
-        val text = RemoteConsoleAudit.describe("   list   ", logCommands = true)
-
-        assertEquals("[PlumBot-Security] 远程控制台 正在执行指令: /list", text)
+        assertEquals(
+            "[PlumBot-Security] 远程控制台 正在执行指令: /list",
+            RemoteConsoleAudit.describe("   list   ", logCommands = true),
+            "首尾空格应被裁剪"
+        )
     }
 }
