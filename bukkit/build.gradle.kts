@@ -5,21 +5,17 @@ plugins {
 
 dependencies {
     implementation(project(":common"))
+    // 显式依赖：平台层需要装配渲染门户（RenderProvider）并实现 RenderLibraryLoader SPI
+    implementation(project(":render"))
     implementation(project(":adapter:onebot"))
     implementation(project(":adapter:miraimc"))
-    // kotlin
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation(kotlin("reflect"))
-    implementation(libs.bundles.kotlinxEcosystem)
     testImplementation(kotlin("test"))
+
     // bukkit
     compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")
     implementation(libs.adventureBukkit)
-    // libby
     implementation(libs.libbyBukkit)
-    // miraimc
     compileOnly(libs.miraimcBukkit)
-    // bstats
     implementation(libs.bstatsBukkit)
 }
 

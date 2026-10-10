@@ -20,12 +20,6 @@ dependencyResolutionManagement {
             name = "hytalemoddingSnapshots"
             url = uri("https://maven.hytalemodding.dev/snapshots")
         }
-//        maven("https://repo.alessiodp.com/releases/") {
-//            name = "AlessioDP"
-//        }
-//        maven("https://repo.alessiodp.com/snapshots/") {
-//            name = "AlessioDP Snapshots"
-//        }
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots/") {
             name = "maven-snapshots"
         }
@@ -46,6 +40,7 @@ plugins {
 
 // 模块清单
 include(":api")
+include(":render")
 include(":common") 
 include(":bukkit")
 include(":velocity")

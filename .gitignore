@@ -48,3 +48,9 @@ bin/
 .trae/
 .omo
 TODO.md
+# 渲染子系统规划/核对文档（本地规划产物，不入库）
+rendertodo*.md
+# 审查/修补文档集（本地评审产物，不入库）
+/coding-docs/review/
+/web-t/
+temp/

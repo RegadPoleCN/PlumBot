@@ -35,15 +35,19 @@ kotlin {
 val generateBuildConstants = tasks.register("generateBuildConstants") {
     val outputDir = layout.buildDirectory.dir("generated/sources/buildConstants/kotlin")
     val projectVersion = rootProject.version.toString()
+    val constantsPackage = "me.regadpole.plumbot.internal"
     inputs.property("version", projectVersion)
+    inputs.property("constantsPackage", constantsPackage)
     outputs.dir(outputDir)
 
     doLast {
-        val dir = outputDir.get().asFile.resolve("me/regadpole/plumbot/internal")
+        val root = outputDir.get().asFile
+        root.deleteRecursively()
+        val dir = root.resolve(constantsPackage.replace('.', '/'))
         dir.mkdirs()
         dir.resolve("BuildConstants.kt").writeText(
             """
-            package me.regadpole.plumbot.internal
+            package $constantsPackage
 
             object BuildConstants {
                 const val VERSION: String = "$projectVersion"
@@ -55,7 +59,18 @@ val generateBuildConstants = tasks.register("generateBuildConstants") {
 }
 
 kotlin.sourceSets.named("main") {
-    kotlin.srcDir(generateBuildConstants)
+    // BuildConstants **按需生成**：它含构建版本号，而旧实现对每个模块都生成一份，
+    // 于是 api/render/common/bukkit/velocity/hytale/onebot/miraimc 各有一份同名的
+    // me.regadpole.plumbot.internal.BuildConstants，shading 时同类相撞、且 7 份是纯死重量。
+    // 需要的模块在自身 build.gradle.kts 中声明：extra["plumbotBuildConstants"] = true
+    //
+    // 必须用 provider **延迟求值**：模块的 extra[...] 在 plugins {} 块之后才赋值，
+    // 而约定插件是在 plugins {} 期间应用的，此处立即求值会永远看到 false（kapt 会因此编译失败）。
+    kotlin.srcDir(
+        provider {
+            if (project.hasProperty("plumbotBuildConstants")) listOf(generateBuildConstants) else emptyList()
+        }
+    )
 }
 
 tasks.withType<Test>().configureEach {

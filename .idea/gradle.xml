@@ -28,6 +28,7 @@
             <option value="$PROJECT_DIR$/bukkit" />
             <option value="$PROJECT_DIR$/common" />
             <option value="$PROJECT_DIR$/hytale" />
+            <option value="$PROJECT_DIR$/render" />
             <option value="$PROJECT_DIR$/velocity" />
           </set>
         </option>

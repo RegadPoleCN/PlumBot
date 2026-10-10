@@ -5,19 +5,15 @@ plugins {
 
 dependencies {
     implementation(project(":common"))
+    // 显式依赖：平台层需要装配渲染门户（RenderProvider）并实现 RenderLibraryLoader SPI
+    implementation(project(":render"))
     implementation(project(":adapter:onebot"))
-    // kotlin
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    implementation(kotlin("reflect"))
-    implementation(libs.bundles.kotlinxEcosystem)
     testImplementation(kotlin("test"))
+
     // hytale
     compileOnly("com.hypixel.hytale:Server:+")
-    // adventure
     implementation(libs.adventureHytale)
-    // libby
     implementation(libs.libbyHytale)
-    // bstats
     implementation(libs.bstatsHytale)
 }
 

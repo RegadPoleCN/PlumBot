@@ -33,7 +33,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Run Tests & Verification
-        run: ./gradlew test check checkApiContract
+        run: ./gradlew test check checkApiContract checkRenderBoundaries checkRenderProtocol
 
       - name: Assemble Distribution Jars
         run: ./gradlew dist
