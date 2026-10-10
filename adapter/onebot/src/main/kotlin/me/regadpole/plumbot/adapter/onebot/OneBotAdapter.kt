@@ -96,6 +96,7 @@ class OneBotAdapter(
             var retryDelaySeconds = 5L
             while (isRunning.get() && isActive) {
                 if (client.isConnected) {
+                    markOnline()
                     // 连接就绪且首次/重连成功后触发预热
                     if (isPreloaded.compareAndSet(false, true)) {
                         log(LogLevel.INFO, "[OneBot] WebSocket 连接已建立，开始后台异步预热群组与成员缓存...")
@@ -105,6 +106,7 @@ class OneBotAdapter(
                     delay(3000L.milliseconds) // 正常在线时，每隔 3 秒检测一次连接心跳
                 } else {
                     isPreloaded.set(false)
+                    markRetrying("WebSocket 断开")
                     // 重连次数计数（A23-②）：断线重连是"看起来还活着但一直在抖"的典型症状，
                     // 只有计数才能从 /status 看出它一直在重连而不是偶发一次。
                     HealthCounters.increment(HealthCounters.Key.BOT_RECONNECTS)

@@ -51,6 +51,8 @@ class MiraiMCAdapter(
             isRunning.set(false)
             throw IllegalStateException("MiraiMC bot $botId is not logged in or does not exist", e)
         }
+        // R02：登录校验通过即视为在线（MiraiMC 无自带重连循环）
+        markOnline()
     }
 
     override fun doShutdown() {

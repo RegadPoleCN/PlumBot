@@ -18,6 +18,8 @@
 
 package me.regadpole.plumbot.bot.command
 
+import me.regadpole.plumbot.api.bot.BotState
+import me.regadpole.plumbot.bot.BotProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -141,6 +143,8 @@ class StatusCommandService(private val service: BotCommandService) {
         return "渲染降级 ${HealthCounters.get(HealthKey.RENDER_FALLBACK)} · 队列拒绝 $queueRejected · " +
             "过滤命中 ${HealthCounters.get(HealthKey.FILTER_HITS)} · 词库失败 ${HealthCounters.get(HealthKey.FILTER_RELOAD_FAILURES)} · " +
             "Bot 启停 ${HealthCounters.get(HealthKey.BOT_STARTED)}/${HealthCounters.get(HealthKey.BOT_UNLOADED)} · " +
+            // R02：把连接状态放进摘要 —— 布尔式的"已连接"看不出"正在重连"，而重连期间消息是发不出去的
+            "状态 ${BotProvider.getBot()?.state ?: BotState.INIT} · " +
             "重连 ${HealthCounters.get(HealthKey.BOT_RECONNECTS)} 次 · " +
             "数据库失败 ${HealthCounters.get(HealthKey.DB_INIT_FAILURES)}"
     }

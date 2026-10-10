@@ -30,6 +30,19 @@ interface IBot {
     val metadata: BotAdapterMetadata
 
     /**
+     * 当前连接状态（R02）。
+     *
+     * **默认实现返回 [BotState.INIT]**：`IBot` 是 `@StableApi`，给默认值可让既有第三方适配器
+     * 不改一行也能编译；实现了状态迁移的适配器（如内置三端）会覆盖它并给出真实状态。
+     *
+     * 使用者应据此判断"现在到底能不能发消息" —— 旧的布尔值无法区分"在线"与"正在重连"。
+     */
+    val state: BotState get() = BotState.INIT
+
+    /** 是否**可用**（等价于 `state == BotState.ONLINE`）；默认实现基于 [state]。 */
+    fun isOnline(): Boolean = state.isUsable
+
+    /**
      * Start a bot
      */
     fun start(): IBot

@@ -58,7 +58,9 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
     /** @deprecated 见 `PlumBotAPI.isBotConnected`（D8 弃用周期）。 */
     @Deprecated("语义含糊，请改用状态查询 API")
     override val isBotConnected: Boolean
-        get() = BotProvider.getBot() != null
+        // R02：语义收紧为「**在线**」。此前只要 Bot 已加载就返回 true，
+        // 于是"正在重连、消息发不出去"时对外仍报"已连接"，误导使用方。
+        get() = BotProvider.getBot()?.state == me.regadpole.plumbot.api.bot.BotState.ONLINE
 
     // ================= 消息发送 =================
 

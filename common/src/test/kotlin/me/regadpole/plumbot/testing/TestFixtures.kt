@@ -193,11 +193,35 @@ open class FakeBot(
 
     override fun doStart() {
         doStartCalled = true
+        failOnStart?.let { throw it }
+        // 同步适配器（MiraiMC/Hytale）在完成初始化后即视为在线
+        if (onlineAfterStart) markOnline()
     }
 
     override fun doShutdown() {
         doShutdownCalled = true
+        failOnShutdown?.let { throw it }
     }
+
+    // ---- 状态机测试钩子（R02）：protected 的 mark* 只能由子类调用 ----
+
+    /** 模拟"连接成功"。 */
+    fun markOnlineForTest() = markOnline()
+
+    /** 模拟"断线进入重连"。 */
+    fun markRetryingForTest(reason: String? = null) = markRetrying(reason)
+
+    /** 模拟"不可恢复失败"。 */
+    fun markFailedForTest(reason: String? = null) = markFailed(reason)
+
+    /** 让 doStart 抛错（验证失败会落到 FAILED）。 */
+    var failOnStart: Throwable? = null
+
+    /** 让 doShutdown 抛错。 */
+    var failOnShutdown: Throwable? = null
+
+    /** doStart 成功后是否自动置为 ONLINE（同步适配器的行为）。 */
+    var onlineAfterStart: Boolean = true
 
     override fun preloadGroupCaches() = Unit
 

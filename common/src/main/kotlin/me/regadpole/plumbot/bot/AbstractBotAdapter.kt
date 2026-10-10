@@ -30,6 +30,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.api.bot.BotAdapterMetadata
 import me.regadpole.plumbot.api.bot.BotHandler
+import me.regadpole.plumbot.api.bot.BotState
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.cache.DefaultBotCache
@@ -269,10 +270,17 @@ abstract class AbstractBotAdapter : IBot {
         message.replace(COLOR_CODE_AMP, "").replace(COLOR_CODE_SECTION, "")
 
     override fun start(): IBot {
+        transitionTo(BotState.CONNECTING)
         handler = DefaultBotHandler(context, this)
 
         // 协议相关初始化（连接、登录校验等），子类实现。
-        doStart()
+        // 失败要落到 FAILED：否则状态会永远停在 CONNECTING，看起来像"还在连"。
+        try {
+            doStart()
+        } catch (t: Throwable) {
+            transitionTo(BotState.FAILED, "启动失败：${t.message}")
+            throw t
+        }
 
         announceLoaded()
 
@@ -282,6 +290,7 @@ abstract class AbstractBotAdapter : IBot {
     }
 
     override fun shutdown() {
+        transitionTo(BotState.STOPPING)
         announceUnloaded()
 
         // 卸载广播是异步出图任务：先有界等待它们结束，再回收作用域，
@@ -304,8 +313,45 @@ abstract class AbstractBotAdapter : IBot {
         groupNameCache.invalidateAll()
 
         // 协议相关关闭逻辑，子类实现。
-        doShutdown()
+        // 关闭异常同样要落到 FAILED（而不是停在 STOPPING），否则状态会永远"正在关闭"。
+        try {
+            doShutdown()
+            transitionTo(BotState.STOPPED)
+        } catch (t: Throwable) {
+            transitionTo(BotState.FAILED, "关闭失败：${t.message}")
+            throw t
+        }
     }
+
+    // ---------- 连接状态机（R02）----------
+
+    @Volatile
+    private var botState: BotState = BotState.INIT
+
+    override val state: BotState get() = botState
+
+    /**
+     * 状态迁移（唯一入口）。
+     *
+     * 只在**变化时**记录一行 INFO —— 状态查询会出现在热路径与状态展示里，
+     * 每次调用都打日志会把控制台刷满。
+     */
+    protected fun transitionTo(next: BotState, detail: String? = null) {
+        val previous = botState
+        if (previous == next) return
+        botState = next
+        val suffix = detail?.let { "（$it）" } ?: ""
+        context.log(LogLevel.INFO, "[PlumBot] Bot 状态：$previous → $next$suffix")
+    }
+
+    /** 子类在**确认连接可用**后调用（OneBot 在 WebSocket 就绪、同步适配器在完成初始化后）。 */
+    protected fun markOnline() = transitionTo(BotState.ONLINE)
+
+    /** 子类在检测到断线并进入重连循环时调用。 */
+    protected fun markRetrying(reason: String? = null) = transitionTo(BotState.RETRYING, reason)
+
+    /** 子类在不可恢复的失败时调用（例如凭据无效、依赖缺失）。 */
+    protected fun markFailed(reason: String? = null) = transitionTo(BotState.FAILED, reason)
 
     override fun getGroupName(groupId: Long): String {
         val future = groupNameCache.get(groupId)
