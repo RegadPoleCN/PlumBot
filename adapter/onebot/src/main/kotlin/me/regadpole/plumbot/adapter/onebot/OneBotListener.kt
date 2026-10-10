@@ -44,7 +44,8 @@ class OneBotListener(private val onebot: OneBotAdapter): Listener {
     @SubscribeBotEvent
     fun onGroupMemberDecrease(event: GroupMemberDecreaseEvent) {
         if (!onebot.context.config.getLongList("groups").contains(event.groupId)) return
-        onebot.groupMemberCache.invalidate(event.groupId, event.userId)
+        // 成员缓存的失效已收敛到 BotEventDispatcher.dispatchUserDecrease（三端统一），
+        // 此处不再自行失效，避免同一件事出现两个实现而再次跑偏。
         TaskProviderImpl.submitAsync {
             BotEventDispatcher.dispatchUserDecrease(event.groupId, event.userId)
         }

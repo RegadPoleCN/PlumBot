@@ -79,6 +79,17 @@ interface PlumBotAPI {
     suspend fun sendGroupImage(groupId: Long, imageFile: File)
 
     /**
+     * 直接向指定群发送内存中的图片字节（发原图，不经文本绘制）。
+     *
+     * 与 [sendGroupImage] 的文件版本对称：渲染链路产出的是字节数组，
+     * 旧接口只提供 `File` 版本，迫使调用方先落盘再发送。
+     *
+     * @param groupId 目标群号
+     * @param imageBytes PNG 图片字节
+     */
+    suspend fun sendGroupImage(groupId: Long, imageBytes: ByteArray)
+
+    /**
      * 向当前所有配置互通的群一键广播消息。
      *
      * @param message 广播正文
@@ -208,6 +219,11 @@ interface PlumBotAPI {
     val currentBotId: String
 
     /** 当前 Bot 连接是否处于就绪状态 */
+    /**
+     * @deprecated 零调用成员：语义含糊（"已连接"与"已加载"未区分），请改用状态查询 API。
+     * D8 决策：走弃用周期，主版本内保留。
+     */
+    @Deprecated("语义含糊，请改用状态查询 API")
     val isBotConnected: Boolean
 
     /** 第三方注册自定义 BotAdapter 的扩展入口 */

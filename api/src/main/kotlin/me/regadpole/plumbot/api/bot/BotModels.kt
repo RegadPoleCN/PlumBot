@@ -25,6 +25,13 @@ import me.regadpole.plumbot.api.platform.PlatformType
 enum class BotCapability {
     GROUP_MESSAGE_SEND,
     USER_MESSAGE_SEND,
+
+    /**
+     * **协议层**发图能力：该适配器能把图片字节投递到 IM 平台。
+     *
+     * 注意语义边界：本能力**不代表渲染一定可用**（无图形环境、引擎关闭、模板缺失都会导致
+     * 渲染失败）。渲染可用性由渲染门户负责判定，且所有出图路径在渲染失败时**必须降级为纯文本**。
+     */
     IMAGE_SEND,
     GROUP_MEMBER_QUERY,
     GROUP_MEMBER_CHECK,

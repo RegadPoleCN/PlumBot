@@ -20,12 +20,20 @@ package me.regadpole.plumbot.hytale.platform
 
 import kotlinx.coroutines.*
 import me.regadpole.plumbot.api.platform.PlatformScheduler
+import me.regadpole.plumbot.internal.ShutdownRegistry
 import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import kotlin.time.Duration
 
 class HytalePlatformScheduler(
     val scope: CoroutineScope = CoroutineScope(Dispatchers.Default + SupervisorJob() + CoroutineName("PlumBot-Hytale-Scheduler"))
 ) : PlatformScheduler {
+
+    init {
+        // Hytale 侧此前**没有任何地方取消该作用域**（`shutdown()` 存在但无人调用）：
+        // 插件每次 disable/reload 都会留下这一组调度线程与未完成 Job。
+        // Bukkit/Velocity 由宿主调度器托管，不存在该问题。
+        ShutdownRegistry.register(this) { shutdown() }
+    }
 
     override fun runSync(task: () -> Unit): PlatformTaskHandle = runAsync(task)
 
@@ -58,7 +66,9 @@ class HytalePlatformScheduler(
     override fun runRepeatingAsync(initialDelay: Duration, period: Duration, task: () -> Unit): PlatformTaskHandle =
         runRepeating(initialDelay, period, task)
 
+    /** 取消调度作用域。由关闭钩子（[ShutdownRegistry]）在插件停用时调用；重复调用安全。 */
     fun shutdown() {
+        ShutdownRegistry.unregister(this)
         scope.cancel()
     }
 }

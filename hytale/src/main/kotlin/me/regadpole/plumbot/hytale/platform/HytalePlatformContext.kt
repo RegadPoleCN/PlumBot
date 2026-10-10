@@ -23,6 +23,7 @@ import com.hypixel.hytale.server.core.command.system.CommandManager
 import com.hypixel.hytale.server.core.universe.Universe
 import com.hypixel.hytale.server.core.universe.world.commands.world.perf.WorldPerfCommand
 import me.regadpole.plumbot.DebugProvider
+import me.regadpole.plumbot.internal.RemoteConsoleAudit
 import me.regadpole.plumbot.api.platform.*
 import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.hytale.PlumBotHytale
@@ -95,10 +96,21 @@ class HytalePlatformContext(
             world.bufferedTickLengthMetricSet.getAverage(0) * 1.0E-6
         }.getOrNull()
     }
+    /**
+     * 审计是否记录**完整指令**（决策 D9，配置键 `feature.remote_console.log_commands`）。
+     *
+     * 键缺失时按"隐藏明细"处理：这是安全侧失败模式（少记而不是多记）。
+     * 正常安装下该键由内置模板与 `ConfigMigrator` 补齐（默认 `true`）。
+     */
+    private fun logCommandsEnabled(): Boolean =
+        config.getBoolean("feature", "remote_console", "log_commands")
 
     override fun dispatchConsoleCommand(command: String): CompletableFuture<String> {
         val future = CompletableFuture<String>()
         val capturer = CapturingHytaleCommandSender()
+        // 与 Bukkit / Velocity 侧保持同一份审计日志：远程控制台是高风险能力，
+        // 三端都必须在执行前留痕，否则"这一端执行了什么"无从追溯。
+        log(LogLevel.WARN, RemoteConsoleAudit.describe(command, logCommandsEnabled()))
         CommandManager.get().handleCommand(capturer, command).thenAccept {
             future.complete(capturer.getOutput())
         }.exceptionally { err ->

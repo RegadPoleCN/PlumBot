@@ -24,6 +24,7 @@ import me.regadpole.plumbot.adapter.miraimc.MiraiMCFactory
 import me.regadpole.plumbot.adapter.onebot.OneBotFactory
 import me.regadpole.plumbot.api.PlumBotAPI
 import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.internal.AdapterTelemetry
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.bukkit.listener.MiraiMCListener
 import me.regadpole.plumbot.bukkit.listener.PluginListener
@@ -32,7 +33,9 @@ import me.regadpole.plumbot.bukkit.platform.*
 import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.LogLevel
+import me.regadpole.plumbot.render.RenderProvider
 import net.kyori.adventure.text.Component
+import org.bstats.charts.SimplePie
 import org.bstats.bukkit.Metrics
 import org.bukkit.Bukkit
 import org.bukkit.plugin.ServicePriority
@@ -71,6 +74,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     override fun onEnable() {
         try {
             loadDependencies()
+            // 把 Libby 装载器交给渲染门户：engine=playwright 且真正出图时才按需下载 Playwright
+            RenderProvider.registerLibraryLoader(dependencyLoader)
         } catch (e: Exception) {
             logger.severe("[PlumBot] 依赖加载失败: ${e.message}")
             Bukkit.getPluginManager().disablePlugin(this)
@@ -89,6 +94,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         }
 
         val metrics = Metrics(this, 19427)
+        // 适配器类别上报（决策：bStats chart 用适配器类别；仅类别名，无标识信息）
+        registerAdapterChart(metrics)
 
         val botType = config.getString("bot", "type") ?: "onebot"
         val useMirai = botType.equals("miraimc", ignoreCase = true)
@@ -119,11 +126,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
         val filterThesaurus = me.regadpole.plumbot.filter.FilterThesaurusManager(platformContext)
         me.regadpole.plumbot.filter.FilterManagerHolder.manager = filterThesaurus
-        platformScheduler.runAsync {
-            kotlinx.coroutines.runBlocking {
-                filterThesaurus.reload()
-            }
-        }
+        // 异步预热词库：走插件自有 IO 作用域，不再占用平台调度线程
+        filterThesaurus.reloadAsync()
 
         server.pluginManager.registerEvents(ServerListener(this), this)
         server.pluginManager.registerEvents(PluginListener(), this)
@@ -143,16 +147,11 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     fun reloadPlugin() {
         loadConfig()
         debugProvider.reload()
-        val fontPath = config.getString("feature", "img", "file")?.replace("%plugin_folder%", dataDirectory.pathString)
-        if (fontPath != null) {
-            me.regadpole.plumbot.utils.TextToImg.ttfFile = java.io.File(fontPath)
-            me.regadpole.plumbot.utils.TextToImg.reset()
-        }
-        platformScheduler.runAsync {
-            kotlinx.coroutines.runBlocking {
-                me.regadpole.plumbot.filter.FilterManagerHolder.manager?.reload()
-            }
-        }
+        // 统一经门户刷新渲染配置（含字体），并把新主题管理器传播给各驱动
+        applyRenderConfig()
+        RenderProvider.getOrNull()?.reload()
+        // 词库重载已在自有 IO 作用域派发，无需再借平台调度线程
+        me.regadpole.plumbot.filter.FilterManagerHolder.manager?.reloadAsync()
         logger.info("[PlumBot] Configuration and resources reloaded.")
     }
 
@@ -194,4 +193,14 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     override fun loadDependencies() {
         dependencyLoader.loadDependencies()
     }
+}
+
+/**
+ * 注册 bStats「适配器类别」chart（决策：chart 做适配器类别）。
+ *
+ * 只上报类别名（onebot / miraimc / unknown），不含任何标识信息；
+ * 配置未就绪时回退到当前已加载适配器的类型。
+ */
+private fun registerAdapterChart(metrics: org.bstats.bukkit.Metrics) {
+    metrics.addCustomChart(SimplePie(AdapterTelemetry.CHART_ID) { AdapterTelemetry.current() })
 }

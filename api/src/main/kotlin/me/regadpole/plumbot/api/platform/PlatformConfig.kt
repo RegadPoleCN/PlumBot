@@ -29,4 +29,12 @@ interface PlatformConfig {
     fun getLongList(vararg path: String?): List<Long>
     fun getStringList(vararg path: String?): List<String?>
     fun getSubConfig(vararg path: String?): PlatformConfig
+
+    /**
+     * 读取浮点配置项；缺失或非数值时返回 [Double.NaN]。
+     *
+     * 默认实现返回 NaN，由具体实现覆写（`AbstractConfigurator` 已覆写）。
+     * 之所以需要它：YAML 的 `4.5` 是浮点节点，`getInteger` 会截断、`getString` 取不到值。
+     */
+    fun getDouble(vararg path: String?): Double = Double.NaN
 }

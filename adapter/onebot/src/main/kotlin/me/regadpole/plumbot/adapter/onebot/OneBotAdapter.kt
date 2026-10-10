@@ -19,6 +19,7 @@
 package me.regadpole.plumbot.adapter.onebot
 
 import kotlinx.coroutines.*
+import me.regadpole.plumbot.internal.HealthCounters
 import me.regadpole.plumbot.api.bot.BotAdapterMetadata
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.bot.MemberInfo
@@ -27,7 +28,6 @@ import me.regadpole.plumbot.bot.AbstractBotAdapter
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.listener.DefaultBotHandler
-import me.regadpole.plumbot.utils.TextToImg
 import top.alazeprt.aonebot.action.GetGroupInfo
 import top.alazeprt.aonebot.action.GetGroupMemberInfo
 import top.alazeprt.aonebot.action.GetGroupMemberList
@@ -56,11 +56,8 @@ class OneBotAdapter(
         handler = DefaultBotHandler(context, this)
         doStart()
 
-        if (context.config.getBoolean("feature", "load", "enable")) {
-            context.config.getLongList("groups").forEach { groupId ->
-                sendMsg(true, groupId, Messages.load, context.config.getBoolean("feature", "load", "pic"))
-            }
-        }
+        // 复用基类的 load 广播（旧实现在此复制了一份相同逻辑，改动需两处同步）
+        announceLoaded()
         // 注意：不在此处同步调用 preloadGroupCaches()，由 WebSocket 连接成功状态机在连接就绪后异步触发！
         return this
     }
@@ -108,6 +105,9 @@ class OneBotAdapter(
                     delay(3000L.milliseconds) // 正常在线时，每隔 3 秒检测一次连接心跳
                 } else {
                     isPreloaded.set(false)
+                    // 重连次数计数（A23-②）：断线重连是"看起来还活着但一直在抖"的典型症状，
+                    // 只有计数才能从 /status 看出它一直在重连而不是偶发一次。
+                    HealthCounters.increment(HealthCounters.Key.BOT_RECONNECTS)
                     log(LogLevel.WARN, "[OneBot] 检测到 WebSocket 未处于连接状态，${retryDelaySeconds} 秒后尝试自动重连...")
                     delay((retryDelaySeconds * 1000L).milliseconds)
 
@@ -136,40 +136,23 @@ class OneBotAdapter(
         client.action(SendPrivateMessageSegments(targetId, segments))
     }
 
-    override fun sendGroupPicWithText(targetId: Long, message: String) {
-        val cleanText = stripColorCodes(message)
-        if (!TextToImg.isSupported) {
-            sendGroupMsg(targetId, cleanText)
-            return
-        }
-        val segments = try {
-            val bytes = TextToImg.toByteArray(message)
-            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
-        } catch (e: Exception) {
-            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(cleanText))
-        }
-        client.action(SendGroupMessageSegments(targetId, segments))
-    }
-
-    override fun sendUserPicWithText(targetId: Long, message: String) {
-        val cleanText = stripColorCodes(message)
-        if (!TextToImg.isSupported) {
-            sendUserMsg(targetId, cleanText)
-            return
-        }
-        val segments = try {
-            val bytes = TextToImg.toByteArray(message)
-            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
-        } catch (e: Exception) {
-            OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(cleanText))
-        }
-        client.action(SendPrivateMessageSegments(targetId, segments))
-    }
-
     override fun sendGroupImage(targetId: Long, imageFile: File) {
         val bytes = imageFile.readBytes()
-        val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(bytes))
+        sendGroupImage(targetId, bytes)
+    }
+
+    override fun sendGroupImage(targetId: Long, imageBytes: ByteArray) {
+        val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(imageBytes))
         client.action(SendGroupMessageSegments(targetId, segments))
+    }
+
+    override fun sendUserImage(targetId: Long, imageFile: File) {
+        sendUserImage(targetId, imageFile.readBytes())
+    }
+
+    override fun sendUserImage(targetId: Long, imageBytes: ByteArray) {
+        val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(imageBytes))
+        client.action(SendPrivateMessageSegments(targetId, segments))
     }
 
     override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) {

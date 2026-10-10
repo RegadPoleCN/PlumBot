@@ -1,0 +1,159 @@
+{
+  "protocol": 1,
+  "description": "PlumBot 渲染协议清单 —— route、载荷字段、长度额度与文本可读性规则的唯一真源。Kotlin 侧由 checkRenderProtocol 校验一致性；前端 SDK 据此生成类型与运行时 manifest。",
+  "text": {
+    "contrast": "auto-outline",
+    "threshold": 4.5,
+    "base": "#1E2430",
+    "color": "#E6E6E6"
+  },
+  "limits": {
+    "displayTextMax": 1024,
+    "perLayerMaxBytes": 262144,
+    "binaryTotalMaxBytes": 1048576,
+    "layersMax": 16,
+    "totalTextWarn": 262144
+  },
+  "routes": {
+    "status": {
+      "legacyGate": "status",
+      "defaultEngine": "awt",
+      "payload": {
+        "serverName": "string",
+        "tps": "string[]",
+        "mspt": "string",
+        "usedMem": "int",
+        "maxMem": "int",
+        "online": "int"
+      }
+    },
+    "playerList": {
+      "legacyGate": "list",
+      "defaultEngine": "awt",
+      "payload": {
+        "total": "int",
+        "players": "{name:string, boundQq:string?, avatarUrl:string?}[]"
+      }
+    },
+    "whitelist": {
+      "legacyGate": "bind",
+      "defaultEngine": "awt",
+      "payload": {
+        "playerName": "string",
+        "qq": "string",
+        "avatarUrl": "string?",
+        "bindTime": "string?"
+      }
+    },
+    "bindList": {
+      "legacyGate": "bind",
+      "defaultEngine": "awt",
+      "payload": {
+        "title": "string",
+        "players": "string[]",
+        "total": "int"
+      }
+    },
+    "help": {
+      "legacyGate": "help",
+      "defaultEngine": "awt",
+      "payload": {
+        "prefix": "string",
+        "lines": "string[]"
+      }
+    },
+    "load": {
+      "legacyGate": "load",
+      "defaultEngine": "awt",
+      "payload": {
+        "text": "string"
+      }
+    },
+    "unload": {
+      "legacyGate": "load",
+      "defaultEngine": "awt",
+      "payload": {
+        "text": "string"
+      }
+    },
+    "message": {
+      "legacyGate": "message",
+      "defaultEngine": "awt",
+      "payload": {
+        "playerName": "string",
+        "serverName": "string",
+        "message": "string"
+      }
+    },
+    "joinAndLeave": {
+      "legacyGate": "joinAndLeave",
+      "defaultEngine": "awt",
+      "payload": {
+        "type": "join|leave",
+        "playerName": "string",
+        "serverName": "string?"
+      }
+    },
+    "changeServer": {
+      "legacyGate": "joinAndLeave",
+      "defaultEngine": "awt",
+      "payload": {
+        "playerName": "string",
+        "originServer": "string",
+        "targetServer": "string"
+      }
+    },
+    "death": {
+      "legacyGate": "death",
+      "defaultEngine": "awt",
+      "payload": {
+        "playerName": "string",
+        "serverName": "string",
+        "deathMessage": "string"
+      }
+    },
+    "advancement": {
+      "legacyGate": "advancement",
+      "defaultEngine": "awt",
+      "payload": {
+        "playerName": "string",
+        "serverName": "string",
+        "advancementTitle": "string"
+      }
+    },
+    "kick": {
+      "legacyGate": "kick",
+      "defaultEngine": "awt",
+      "payload": {
+        "playerName": "string"
+      }
+    },
+    "console": {
+      "legacyGate": "remote_console",
+      "defaultEngine": "awt",
+      "payload": {
+        "title": "string?",
+        "body": "string",
+        "ampersandCodes": "boolean"
+      }
+    },
+    "text": {
+      "legacyGate": null,
+      "defaultEngine": "awt",
+      "payload": {
+        "title": "string?",
+        "body": "string",
+        "ampersandCodes": "boolean"
+      }
+    },
+    "hytaleAvatar": {
+      "legacyGate": null,
+      "defaultEngine": "awt",
+      "payload": {
+        "username": "string",
+        "avatarUrl": "string?",
+        "fallbackQq": "string?"
+      }
+    }
+  }
+}

@@ -20,15 +20,45 @@ package me.regadpole.plumbot.bukkit.platform
 
 import com.alessiodp.libby.BukkitLibraryManager
 import com.alessiodp.libby.Library
+import me.regadpole.plumbot.internal.RuntimeLibraries
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
 import me.regadpole.plumbot.api.platform.PlatformConfig
+import me.regadpole.plumbot.render.RenderLibraryLoader
 import org.bukkit.plugin.java.JavaPlugin
 
 class BukkitDependencyLoader(
     plugin: JavaPlugin,
     private val configProvider: () -> PlatformConfig?
-) {
+) : RenderLibraryLoader {
     private val libraryManager: BukkitLibraryManager by lazy { BukkitLibraryManager(plugin) }
+
+    @Volatile
+    private var playwrightReady = false
+
+    /**
+     * 按需下载并装载 Playwright（仅 `engine=playwright` 且真正出图时才会被调用）。
+     *
+     * 单飞、只记成功：失败不缓存，交由门户的冷却策略控制重试节奏。
+     * **禁止 relocate** —— Playwright 依赖其原生 node driver 的路径结构。
+     */
+    override fun ensurePlaywright(): Boolean {
+        if (playwrightReady) return true
+        return synchronized(this) {
+            if (playwrightReady) return true
+            val ok = runCatching {
+                libraryManager.loadLibrary(
+                    Library.builder()
+                        .groupId("com{}microsoft{}playwright")
+                        .artifactId("playwright")
+                        .version(RuntimeLibraryVersions.PLAYWRIGHT)
+                        .resolveTransitiveDependencies(true)
+                        .build()
+                )
+            }.isSuccess
+            playwrightReady = ok
+            ok
+        }
+    }
 
     fun loadDependencies() {
         val config = configProvider()
@@ -59,67 +89,25 @@ class BukkitDependencyLoader(
         if (usePaperMc) {
             libraryManager.addRepository("https://repo.papermc.io/repository/maven-public")
         }
+        loadManifestLibraries()
+    }
 
-        val databaseLib = Library.builder()
-            .groupId("com{}github{}RegadPoleCN")
-            .artifactId("taboolib-database")
-            .version(RuntimeLibraryVersions.TABOOLIB_DATABASE)
-            .relocate("com{}google{}common", "me{}regadpole{}plumbot{}lib{}com{}google{}common")
-            .build()
-        val hikaricpLib = Library.builder()
-            .groupId("com{}zaxxer")
-            .artifactId("HikariCP")
-            .version(RuntimeLibraryVersions.HIKARI_CP)
-            .resolveTransitiveDependencies(true)
-            .build()
-        val guavaLib = Library.builder()
-            .groupId("com{}google{}guava")
-            .artifactId("guava")
-            .version(RuntimeLibraryVersions.GUAVA)
-            .relocate("com{}google{}common", "me{}regadpole{}plumbot{}lib{}com{}google{}common")
-            .resolveTransitiveDependencies(true)
-            .build()
-        val sqliteLib = Library.builder()
-            .groupId("org{}xerial")
-            .artifactId("sqlite-jdbc")
-            .version(RuntimeLibraryVersions.SQLITE_JDBC)
-            .resolveTransitiveDependencies(true)
-            .build()
-        val mysqlLib = Library.builder()
-            .groupId("com{}mysql")
-            .artifactId("mysql-connector-j")
-            .version(RuntimeLibraryVersions.MYSQL_CONNECTOR)
-            .resolveTransitiveDependencies(true)
-            .build()
-        val aonebotLib = Library.builder()
-            .groupId("com{}github{}alazeprt")
-            .artifactId("AOneBot")
-            .version(RuntimeLibraryVersions.AONE_BOT)
-            .relocate("com{}google{}code{}gson", "me{}regadpole{}plumbot{}lib{}com{}google{}code{}gson")
-            .resolveTransitiveDependencies(true)
-            .build()
-        val gsonLib = Library.builder()
-            .groupId("com{}google{}code{}gson")
-            .artifactId("gson")
-            .version(RuntimeLibraryVersions.GSON)
-            .resolveTransitiveDependencies(true)
-            .build()
-        val configurateYamlLib = Library.builder()
-            .groupId("org{}spongepowered")
-            .artifactId("configurate-yaml")
-            .version(RuntimeLibraryVersions.CONFIGURATE_YAML)
-            .resolveTransitiveDependencies(true)
-            .build()
-        val configurateExtraKotlinLib = Library.builder()
-            .groupId("org{}spongepowered")
-            .artifactId("configurate-extra-kotlin")
-            .version(RuntimeLibraryVersions.CONFIGURATE_EXTRA_KOTLIN)
-            .resolveTransitiveDependencies(true)
-            .build()
-
-        libraryManager.loadLibraries(
-            guavaLib, hikaricpLib, sqliteLib, mysqlLib, databaseLib,
-            aonebotLib, gsonLib, configurateYamlLib, configurateExtraKotlinLib
-        )
+    /**
+     * 按 [RuntimeLibraries] 清单装载。
+     *
+     * 清单是单一真源（三端共用），这里只负责把 `Spec` 映射成 Libby 的 `Library`：
+     * 传递依赖开关与 relocate 规则都由清单给出 —— 产物里对这些库的引用已被 Shadow
+     * 改写成重定位名，漏掉任一 relocate 都会在运行期炸 `NoClassDefFoundError`。
+     */
+    private fun loadManifestLibraries() {
+        RuntimeLibraries.ALL.forEach { spec ->
+            val builder = Library.builder()
+                .groupId(spec.groupId)
+                .artifactId(spec.artifactId)
+                .version(spec.version)
+                .resolveTransitiveDependencies(spec.transitive)
+            spec.relocates.forEach { builder.relocate(it.from, it.to) }
+            libraryManager.loadLibrary(builder.build())
+        }
     }
 }

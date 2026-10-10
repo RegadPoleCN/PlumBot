@@ -35,6 +35,7 @@ import me.regadpole.plumbot.adapter.onebot.OneBotFactory
 import me.regadpole.plumbot.api.PlumBotApiProvider
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.internal.AdapterTelemetry
 import me.regadpole.plumbot.bot.BotEventDispatcher
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.config.YamlConfigurator
@@ -44,13 +45,14 @@ import me.regadpole.plumbot.internal.BuildConstants
 import me.regadpole.plumbot.internal.createPlumBotApi
 import me.regadpole.plumbot.server.GameEventBridge
 import me.regadpole.plumbot.server.PlayerLoginService
-import me.regadpole.plumbot.utils.TextToImg
+import me.regadpole.plumbot.render.RenderProvider
 import me.regadpole.plumbot.velocity.command.PlumBotVelocityCommand
 import me.regadpole.plumbot.velocity.listener.VelocityMiraiMCListener
 import me.regadpole.plumbot.velocity.listener.VelocityPluginListener
 import me.regadpole.plumbot.velocity.listener.VelocityServerListener
 import me.regadpole.plumbot.velocity.platform.*
 import net.kyori.adventure.text.Component
+import org.bstats.charts.SimplePie
 import org.bstats.velocity.Metrics
 import org.slf4j.Logger
 import java.io.File
@@ -112,6 +114,8 @@ class PlumBotVelocity @Inject constructor(
     fun onProxyInitialization(event: ProxyInitializeEvent) {
         try {
             dependencyLoader.loadDependencies()
+            // 把 Libby 装载器交给渲染门户：engine=playwright 且真正出图时才按需下载 Playwright
+            RenderProvider.registerLibraryLoader(dependencyLoader)
         } catch (e: Exception) {
             slf4jLogger.error("[PlumBot] 依赖库加载失败: ${e.message}")
             return
@@ -125,6 +129,8 @@ class PlumBotVelocity @Inject constructor(
         }
 
         val metrics = metricsFactory.make(this, 19428)
+        // 适配器类别上报（决策：bStats chart 用适配器类别；仅类别名，无标识信息）
+        registerAdapterChart(metrics)
 
         val botType = config.getString("bot", "type") ?: "onebot"
         val useMirai = botType.equals("miraimc", ignoreCase = true)
@@ -152,11 +158,8 @@ class PlumBotVelocity @Inject constructor(
         // 装配敏感词过滤系统并异步预热词库
         val filterManager = FilterThesaurusManager(platformContext)
         FilterManagerHolder.manager = filterManager
-        platformScheduler.runAsync {
-            kotlinx.coroutines.runBlocking {
-                filterManager.reload()
-            }
-        }
+        // 异步预热词库：走插件自有 IO 作用域，不再占用平台调度线程
+        filterManager.reloadAsync()
 
         // 注册事件网桥
         val eventBridge = GameEventBridge(platform)
@@ -177,16 +180,11 @@ class PlumBotVelocity @Inject constructor(
     fun reloadPlugin() {
         loadConfig()
         debugProvider.reload()
-        val fontPath = config.getString("feature", "img", "file")?.replace("%plugin_folder%", dataDirectory.pathString)
-        if (fontPath != null) {
-            TextToImg.ttfFile = File(fontPath)
-            TextToImg.reset()
-        }
-        platformScheduler.runAsync {
-            kotlinx.coroutines.runBlocking {
-                FilterManagerHolder.manager?.reload()
-            }
-        }
+        // 统一经门户刷新渲染配置（含字体），并把新主题管理器传播给各驱动
+        applyRenderConfig()
+        RenderProvider.getOrNull()?.reload()
+        // 词库重载已在自有 IO 作用域派发，无需再借平台调度线程
+        FilterManagerHolder.manager?.reloadAsync()
         slf4jLogger.info("[PlumBot] Configuration and resources reloaded.")
     }
 
@@ -235,4 +233,14 @@ class PlumBotVelocity @Inject constructor(
     override fun loadDependencies() {
         dependencyLoader.loadDependencies()
     }
+}
+
+/**
+ * 注册 bStats「适配器类别」chart（决策：chart 做适配器类别）。
+ *
+ * 只上报类别名（onebot / miraimc / unknown），不含任何标识信息；
+ * 配置未就绪时回退到当前已加载适配器的类型。
+ */
+private fun registerAdapterChart(metrics: org.bstats.velocity.Metrics) {
+    metrics.addCustomChart(SimplePie(AdapterTelemetry.CHART_ID) { AdapterTelemetry.current() })
 }

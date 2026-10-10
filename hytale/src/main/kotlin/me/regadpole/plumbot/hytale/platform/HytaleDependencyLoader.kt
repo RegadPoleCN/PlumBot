@@ -22,13 +22,41 @@ import com.alessiodp.libby.HytaleLibraryManager
 import com.alessiodp.libby.Library
 import com.hypixel.hytale.server.core.plugin.JavaPlugin
 import me.regadpole.plumbot.api.platform.PlatformConfig
+import me.regadpole.plumbot.internal.RuntimeLibraries
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
+import me.regadpole.plumbot.render.RenderLibraryLoader
 
 class HytaleDependencyLoader(
     plugin: JavaPlugin,
     private val configProvider: () -> PlatformConfig?
-) {
+) : RenderLibraryLoader {
     private val libraryManager by lazy { HytaleLibraryManager(plugin) }
+
+    @Volatile
+    private var playwrightReady = false
+
+    /**
+     * 按需下载并装载 Playwright（仅 `engine=playwright` 且真正出图时才会被调用）。
+     * **禁止 relocate** —— Playwright 依赖其原生 node driver 的路径结构。
+     */
+    override fun ensurePlaywright(): Boolean {
+        if (playwrightReady) return true
+        return synchronized(this) {
+            if (playwrightReady) return true
+            val ok = runCatching {
+                libraryManager.loadLibrary(
+                    Library.builder()
+                        .groupId("com{}microsoft{}playwright")
+                        .artifactId("playwright")
+                        .version(RuntimeLibraryVersions.PLAYWRIGHT)
+                        .resolveTransitiveDependencies(true)
+                        .build()
+                )
+            }.isSuccess
+            playwrightReady = ok
+            ok
+        }
+    }
 
     fun loadDependencies() {
         val config = configProvider()
@@ -48,20 +76,16 @@ class HytaleDependencyLoader(
         libraryManager.addJitPack()
         libraryManager.addHytaleModding()
 
-        libraryManager.loadLibrary(
-            Library.builder()
-                .groupId("org{}xerial")
-                .artifactId("sqlite-jdbc")
-                .version(RuntimeLibraryVersions.SQLITE_JDBC)
-                .build()
-        )
-
-        libraryManager.loadLibrary(
-            Library.builder()
-                .groupId("com{}mysql")
-                .artifactId("mysql-connector-j")
-                .version(RuntimeLibraryVersions.MYSQL_CONNECTOR)
-                .build()
-        )
+        // 与 Bukkit/Velocity 使用同一份清单：此前只装数据库驱动，
+        // 导致 Hytale 端无法解析 config.yml，且产物中已重定位的引用无对应类。
+        RuntimeLibraries.ALL.forEach { spec ->
+            val builder = Library.builder()
+                .groupId(spec.groupId)
+                .artifactId(spec.artifactId)
+                .version(spec.version)
+                .resolveTransitiveDependencies(spec.transitive)
+            spec.relocates.forEach { builder.relocate(it.from, it.to) }
+            libraryManager.loadLibrary(builder.build())
+        }
     }
 }

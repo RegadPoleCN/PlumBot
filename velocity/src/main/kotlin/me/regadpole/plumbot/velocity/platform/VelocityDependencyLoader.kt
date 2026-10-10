@@ -21,8 +21,10 @@ package me.regadpole.plumbot.velocity.platform
 import com.alessiodp.libby.VelocityLibraryManager
 import com.alessiodp.libby.Library
 import com.velocitypowered.api.plugin.PluginManager
+import me.regadpole.plumbot.internal.RuntimeLibraries
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
 import me.regadpole.plumbot.api.platform.PlatformConfig
+import me.regadpole.plumbot.render.RenderLibraryLoader
 import org.slf4j.Logger
 import java.nio.file.Path
 
@@ -32,9 +34,35 @@ class VelocityDependencyLoader(
     dataDirectory: Path,
     pluginManager: PluginManager,
     private val configProvider: () -> PlatformConfig?
-) {
+) : RenderLibraryLoader {
     private val libraryManager: VelocityLibraryManager<Any> by lazy {
         VelocityLibraryManager(plugin, logger, dataDirectory, pluginManager)
+    }
+
+    @Volatile
+    private var playwrightReady = false
+
+    /**
+     * 按需下载并装载 Playwright（仅 `engine=playwright` 且真正出图时才会被调用）。
+     * **禁止 relocate** —— Playwright 依赖其原生 node driver 的路径结构。
+     */
+    override fun ensurePlaywright(): Boolean {
+        if (playwrightReady) return true
+        return synchronized(this) {
+            if (playwrightReady) return true
+            val ok = runCatching {
+                libraryManager.loadLibrary(
+                    Library.builder()
+                        .groupId("com{}microsoft{}playwright")
+                        .artifactId("playwright")
+                        .version(RuntimeLibraryVersions.PLAYWRIGHT)
+                        .resolveTransitiveDependencies(true)
+                        .build()
+                )
+            }.isSuccess
+            playwrightReady = ok
+            ok
+        }
     }
 
     fun loadDependencies() {
@@ -71,21 +99,21 @@ class VelocityDependencyLoader(
         loadCommonLibraries()
     }
 
+    /**
+     * 按 [RuntimeLibraries] 清单装载（与 Bukkit/Hytale 使用同一份清单）。
+     *
+     * 此前这里只装数据库驱动，导致代理端连 `config.yml` 都解析不了（configurate 缺失），
+     * 且产物中已被重定位的 Hikari/aedile/Caffeine 引用无对应类。
+     */
     private fun loadCommonLibraries() {
-        libraryManager.loadLibrary(
-            Library.builder()
-                .groupId("org{}xerial")
-                .artifactId("sqlite-jdbc")
-                .version(RuntimeLibraryVersions.SQLITE_JDBC)
-                .build()
-        )
-
-        libraryManager.loadLibrary(
-            Library.builder()
-                .groupId("com{}mysql")
-                .artifactId("mysql-connector-j")
-                .version(RuntimeLibraryVersions.MYSQL_CONNECTOR)
-                .build()
-        )
+        RuntimeLibraries.ALL.forEach { spec ->
+            val builder = Library.builder()
+                .groupId(spec.groupId)
+                .artifactId(spec.artifactId)
+                .version(spec.version)
+                .resolveTransitiveDependencies(spec.transitive)
+            spec.relocates.forEach { builder.relocate(it.from, it.to) }
+            libraryManager.loadLibrary(builder.build())
+        }
     }
 }

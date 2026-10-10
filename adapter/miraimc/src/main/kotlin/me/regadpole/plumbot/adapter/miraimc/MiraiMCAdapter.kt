@@ -25,7 +25,6 @@ import me.regadpole.plumbot.api.bot.BotAdapterMetadata
 import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
-import me.regadpole.plumbot.utils.TextToImg
 import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
@@ -76,38 +75,6 @@ class MiraiMCAdapter(
         }
     }
 
-    override fun sendGroupPicWithText(targetId: Long, message: String) {
-        if (!isRunning.get()) return
-        runCatching {
-            val group = bot.getGroup(targetId)
-            val tempFile = TextToImg.toFile(message)
-            try {
-                val imageId = group.uploadImage(tempFile)
-                group.sendMessageMirai("[mirai:image:$imageId]")
-            } finally {
-                runCatching { tempFile.delete() }
-            }
-        }.onFailure { e ->
-            context.log(LogLevel.WARN, "[MiraiMC] 发送群图片消息失败 ($targetId): ${e.message}")
-        }
-    }
-
-    override fun sendUserPicWithText(targetId: Long, message: String) {
-        if (!isRunning.get()) return
-        runCatching {
-            val friend = bot.getFriend(targetId)
-            val tempFile = TextToImg.toFile(message)
-            try {
-                val imageId = friend.uploadImage(tempFile)
-                friend.sendMessageMirai("[mirai:image:$imageId]")
-            } finally {
-                runCatching { tempFile.delete() }
-            }
-        }.onFailure { e ->
-            context.log(LogLevel.WARN, "[MiraiMC] 发送私聊图片消息失败 ($targetId): ${e.message}")
-        }
-    }
-
     override fun sendGroupImage(targetId: Long, imageFile: File) {
         if (!isRunning.get()) return
         runCatching {
@@ -116,6 +83,39 @@ class MiraiMCAdapter(
             group.sendMessageMirai("[mirai:image:$imageId]")
         }.onFailure { e ->
             context.log(LogLevel.WARN, "[MiraiMC] 上传并发送群图片失败 ($targetId): ${e.message}")
+        }
+    }
+
+    override fun sendUserImage(targetId: Long, imageFile: File) {
+        if (!isRunning.get()) return
+        runCatching {
+            val friend = bot.getFriend(targetId)
+            val imageId = friend.uploadImage(imageFile)
+            friend.sendMessageMirai("[mirai:image:$imageId]")
+        }.onFailure { e ->
+            context.log(LogLevel.WARN, "[MiraiMC] 上传并发送私聊图片失败 ($targetId): ${e.message}")
+        }
+    }
+
+    override fun sendUserImage(targetId: Long, imageBytes: ByteArray) {
+        if (!isRunning.get()) return
+        val temp = File.createTempFile("plumbot_mirai_", ".png")
+        try {
+            temp.writeBytes(imageBytes)
+            sendUserImage(targetId, temp)
+        } finally {
+            runCatching { temp.delete() }
+        }
+    }
+
+    override fun sendGroupImage(targetId: Long, imageBytes: ByteArray) {
+        if (!isRunning.get()) return
+        val temp = File.createTempFile("plumbot_mirai_", ".png")
+        try {
+            temp.writeBytes(imageBytes)
+            sendGroupImage(targetId, temp)
+        } finally {
+            runCatching { temp.delete() }
         }
     }
 

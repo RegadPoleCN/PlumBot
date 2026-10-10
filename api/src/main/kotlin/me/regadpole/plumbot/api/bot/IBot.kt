@@ -55,6 +55,18 @@ interface IBot {
     fun checkUserInGroup(userId: Long, groupId: Long): Boolean
 
     /**
+     * 使指定成员在本适配器的**本地成员缓存**中失效。
+     *
+     * 用于"成员关系已改变"的场景（退群/被踢）。适配器的成员信息带有写入过期
+     * （`GroupMemberCache` 默认 30 分钟），若不主动失效，已退群者会在缓存 TTL 内
+     * 继续被判定为"仍在群内"—— 这会影响显示名、以及绑定时的成员校验。
+     *
+     * 默认实现**什么都不做**：`IBot` 是 `@StableApi`，给出默认实现可避免第三方适配器
+     * 在升级时编译失败；没有本地缓存的适配器本来就无需实现。
+     */
+    fun invalidateGroupMember(groupId: Long, userId: Long) {}
+
+    /**
      * Send message to the group/user.
      *
      * When [isPic] is `true`, this internally delegates to
@@ -119,6 +131,48 @@ interface IBot {
      * Send a local image file directly to the group without text-to-image conversion.
      */
     fun sendGroupImage(targetId: Long, imageFile: java.io.File)
+
+    /**
+     * Send an in-memory image byte array directly to the group.
+     */
+    fun sendGroupImage(targetId: Long, imageBytes: ByteArray) {
+        val temp = java.io.File.createTempFile("plumbot_img_", ".png")
+        try {
+            temp.writeBytes(imageBytes)
+            sendGroupImage(targetId, temp)
+        } finally {
+            runCatching { temp.delete() }
+        }
+    }
+
+    /**
+     * Send a local image file directly to a private user (原图直发，不经文本绘制)。
+     *
+     * 与 [sendGroupImage] 对称：渲染链路产出的是字节，群与私聊都需要直发通道。
+     *
+     * 默认实现**立即报错而不是留空**：`IBot` 是 `@StableApi`，新增**抽象**成员会让所有
+     * 第三方实现在升级时直接编译失败；给默认实现则把"该适配器不支持私聊图片"从编译期错误
+     * 变为运行期显式失败 —— 既不静默丢图，也保住了源码与二进制兼容。
+     */
+    fun sendUserImage(targetId: Long, imageFile: java.io.File) {
+        throw UnsupportedOperationException(
+            "该 Bot 适配器未实现私聊图片直发（sendUserImage）；" +
+                "请在适配器中实现该方法，或检查 metadata.capabilities 是否应声明 IMAGE_SEND。"
+        )
+    }
+
+    /**
+     * Send an in-memory image byte array directly to a private user.
+     */
+    fun sendUserImage(targetId: Long, imageBytes: ByteArray) {
+        val temp = java.io.File.createTempFile("plumbot_img_", ".png")
+        try {
+            temp.writeBytes(imageBytes)
+            sendUserImage(targetId, temp)
+        } finally {
+            runCatching { temp.delete() }
+        }
+    }
 
     /**
      * Send group message and @ the target user.

@@ -19,10 +19,12 @@
 package me.regadpole.plumbot.adapter.miraimc
 
 import com.google.gson.JsonParser
+import kotlin.math.ln
+import kotlin.math.pow
 
 object MiraiCodeParser {
 
-    private val MIRAI_TAG_REGEX = Regex("""\[mirai:([a-zA-Z0-9]+)(?::([^\]]+))?\]""")
+    private val MIRAI_TAG_REGEX = Regex("""\[mirai:([a-zA-Z0-9]+)(?::([^]]+))?]""")
 
     private val FACE_NAMES: Map<Int, String> = mapOf(
         0 to "惊讶", 1 to "撇嘴", 2 to "色", 3 to "发呆", 4 to "得意", 5 to "流泪", 6 to "害羞",
@@ -137,8 +139,8 @@ object MiraiCodeParser {
 
     private fun formatFileSize(bytes: Long): String {
         if (bytes < 1024) return "${bytes}B"
-        val exp = (Math.log(bytes.toDouble()) / Math.log(1024.0)).toInt()
+        val exp = (ln(bytes.toDouble()) / ln(1024.0)).toInt()
         val pre = "KMGTPE"[exp - 1]
-        return String.format("%.1f%sB", bytes / Math.pow(1024.0, exp.toDouble()), pre)
+        return String.format("%.1f%sB", bytes / 1024.0.pow(exp.toDouble()), pre)
     }
 }

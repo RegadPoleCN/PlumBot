@@ -19,6 +19,7 @@
 package me.regadpole.plumbot.bukkit.platform
 
 import me.regadpole.plumbot.config.YamlConfigurator
+import me.regadpole.plumbot.internal.RemoteConsoleAudit
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformCapability
 import me.regadpole.plumbot.api.platform.PlatformContext
@@ -104,6 +105,14 @@ class BukkitPlatformContext(
             } else null
         }.getOrNull()
     }
+    /**
+     * 审计是否记录**完整指令**（决策 D9，配置键 `feature.remote_console.log_commands`）。
+     *
+     * 键缺失时按"隐藏明细"处理：这是安全侧失败模式（少记而不是多记）。
+     * 正常安装下该键由内置模板与 `ConfigMigrator` 补齐（默认 `true`）。
+     */
+    private fun logCommandsEnabled(): Boolean =
+        config.getBoolean("feature", "remote_console", "log_commands")
 
     override fun dispatchConsoleCommand(command: String): java.util.concurrent.CompletableFuture<String> {
         val future = java.util.concurrent.CompletableFuture<String>()
@@ -112,7 +121,7 @@ class BukkitPlatformContext(
             try {
                 val consoleSender = Bukkit.getConsoleSender()
                 val capturingSender = CapturingConsoleCommandSender(consoleSender)
-                logger.log(LogLevel.WARN, "[PlumBot-Security] 远程控制台正在执行指令: /$command")
+                logger.log(LogLevel.WARN, RemoteConsoleAudit.describe(command, logCommandsEnabled()))
                 val success = Bukkit.dispatchCommand(capturingSender, command)
                 val output = capturingSender.getOutput()
                 val resultText = when {
