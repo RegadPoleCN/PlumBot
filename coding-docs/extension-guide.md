@@ -2,6 +2,23 @@
 
 本文档面向希望在自己的 Minecraft 插件中集成 PlumBot、调用群互通能力、监听 Bot 事件，或编写自定义第三方 Bot 适配器的开发者。
 
+> ## ⚠️ 勘误（2026-10-09，以源码为准）
+>
+> 本文部分示例**与当前源码不符**，按原样照抄会编译失败。已确认的错误与正确写法如下（完整重写待办，见 `review/unresolved-issues.md` 的 U05）：
+>
+> | 文中写法 | 实际 API |
+> |---|---|
+> | `PlumBotAPI.getOrNull()` | **不存在**。可空获取入口是 `PlumBotApiProvider.getInstanceOrNull()` |
+> | `api.getBindingByPlayer(uuid)`、`getBindingsByUser(...)` | **不存在**。实际为 `getBindingUser(playerName: String)` / `getBindingUser(uuid: UUID)` / `getBindingAccounts(userId: Long)` |
+> | 发送方法返回 `CompletableFuture` | 实际是 **`suspend` 函数**（`IBot` 的发送/查询能力均为挂起函数） |
+> | `import me.regadpole.plumbot.api.bot.AbstractBotAdapter` | 包名错误。它在 **`:common`**：`me.regadpole.plumbot.bot.AbstractBotAdapter`（不在 `:api` 契约内） |
+> | `BotCapability.SEND_GROUP_MSG` / `SEND_IMAGE` | 实际枚举名为 `GROUP_MESSAGE_SEND` / `IMAGE_SEND`（另有 `GROUP_MESSAGE_RECEIVE` / `GROUP_MEMBER_QUERY` 等） |
+> | `registry.registerExternalFactory(...)` 返回 `false` 表示失败 | 实际**失败时抛异常**，成功返回 `true` |
+> | `PlumBotAPI.getExtensionRegistry()`、`unregisterAllFor(...)` | 前者不存在；注销在 `BotEventDispatcher.unregisterAllFor(plugin)` |
+> | `IBot` 的 `runTaskAsynchronously` / `runTaskLater` | 实际为 `PlatformScheduler.runAsync` / `runLater` |
+>
+> 另：`:render` 的门户类型对扩展**不公开**，扩展只能经 `PlumBotAPI` 与事件接口交互。
+
 ---
 
 ## 📦 1. 依赖接入

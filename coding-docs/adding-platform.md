@@ -4,6 +4,20 @@
 
 本文以已高度打磨成熟的 `:bukkit` 模块为黄金参考基准（Golden Reference），详细拆解平台模块的每一个必需组件、生命周期装配时序、边界守则与质量校验清单，**确保人工或 AI 在扩充新平台时产出的是工业级、100% 完整闭环的生产模块，绝不遗漏核心机制。**
 
+> ## ⚠️ 勘误（2026-10-09，以源码为准）
+>
+> 本文部分表述已过时或不准确（完整重写待办，见 `review/unresolved-issues.md` 的 U05）：
+>
+> | 文中说法 | 实际现状 |
+> |---|---|
+> | Velocity / Hytale 属"未来平台" | **两者都已实现**：`:velocity`、`:hytale` 与 `:bukkit` 并列；新增平台可三选一作参考（Hytale 侧差异最大：原生事件/指令 API + 原生外观渲染） |
+> | OneBot 消息解析位于 `:common` | 实际在 **`:adapter:onebot`**；`:common` 只保留协议无关的业务层（`BotEventDispatcher` 等） |
+> | `PlumBotAPI.unregisterAllFor(...)` | **不存在**。注销入口是 `BotEventDispatcher.unregisterAllFor(plugin)`（`BotProvider.unloadBot()` 会在卸载时统一调用） |
+> | 平台模块清单可直接照搬 | 还须满足机械校验：适配层**不得**引用 `:render` 任何类型、`:api` 不得依赖渲染实现 —— 由 `checkRenderBoundaries` 在 `check` 阶段强制（见 `build-and-release.md`） |
+> | 运行期依赖由平台各自装载 | 统一走 `RuntimeLibraries` 单一真源（含重定位规则），三端**必须一致**，否则会出现"某端连 config.yml 都解析不了"（实测踩过） |
+>
+> 另：`jvmToolchain` 为 **25**（产物 class 版本 69），平台模块同样适用。
+
 ---
 
 ## 🏗️ 一、 平台模块的定位与边界守则

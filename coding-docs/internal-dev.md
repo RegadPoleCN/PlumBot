@@ -2,6 +2,19 @@
 
 本文档面向 PlumBot 仓库维护者与核心贡献者，阐述如何在 `:common` 模块新增端到端功能闭环、扩展配置与数据库，以及接入新服务端平台。
 
+> ## ⚠️ 勘误（2026-10-09，以源码为准）
+>
+> 文中示例存在以下**会直接编译失败**的写法（完整重写待办，见 `review/unresolved-issues.md` 的 U05）：
+>
+> | 文中写法 | 实际 API（已核对源码） |
+> |---|---|
+> | `context.scheduler.runTaskAsynchronously { }` | `PlatformScheduler` **没有**该方法。实际接口为 `runSync` / `runAsync` / `runLater(Duration)` / `runLaterAsync(Duration)` / `runRepeating(...)` / `runRepeatingAsync(...)`。`runTaskAsynchronously` 只是 Bukkit 实现内部调用的 Bukkit API，不属于平台契约 |
+> | `import me.regadpole.plumbot.utils.ComponentUtils.escapeMiniMessageTags` | `ComponentUtils.kt` 是**顶层函数文件**（编译为 `ComponentUtilsKt`），不是 `object`。应 `import me.regadpole.plumbot.utils.escapeMiniMessageTags` 等 |
+> | `BotCapability.SEND_GROUP_MSG` | 实际枚举名 `GROUP_MESSAGE_SEND`（另有 `IMAGE_SEND` / `GROUP_MESSAGE_RECEIVE` / `GROUP_MEMBER_QUERY`） |
+> | 数据库示例中的方法名 | 以 `IDatabase` 为准：`getByUser` / `getByName` / `getById` / `getByPlayerUuid` / `addBind` / **`addBindIfAbsent`（幂等写入，返回 false 表示该角色名已存在）** / `removeBindByNum` / `removeBindByUser` / `removeBind` / `setUUID`；`getConnection()` 仅供内部事务与测试 |
+>
+> 另：`AbstractBotAdapter` 位于 `:common`（`me.regadpole.plumbot.bot`），**不在 `:api` 契约内**；适配层不得引用 `:render` 的任何类型（由 `checkRenderBoundaries` 机械校验）。
+
 ---
 
 ## 🛠️ 1. 新增功能端到端全流程 (Feature Workflow)

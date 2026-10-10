@@ -9,19 +9,24 @@
 为了消除各子模块 `build.gradle.kts` 中冗余重复的构建配置，项目在 `buildSrc/` 中抽象出了两组正交的 **Convention Plugins（预编译脚本插件）**：
 
 ### 1) `kotlin-jvm`（基础 JVM 约定插件）
-* **定位**：供所有子模块（`:api`, `:common`, `:adapter:*`, `:bukkit`）应用。
+* **定位**：供所有子模块（`:api`, `:render`, `:common`, `:adapter:*`, `:bukkit`, `:velocity`, `:hytale`）应用。
 * **主要职责**：
   - 自动引入 Kotlin JVM 插件；
-  - 强制全局编译环境使用 **JDK 21 LTS** (`jvmToolchain(21)`)；
-  - 配置全局 Java/Kotlin 编译任务的源码字符集为 `UTF-8`；
-  - 配置基于 `JUnitPlatform` 的单测运行器，并开启直观的控制台测试状态日志。
+  - 强制编译工具链为 **JDK 25**（`jvmToolchain(25)`）—— 产物 class 文件版本为 **69**，**JDK 21 连产物都无法加载**，请勿按旧文档使用 21；
+  - 配置基于 `JUnitPlatform` 的单测运行器，并开启直观的控制台测试状态日志；
+  - 生成 `BuildConstants`（包名 `me.regadpole.plumbot.internal` 声明为任务输入，生成前清空输出目录，避免旧包名的 class 残留进产物）。
+
+> 注：旧文档所称"配置全局源码字符集为 UTF-8"**并不存在**（构建脚本中没有任何 charset/encoding 配置），已删除该描述。
 
 ### 2) `platform-distribution`（平台分发约定插件）
-* **定位**：仅供**平台宿主分发模块**（当前为 `:bukkit`，未来为 `:velocity`, `:fabric` 等）应用。
+* **定位**：仅供**平台宿主分发模块**（`:bukkit`, `:velocity`, `:hytale`）应用。
 * **主要职责**：
   - 自动引入 `com.gradleup.shadow` 插件并挂载至 `assemble` 依赖链；
   - 归一化最终产物命名格式（移除冗余的 `-all` 分类器后缀）；
-  - **依赖重定向（Relocation 隔离）**：统一将容易与外界冲突的核心库重定向至 `me.regadpole.plumbot.lib.*`（涵盖 Aedile, Caffeine, HikariCP, Libby, Commodore, Adventure）；
+  - **依赖重定向（Relocation 隔离）**：由单一真源 `relocateRoot = "me.regadpole.plumbot.lib"` 派生全部规则 ——
+    Aedile、Caffeine、HikariCP、Libby、Commodore、Adventure、**bStats**（共 7 条）；
+    新增库时只改这一处，运行期 Libby 的 relocate 目标必须与它逐字一致；
+  - `minimize` 排除 `org.bstats:*`，并排除 `com.mojang:brigadier`（宿主自带）；
   - 自动剔除发布包中无效的数字签名与元数据文件（`META-INF/*.SF`, `*.DSA`, `*.RSA`）。
 
 ---
@@ -68,14 +73,43 @@
 
 ---
 
+## 🧱 3.1 渲染子系统边界与协议守护（`checkRenderBoundaries` / `checkRenderProtocol`）
+
+渲染子系统采用**统一门户**：其他模块只能经 `RenderPortal` 对话，不得引用 `:render` 的内部类型。该纪律由两个机械校验任务保证 —— 二者**已随 `check` 一起执行**（挂在各模块 `check` 上），因此 `./gradlew check` 即包含它们：
+
+```bash
+./gradlew check                       # 等价于 test + checkApiContract + 下列两个检查
+./gradlew checkRenderBoundaries checkRenderProtocol   # 单独运行
+```
+
+**`checkRenderBoundaries` 规则矩阵**
+
+1. **适配层零依赖**：`adapter/**` 不得出现任何 `me.regadpole.plumbot.render` 导入（出图统一由门户负责）。
+2. **跨模块禁引用内部类型**：`:api` / `:common` / 各宿主模块不得引用 `TextToImg`、`ThemeManager`、各驱动、`ImageRenderManager` 等内部类型 —— 含**注释中的提及**。
+3. **`:api` 不得依赖渲染实现**。
+4. **公开发布面必须带契约注解**：`:render` 中任何非 `internal` 的顶层声明，其所在文件必须含 `@PublicApi` / `@StableApi`。
+
+**`checkRenderProtocol` 规则矩阵**
+
+1. `render/src/main/resources/render-protocol.json` 的 route 集合与 Kotlin `RenderRoute` 枚举**双向一致**；
+2. 每条 route 均声明 `legacyGate` / `defaultEngine` / 非空 `payload`；
+3. 若前端 SDK（`web-t/src/sdk/protocol.ts`）存在，其协议版本与 route 集合必须与清单一致。
+
+> 详见 **[渲染子系统规范](./render.md)**。
+
+---
+
 ## 🚀 4. 日常高频构建命令速查
 
 ```bash
 # 1. 快速编译全模块（推荐日常编码中使用）
 ./gradlew compileKotlin compileTestKotlin
 
-# 2. 离线快速执行全量测试与 API 契约检查
-./gradlew test check checkApiContract --offline
+# 2. 离线执行全量测试与全部契约/边界检查（check 已包含三个检查任务）
+./gradlew test check --offline
+
+# 2b. 契约检测器自检（负例回归，改动 checkApiContract 后必须跑）
+./gradlew :api:checkApiContract -PapiContractSelfTest=true
 
 # 3. 产生最终可发布的各平台 Jar 文件（输出到 dist/ 目录）
 ./gradlew dist --offline
