@@ -35,6 +35,7 @@ import me.regadpole.plumbot.render.RenderRoute
 import java.util.Locale
 import me.regadpole.plumbot.internal.HealthCounters
 import me.regadpole.plumbot.internal.HealthCounters.Key as HealthKey
+import me.regadpole.plumbot.internal.ServerMetricsText
 
 class StatusCommandService(private val service: BotCommandService) {
 
@@ -59,11 +60,14 @@ class StatusCommandService(private val service: BotCommandService) {
         val tpsArray = service.context.getRecentTps()
         val mspt = service.context.getMspt()
 
-        val tps1m = tpsArray?.getOrNull(0)?.let { formatTps(it) } ?: "20.0"
-        val tps5m = tpsArray?.getOrNull(1)?.let { formatTps(it) } ?: "20.0"
-        val tps15m = tpsArray?.getOrNull(2)?.let { formatTps(it) } ?: "20.0"
+        // R31：指标读不到时**明说读不到**（统一占位符）。
+        // 旧实现把缺失的 TPS 显示成字面量 "20.0" —— 正是"完美 TPS"，会让代理端服主
+        // 看到一张"一切正常"的卡片，而实际上这个指标根本没读到。
+        val tps1m = ServerMetricsText.tps(tpsArray, 0)
+        val tps5m = ServerMetricsText.tps(tpsArray, 1)
+        val tps15m = ServerMetricsText.tps(tpsArray, 2)
 
-        val msptStr = mspt?.let { String.format(Locale.ROOT, "%.2f", it) } ?: "N/A"
+        val msptStr = ServerMetricsText.mspt(mspt)
 
         val runtime = Runtime.getRuntime()
         val maxMem = runtime.maxMemory() / (1024 * 1024)
@@ -149,8 +153,5 @@ class StatusCommandService(private val service: BotCommandService) {
             "数据库失败 ${HealthCounters.get(HealthKey.DB_INIT_FAILURES)}"
     }
 
-    private fun formatTps(tps: Double): String {
-        val clamped = if (tps > 20.0) 20.0 else tps
-        return String.format(Locale.ROOT, "%.2f", clamped)
-    }
+    private fun formatTps(tps: Double): String = ServerMetricsText.tps(tps)
 }
