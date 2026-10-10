@@ -31,9 +31,20 @@ import net.kyori.adventure.text.ComponentLike
  */
 class OutputCapturingBuffer(
     private val forwardTo: Audience? = null,
-    private val maxLength: Int = 2000,
+    private val maxLength: Int = DEFAULT_MAX_LENGTH,
     private val preserveColors: Boolean = true
 ) : Audience {
+
+    companion object {
+        /**
+         * 捕获缓冲的**硬上限**（字符）。
+         *
+         * 这是平台侧截断；业务层（远程控制台回显）还会按 `feature.remote_console.max_output_length`
+         * 再截断一次。两者若不联动，配置写大时会出现「没到配置上限却已显示截断」的困惑 ——
+         * 因此业务层会把配置值钳制到本上限**并给出一次性告警**（R05）。
+         */
+        const val DEFAULT_MAX_LENGTH = 2000
+    }
 
     private val buffer = StringBuilder()
     private val ansiRegex = Regex("\u001B\\[[;\\d]*m")

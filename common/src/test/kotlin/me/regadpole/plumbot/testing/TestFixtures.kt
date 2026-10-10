@@ -26,6 +26,7 @@ import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.api.database.Binding
 import me.regadpole.plumbot.api.database.IDatabase
 import me.regadpole.plumbot.api.platform.LogLevel
+import me.regadpole.plumbot.api.platform.PlatformCapability
 import me.regadpole.plumbot.api.platform.PlatformConfig
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.api.platform.PlatformPlayerService
@@ -110,6 +111,23 @@ class FakePlatformContext(initial: Map<String, Any> = emptyMap()) : PlatformCont
     }
 
     override fun isPluginAvailable(name: String): Boolean = false
+
+    // ---------- 远程控制台（R05）----------
+
+    /** 已交给平台执行的远程指令（按调用顺序）。 */
+    val consoleCommands = mutableListOf<String>()
+
+    /** 可替换的控制台执行结果（默认回显"已执行"）。 */
+    var consoleCommandResult: (String) -> CompletableFuture<String> =
+        { command -> CompletableFuture.completedFuture("已执行: $command") }
+
+    override fun hasCapability(capability: PlatformCapability): Boolean =
+        capability == PlatformCapability.COMMAND_DISPATCH
+
+    override fun dispatchConsoleCommand(command: String): CompletableFuture<String> {
+        consoleCommands += command
+        return consoleCommandResult(command)
+    }
 }
 
 /** 不做任何调度的调度器替身（记录调用次数即可断言"是否被调用"）。 */
