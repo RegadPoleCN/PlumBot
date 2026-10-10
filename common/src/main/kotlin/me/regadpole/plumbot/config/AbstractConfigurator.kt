@@ -79,6 +79,10 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         return resolveNode(*path).long
     }
 
+    override fun getDouble(vararg path: String?): Double {
+        return resolveNode(*path).double
+    }
+
     fun saveConfig(configFile: Path) {
         val loader = loaderBuilder()
             .path(configFile)

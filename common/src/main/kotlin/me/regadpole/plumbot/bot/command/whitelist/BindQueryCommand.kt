@@ -1,4 +1,4 @@
-﻿/*
+/*
  *     PlumBot-V3
  *     Copyright (C) 2026  RegadPoleCN
  *
@@ -71,15 +71,20 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         return
                     }
                     val formattedList = formatPlayerList(wl.keys)
-                    service.sendBindTemplate(
+                    // 列表型结果走 bindList 路由（whitelist 路由只承接单人成功绑定）
+                    service.sendBindList(
                         groupId,
-                        Messages.adminQueryQQBind,
-                        *service.originReplacements(groupId, userId),
-                        "%user_id%" to argStr,
-                        "%user_name%" to service.bot.getGroupUserName(groupId, arg),
-                        "%user_nick%" to service.bot.getGroupUserCard(groupId, arg),
-                        "%num%" to wl.size.toString(),
-                        "%current%" to formattedList
+                        title = "白名单查询 · ${service.bot.getGroupUserName(groupId, arg)}",
+                        players = wl.keys.toList(),
+                        fallbackText = service.render(
+                            Messages.adminQueryQQBind,
+                            *service.originReplacements(groupId, userId),
+                            "%user_id%" to argStr,
+                            "%user_name%" to service.bot.getGroupUserName(groupId, arg),
+                            "%user_nick%" to service.bot.getGroupUserCard(groupId, arg),
+                            "%num%" to wl.size.toString(),
+                            "%current%" to formattedList
+                        )
                     )
                     return
                 }
@@ -96,12 +101,16 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
             return
         }
         val formattedList = formatPlayerList(wl.keys)
-        service.sendBindTemplate(
+        service.sendBindList(
             groupId,
-            Messages.playerQueryBind,
-            *service.userReplacements(groupId, userId),
-            "%num%" to wl.size.toString(),
-            "%current%" to formattedList
+            title = "我的白名单",
+            players = wl.keys.toList(),
+            fallbackText = service.render(
+                Messages.playerQueryBind,
+                *service.userReplacements(groupId, userId),
+                "%num%" to wl.size.toString(),
+                "%current%" to formattedList
+            )
         )
     }
 

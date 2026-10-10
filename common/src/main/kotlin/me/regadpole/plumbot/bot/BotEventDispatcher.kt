@@ -70,7 +70,10 @@ object BotEventDispatcher {
     }
 
     fun dispatchGroupMessage(messageRaw: String, groupId: Long, senderId: Long) {
-        BotProvider.getBot()?.handler?.onGroupMessage(messageRaw, groupId, senderId)
+        // 内置 handler 与"第三方监听器"必须互相隔离：内置 handler 抛异常（例如数据库挂了）
+        // 不能阻止事件送达注册方，否则一个业务错误会让所有扩展静默收不到消息。
+        runCatching { BotProvider.getBot()?.handler?.onGroupMessage(messageRaw, groupId, senderId) }
+            .onFailure { logListenerFailure("内置 GroupMessage handler", it) }
 
         val event = GroupMessageEvent(
             botId = currentBotId(),
@@ -83,7 +86,17 @@ object BotEventDispatcher {
     }
 
     fun dispatchUserDecrease(groupId: Long, userId: Long) {
-        BotProvider.getBot()?.handler?.onUserDecrease(groupId, userId)
+        val bot = BotProvider.getBot()
+        // 先失效适配器的本地成员缓存，再走业务处理。
+        //
+        // 放在这里（而不是各适配器的监听器里）是因为三个监听器都汇聚到本方法：
+        // 只需一处即可对所有适配器生效，也不会因将来新增适配器而遗漏。
+        // 背景：此前 OneBot 的监听器自己失效了缓存，两个 MiraiMC 监听器没有，
+        // 于是 MiraiMC 下退群者会在缓存 TTL（30 分钟）内继续被判为"仍在群内"。
+        runCatching { bot?.invalidateGroupMember(groupId, userId) }
+            .onFailure { logListenerFailure("成员缓存失效", it) }
+        runCatching { bot?.handler?.onUserDecrease(groupId, userId) }
+            .onFailure { logListenerFailure("内置 GroupMemberDecrease handler", it) }
 
         val event = GroupMemberDecreaseEvent(
             botId = currentBotId(),

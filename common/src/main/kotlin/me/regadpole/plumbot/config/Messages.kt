@@ -32,6 +32,12 @@ object Messages {
 
     var playerList: String = "<missing:playerList>"
 
+    var avatarCard: String = "<missing:avatarCard>"
+    var avatarUsage: String = "<missing:avatarUsage>"
+
+    /** 代绑时 `require_in_group` 校验失败的拒绝文案（占位符 `%user_id%`）。 */
+    var notInGroup: String = "<missing:notInGroup>"
+
     var joinProxy: String = "<missing:joinProxy>"
     var leaveProxy: String = "<missing:leaveProxy>"
     var changeServer: String = "<missing:changeServer>"
@@ -66,11 +72,4 @@ object Messages {
     var remoteCommandDenied: String = "<missing:remoteCommandDenied>"
     var remoteCommandDisabled: String = "<missing:remoteCommandDisabled>"
     var remoteCommandExecuted: String = "<missing:remoteCommandExecuted>"
-
-    var noCommandFound: String = "<missing:noCommandFound>"
-    var commandAddBind: String = "<missing:commandAddBind>"
-    var commandDeleteBindById: String = "<missing:commandDeleteBindById>"
-    var commandDeleteBindByQQ: String = "<missing:commandDeleteBindByQQ>"
-    var commandQueryBindById: String = "<missing:commandQueryBindById>"
-    var commandQueryBindByQQ: String = "<missing:commandQueryBindByQQ>"
 }

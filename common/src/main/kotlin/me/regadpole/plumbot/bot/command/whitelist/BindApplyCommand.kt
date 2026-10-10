@@ -1,4 +1,4 @@
-﻿/*
+/*
  *     PlumBot-V3
  *     Copyright (C) 2026  RegadPoleCN
  *
@@ -19,12 +19,11 @@
 package me.regadpole.plumbot.bot.command.whitelist
 
 import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.internal.PlayerNameRules
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.database.DatabaseProvider
 
 class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
-
-    private val playerNameRegex = Regex("""^[a-zA-Z0-9_.*]{3,16}$""")
 
     override fun handle(message: String, groupId: Long, userId: Long) {
         val args = message.trim().split(Regex("""\s+""")).filter { it.isNotEmpty() }
@@ -39,15 +38,21 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         service.sendWrongUsage(groupId)
                         return
                     }
-                    if (!adminBypass && service.checkUserBindingFull(userId.toString())) {
-                        sendFullBindNotice(groupId, userId)
-                        return
+                    // 此处**不做** require_in_group 校验：管理员自己发的群消息，
+                    // 已由消息本身证明其在群内，查询不带来任何新信息。
+                    when (service.bindPolicy.bind(requireDatabase(), userId, playerName, bypassLimit = adminBypass)) {
+                        BindPolicy.Result.LimitReached -> {
+                            sendFullBindNotice(groupId, userId)
+                            return
+                        }
+
+                        BindPolicy.Result.PlayerAlreadyBound -> {
+                            service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
+                            return
+                        }
+
+                        BindPolicy.Result.Added -> Unit
                     }
-                    if (service.checkPlayerExists(playerName)) {
-                        service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
-                        return
-                    }
-                    requireDatabase().addBind(userId, playerName)
                     val wl = DatabaseProvider.getBindByUser(userId.toString())
                     service.sendBindTemplate(
                         groupId,
@@ -72,26 +77,44 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         service.sendWrongUsage(groupId)
                         return
                     }
-                    if (!adminBypass && service.checkUserBindingFull(targetUserIdStr)) {
-                        sendFullBindNotice(groupId, targetUserId)
-                        return
+                    // 管理员代绑：**唯一**需要校验的路径。
+                    // 前两条自助路径的"在群"已由群消息本身证明，查询无新信息却可能误拒；
+                    // 被代绑的 QQ 没有发过任何消息，这才是真正未知的量。
+                    if (!service.ensureTargetInGroup(groupId, targetUserId)) return
+                    when (
+                        service.bindPolicy.bind(
+                            requireDatabase(), targetUserId, playerName, bypassLimit = adminBypass
+                        )
+                    ) {
+                        BindPolicy.Result.LimitReached -> {
+                            sendFullBindNotice(groupId, targetUserId)
+                            return
+                        }
+
+                        BindPolicy.Result.PlayerAlreadyBound -> {
+                            service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
+                            return
+                        }
+
+                        BindPolicy.Result.Added -> Unit
                     }
-                    if (service.checkPlayerExists(playerName)) {
-                        service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
-                        return
-                    }
-                    requireDatabase().addBind(targetUserId, playerName)
                     val wl = DatabaseProvider.getBindByUser(targetUserIdStr)
-                    service.sendBindTemplate(
-                        groupId,
-                        Messages.adminAddBind,
-                        *service.originReplacements(groupId, userId),
-                        "%user_id%" to targetUserIdStr,
-                        "%user_name%" to service.bot.getGroupUserName(groupId, targetUserId),
-                        "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUserId),
-                        "%target_player%" to playerName,
-                        "%num%" to wl.size.toString(),
-                        "%current%" to wl.keys.joinToString(", ")
+                    // 单人成功绑定走定制卡片（whitelist 路由）
+                    service.sendWhitelistCard(
+                        groupId = groupId,
+                        playerName = playerName,
+                        qq = targetUserIdStr,
+                        bindTime = DatabaseProvider.getBindingByName(playerName)?.bindingTime?.toString(),
+                        fallbackText = service.render(
+                            Messages.adminAddBind,
+                            *service.originReplacements(groupId, userId),
+                            "%user_id%" to targetUserIdStr,
+                            "%user_name%" to service.bot.getGroupUserName(groupId, targetUserId),
+                            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUserId),
+                            "%target_player%" to playerName,
+                            "%num%" to wl.size.toString(),
+                            "%current%" to wl.keys.joinToString(", ")
+                        )
                     )
                     return
                 }
@@ -108,41 +131,58 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                 service.sendWrongUsage(groupId)
                 return
             }
-            if (service.checkUserBindingFull(userId.toString())) {
-                sendFullBindNotice(groupId, userId)
-                return
+            // 此处**不做** require_in_group 校验：申请人是在本群发出的消息，
+            // 成员身份已确立；查询只会引入"超时被误判为不在群"的风险。
+            when (service.bindPolicy.bind(requireDatabase(), userId, playerName, bypassLimit = false)) {
+                BindPolicy.Result.LimitReached -> {
+                    sendFullBindNotice(groupId, userId)
+                    return
+                }
+
+                BindPolicy.Result.PlayerAlreadyBound -> {
+                    service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
+                    return
+                }
+
+                BindPolicy.Result.Added -> Unit
             }
-            if (service.checkPlayerExists(playerName)) {
-                service.sendBindTemplate(groupId, Messages.existsBind, "%player_name%" to playerName)
-                return
-            }
-            requireDatabase().addBind(userId, playerName)
             val wl = DatabaseProvider.getBindByUser(userId.toString())
-            service.sendBindTemplate(
-                groupId,
-                Messages.playerAddBind,
-                *service.userReplacements(groupId, userId),
-                "%target_player%" to playerName,
-                "%num%" to wl.size.toString(),
-                "%current%" to wl.keys.joinToString(", ")
+            // 单人成功绑定走定制卡片（whitelist 路由）
+            service.sendWhitelistCard(
+                groupId = groupId,
+                playerName = playerName,
+                qq = userId.toString(),
+                bindTime = DatabaseProvider.getBindingByName(playerName)?.bindingTime?.toString(),
+                fallbackText = service.render(
+                    Messages.playerAddBind,
+                    *service.userReplacements(groupId, userId),
+                    "%target_player%" to playerName,
+                    "%num%" to wl.size.toString(),
+                    "%current%" to wl.keys.joinToString(", ")
+                )
             )
             return
         }
     }
 
-    private fun isValidPlayerName(name: String): Boolean = playerNameRegex.matches(name)
+    private fun isValidPlayerName(name: String): Boolean = PlayerNameRules.isValid(name)
 
     private fun sendFullBindNotice(groupId: Long, targetUser: Long) {
         val wl = DatabaseProvider.getBindByUser(targetUser.toString())
-        service.sendBindTemplate(
-            groupId,
-            Messages.fullBind,
-            "%player_name%" to wl.keys.joinToString(", "),
-            "%current%" to wl.size.toString(),
-            "%user_id%" to targetUser.toString(),
-            "%whitelist_limit%" to service.config.getInteger("feature", "bind", "maxNum").toString(),
-            "%user_name%" to service.bot.getGroupUserName(groupId, targetUser),
-            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUser)
+        // 列表型提示走 bindList 路由；注意 %current% 在这里语义是**数量**，%player_name% 才是名单
+        service.sendBindList(
+            groupId = groupId,
+            title = "白名单已满 · ${service.bot.getGroupUserName(groupId, targetUser)}",
+            players = wl.keys.toList(),
+            fallbackText = service.render(
+                Messages.fullBind,
+                "%player_name%" to wl.keys.joinToString(", "),
+                "%current%" to wl.size.toString(),
+                "%user_id%" to targetUser.toString(),
+                "%whitelist_limit%" to service.config.getInteger("feature", "bind", "maxNum").toString(),
+                "%user_name%" to service.bot.getGroupUserName(groupId, targetUser),
+                "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUser)
+            )
         )
     }
 }

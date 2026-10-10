@@ -23,6 +23,7 @@ import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.api.bot.BotAdapterMetadata
 import me.regadpole.plumbot.api.bot.BotFactory
 import me.regadpole.plumbot.api.bot.IBot
+import me.regadpole.plumbot.internal.HealthCounters
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
 
@@ -37,6 +38,10 @@ object BotProvider {
 
     private var hasLoaded = false
 
+    /**
+     * @deprecated 零调用成员：请改用 `getBot() != null` 判断（D8 弃用周期，主版本内保留）。
+     */
+    @Deprecated("改用 getBot() != null")
     val isReady: Boolean
         get() = hasLoaded && bot != null
 
@@ -89,10 +94,15 @@ object BotProvider {
                 "Loaded bot ${factory.metadata.type} with capabilities: ${factory.metadata.capabilities.joinToString()}"
             )
             hasLoaded = true
+            HealthCounters.increment(HealthCounters.Key.BOT_STARTED)
         } catch (e: Exception) {
             context.log(LogLevel.ERROR, "Failed to load bot ${factory.metadata.type}: ${e.message ?: e.javaClass.name}")
             context.log(LogLevel.ERROR, e.stackTraceToString())
             hasLoaded = false
+            // 半初始化实例可能已持有连接/协程作用域：置空并尽力释放，避免残留（否则 unloadBot 也够不着它）
+            val failed = bot
+            bot = null
+            runCatching { failed?.shutdown() }
             throw IllegalStateException("Failed to load bot ${factory.metadata.type}", e)
         }
     }
@@ -107,12 +117,21 @@ object BotProvider {
             ?: throw IllegalStateException("No bot factory registered for requested type '$requestedType' or fallback '$DEFAULT_TYPE'")
     }
 
+    /**
+     * 卸载当前 Bot。
+     *
+     * **无条件尝试释放**：此前的实现要求 `bot != null && hasLoaded` 才调用 `shutdown()`，
+     * 而"加载过程中失败"会留下 `bot` 已赋值、`hasLoaded=false` 的半初始化实例
+     * （连接与协程作用域都还在），于是它永远不会被回收。
+     */
     fun unloadBot() {
-        if (bot != null && hasLoaded) {
-            bot!!.shutdown()
-            bot = null
-            hasLoaded = false
-        }
+        val current = bot
+        bot = null
+        hasLoaded = false
+        HealthCounters.increment(HealthCounters.Key.BOT_UNLOADED)
+        runCatching { current?.shutdown() }
+            .onFailure { System.err.println("[PlumBot] Bot 卸载失败：${it.message ?: it.javaClass.simpleName}") }
+
         // Public-API listener cleanup. Public-API handles returned by
         // PlumBotAPI.subscribeXxx are best-effort closed via this hook.
         BotEventDispatcher.clearAllListeners()

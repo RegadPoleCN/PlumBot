@@ -21,6 +21,8 @@ package me.regadpole.plumbot.bot.command
 import me.regadpole.plumbot.api.platform.PlatformCapability
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.internal.LogLevel
+import me.regadpole.plumbot.render.RenderRoute
+import me.regadpole.plumbot.render.TextPayload
 
 class RemoteConsoleCommandService(private val service: BotCommandService) {
 
@@ -66,7 +68,14 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
                 Messages.remoteCommandExecuted,
                 "%output%" to truncatedOutput
             )
-            service.sendRawMessage(groupId, rendered)
+            // 控制台回显走 console 路由，并启用 & 色码（OutputCapturingBuffer 默认输出 &-legacy 文本）
+            service.sendRendered(
+                groupId = groupId,
+                route = RenderRoute.CONSOLE,
+                payload = TextPayload(body = rendered, ampersandCodes = true),
+                fallbackText = rendered,
+                pic = true
+            )
         }.exceptionally { err ->
             service.sendRawMessage(groupId, "执行指令时异常: ${err.message}")
             null
