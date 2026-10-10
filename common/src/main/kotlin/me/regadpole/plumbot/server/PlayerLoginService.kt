@@ -21,6 +21,7 @@ package me.regadpole.plumbot.server
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.render.RenderRoute
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
 import me.regadpole.plumbot.utils.getLegacyFromComponent
 
@@ -53,6 +54,11 @@ class PlayerLoginService(
 
     private fun notifyKick(playerName: String) {
         val rendered = Messages.kickPlatform.replace("%player_name%", playerName)
-        sender.broadcast(rendered, config.getBoolean("feature", "bind", "pic"))
+        sender.broadcastRendered(
+            route = RenderRoute.KICK,
+            payload = mapOf("playerName" to playerName),
+            fallbackText = rendered,
+            pic = true
+        )
     }
 }

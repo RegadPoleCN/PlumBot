@@ -27,9 +27,13 @@ import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.database.MySQL
 import me.regadpole.plumbot.database.SQLite
 import me.regadpole.plumbot.internal.LogLevel
+import me.regadpole.plumbot.internal.ShutdownRegistry
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.task.TaskProviderImpl
-import me.regadpole.plumbot.utils.TextToImg
+import me.regadpole.plumbot.render.RenderConfig
+import me.regadpole.plumbot.render.RenderProvider
+import me.regadpole.plumbot.render.RenderTextStyle
+import me.regadpole.plumbot.utils.HttpConstants
 import net.kyori.adventure.text.Component
 import taboolib.module.database.Database
 import java.io.File
@@ -59,10 +63,9 @@ interface PlumBot {
         log(LogLevel.INFO, "Config loaded!")
         debugProvider.load()
         log(LogLevel.INFO, "Debugging loaded!")
-        val fontPath = config.getString("feature", "img", "file")?.replace("%plugin_folder%", dataDirectory.pathString)
-        if (fontPath != null) {
-            TextToImg.ttfFile = File(fontPath)
-        }
+        // 装配渲染门户（唯一实例 + 唯一生命周期），并把字体与下载 UA 作为配置注入，
+        // 取代旧形态：四个模块各自去写渲染引擎的全局可变状态。
+        applyRenderConfig()
         loadDatabase()
         log(LogLevel.INFO, "Database initialized!")
         loadBot()
@@ -72,12 +75,21 @@ interface PlumBot {
     fun disable() {
         BotProvider.unloadBot()
         log(LogLevel.INFO, "Bot stopped!")
+        RenderProvider.shutdown()
+        log(LogLevel.INFO, "Render portal shutdown!")
         DatabaseProvider.shutdown()
         log(LogLevel.INFO, "Database closed!")
         TaskProviderImpl.shutdown()
         log(LogLevel.INFO, "TaskProvider shutdown!")
         debugProvider.unload()
         log(LogLevel.INFO, "Debugging unloaded!")
+
+        // 兜底：关闭所有自行登记的资源（消息广播、词库重载等作用域）。
+        // 放在最后执行，确保即使上面某一环提前失败，这些作用域也不会随 reload 泄漏。
+        val failed = ShutdownRegistry.runAll()
+        if (failed > 0) {
+            log(LogLevel.WARN, "有 $failed 个组件释放失败，详见控制台日志。")
+        }
     }
 
     fun loadBot() {
@@ -98,6 +110,40 @@ interface PlumBot {
             }
         }
         DatabaseProvider.start(database)
+    }
+
+    /**
+     * 装配/刷新渲染门户配置。
+     *
+     * 由本方法集中读取 `feature.img.file` 与文本可读性规则并注入门户，
+     * 替代原先各模块各自写渲染引擎全局状态的做法。
+     */
+    fun applyRenderConfig() {
+        val fontPath = config.getString("feature", "img", "file")
+            ?.replace("%plugin_folder%", dataDirectory.pathString)
+
+        // 文本可读性规则：配置 → 门户 → AWT 引擎。
+        // 任一键缺失时回落到 RenderTextStyle 的默认值（与协议清单一致）。
+        val defaults = RenderTextStyle()
+        val configuredThreshold = config.getDouble("feature", "img", "text", "contrast_threshold")
+        val textStyle = RenderTextStyle(
+            baseColor = config.getString("feature", "img", "text", "base")?.takeIf { it.isNotBlank() }
+                ?: defaults.baseColor,
+            textColor = config.getString("feature", "img", "text", "color")?.takeIf { it.isNotBlank() }
+                ?: defaults.textColor,
+            contrastThreshold = configuredThreshold.takeIf { it.isFinite() && it > 0.0 }
+                ?: defaults.contrastThreshold,
+            autoOutline = config.getBoolean("feature", "img", "text", "auto_outline")
+        )
+
+        val portal = RenderProvider.bootstrap(platform)
+        portal.configure(
+            RenderConfig(
+                fontFile = fontPath?.takeIf { it.isNotBlank() }?.let { File(it) },
+                userAgent = HttpConstants.BROWSER_USER_AGENT,
+                textStyle = textStyle
+            )
+        )
     }
 
     fun loadConfig() {

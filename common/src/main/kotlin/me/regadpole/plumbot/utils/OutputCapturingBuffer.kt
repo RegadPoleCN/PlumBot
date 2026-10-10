@@ -26,7 +26,8 @@ import net.kyori.adventure.text.ComponentLike
  * 跨平台通用的控制台回显捕获器，纯基于 JVM 和 Adventure 文本契约。
  * 天然兼顾纯 String 平台（如老 Spigot、未来异构游戏 Hytale）与原生 Adventure 平台（Paper、Velocity）。
  *
- * 优化支持保留颜色代码（§ 颜色码或 ANSI），配合 TextToImg 可直接在群内生成真实色彩的控制台回显卡片。
+ * 优化支持保留颜色代码（§ 颜色码或 ANSI）：开启后产物可直接交给渲染门户的 `console` 路由，
+ * 在群内生成带真实色彩的控制台回显卡片。
  */
 class OutputCapturingBuffer(
     private val forwardTo: Audience? = null,

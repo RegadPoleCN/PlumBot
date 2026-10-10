@@ -20,10 +20,14 @@ package me.regadpole.plumbot.server
 
 import me.regadpole.plumbot.bot.command.MessageModeResolver
 import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.filter.FilterManagerHolder
+import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformCapability
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.utils.stripMinecraftFormatting
+import me.regadpole.plumbot.render.RenderRoute
+import java.util.UUID
 
 /**
  * 负责统一桥接游戏内发生的所有事件（玩家聊天、进服、离服、遇难、成就）至 QQ 群。
@@ -52,15 +56,52 @@ class GameEventBridge(
             .replace("%server%", serverName)
             .replace("%player_name%", playerName)
             .replace("%message%", resolved)
-        sender.broadcast(rendered, config.getBoolean("feature", "message", "pic"))
+        sender.broadcastRendered(
+            route = RenderRoute.MESSAGE,
+            payload = mapOf(
+                "playerName" to playerName,
+                "serverName" to serverName,
+                "message" to resolved
+            ),
+            fallbackText = rendered,
+            pic = true
+        )
     }
 
     fun onJoin(playerName: String) {
+        // 与广播开关无关：进服即补写绑定记录的 UUID
+        persistPlayerUuid(playerName)
+
         val totalEnabled = config.getBoolean("feature", "joinAndLeave", "enable")
         if (!totalEnabled || !config.getBoolean("feature", "joinAndLeave", "joinProxy")) return
 
         val rendered = Messages.joinProxy.replace("%player_name%", playerName)
-        sender.broadcast(rendered, config.getBoolean("feature", "joinAndLeave", "pic"))
+        sender.broadcastRendered(
+            route = RenderRoute.JOIN_AND_LEAVE,
+            payload = mapOf("type" to "join", "playerName" to playerName),
+            fallbackText = rendered,
+            pic = true
+        )
+    }
+
+    /**
+     * 玩家进服时把平台 UUID 补写进绑定表。
+     *
+     * `player_uuid` 列一直存在、`setUUID` 也已实现，但此前**只有第三方 API 会调用它**，
+     * 内部流程从不写入 —— 导致 `getUUIDByName` / `getUUIDByUser` 恒返回 null。
+     * 进服是同时知道"玩家名 + UUID"的时刻，因此在这里补齐。
+     */
+    private fun persistPlayerUuid(playerName: String) {
+        runCatching {
+            val database = DatabaseProvider.getDatabase() ?: return
+            val rawUuid = context.playerService.getPlayerUuid(playerName) ?: return
+            val uuid = runCatching { UUID.fromString(rawUuid) }.getOrNull() ?: return
+            val binding = database.getByName(playerName) ?: return
+            if (binding.playerUUID == uuid.toString()) return
+            database.setUUID(playerName, uuid)
+        }.onFailure {
+            context.log(LogLevel.WARN, "[PlumBot] 补写玩家 UUID 失败 ($playerName): ${it.message}")
+        }
     }
 
     fun onLeave(playerName: String, serverName: String) {
@@ -70,7 +111,12 @@ class GameEventBridge(
         val rendered = Messages.leaveProxy
             .replace("%server%", serverName)
             .replace("%player_name%", playerName)
-        sender.broadcast(rendered, config.getBoolean("feature", "joinAndLeave", "pic"))
+        sender.broadcastRendered(
+            route = RenderRoute.JOIN_AND_LEAVE,
+            payload = mapOf("type" to "leave", "playerName" to playerName, "serverName" to serverName),
+            fallbackText = rendered,
+            pic = true
+        )
     }
 
     fun onChangeServer(playerName: String, originServer: String, targetServer: String) {
@@ -82,7 +128,16 @@ class GameEventBridge(
             .replace("%player_name%", playerName)
             .replace("%origin_server%", originServer)
             .replace("%target_server%", targetServer)
-        sender.broadcast(rendered, config.getBoolean("feature", "joinAndLeave", "pic"))
+        sender.broadcastRendered(
+            route = RenderRoute.CHANGE_SERVER,
+            payload = mapOf(
+                "playerName" to playerName,
+                "originServer" to originServer,
+                "targetServer" to targetServer
+            ),
+            fallbackText = rendered,
+            pic = true
+        )
     }
 
     fun onDeath(playerName: String, serverName: String, deathMessage: String) {
@@ -93,7 +148,16 @@ class GameEventBridge(
             .replace("%server%", serverName)
             .replace("%player_name%", playerName)
             .replace("%death_message%", deathMessage)
-        sender.broadcast(rendered, config.getBoolean("feature", "death", "pic"))
+        sender.broadcastRendered(
+            route = RenderRoute.DEATH,
+            payload = mapOf(
+                "playerName" to playerName,
+                "serverName" to serverName,
+                "deathMessage" to deathMessage
+            ),
+            fallbackText = rendered,
+            pic = true
+        )
     }
 
     fun onAdvancement(playerName: String, serverName: String, advancementTitle: String) {
@@ -104,6 +168,15 @@ class GameEventBridge(
             .replace("%server%", serverName)
             .replace("%player_name%", playerName)
             .replace("%advancement_title%", advancementTitle)
-        sender.broadcast(rendered, config.getBoolean("feature", "advancement", "pic"))
+        sender.broadcastRendered(
+            route = RenderRoute.ADVANCEMENT,
+            payload = mapOf(
+                "playerName" to playerName,
+                "serverName" to serverName,
+                "advancementTitle" to advancementTitle
+            ),
+            fallbackText = rendered,
+            pic = true
+        )
     }
 }
