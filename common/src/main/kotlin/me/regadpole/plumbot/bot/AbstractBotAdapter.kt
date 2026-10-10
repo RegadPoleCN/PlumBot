@@ -147,7 +147,9 @@ abstract class AbstractBotAdapter : IBot {
     ) {
         val fallback = stripColorCodes(fallbackText)
         val portal = if (pic) RenderProvider.getOrNull() else null
-        if (portal == null || !portal.isImageCapable) {
+        // R17：用 warmUpEngines（先触发按需装载）而不是 isImageCapable（只看当前是否可用）——
+        // 否则"引擎依赖尚未装载"会被误判为"不能出图"，按需装载路径永远走不到。
+        if (portal == null || !portal.warmUpEngines()) {
             sendPlain(isGroup, targetId, fallback)
             return
         }

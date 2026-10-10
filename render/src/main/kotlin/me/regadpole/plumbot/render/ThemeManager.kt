@@ -133,6 +133,20 @@ internal class ThemeManager(
         val configuredMax = context.config.getInteger("feature", "img", "playwright", "template_max_bytes")
         val maxBytes = if (configuredMax <= 0) DEFAULT_MAX_BYTES else configuredMax
 
+        // R28：校验和配置先解析 —— **格式非法必须失败关闭**（静默跳过会把安全开关变成安慰剂）
+        val expected = when (
+            val parsed = TemplateIntegrity.parse(
+                context.config.getString("feature", "img", "playwright", "template_sha256")
+            )
+        ) {
+            is TemplateIntegrity.Expected.Malformed -> {
+                context.log(LogLevel.ERROR, TemplateIntegrity.malformedMessage(parsed.raw))
+                return@withContext false
+            }
+
+            else -> parsed
+        }
+
         val parent = destinationFile.parentFile ?: return@withContext false
         parent.mkdirs()
         val tempFile = File(parent, "${destinationFile.name}.tmp")
@@ -172,6 +186,15 @@ internal class ThemeManager(
             if (total <= 0L) {
                 context.log(LogLevel.WARN, "[PlumBot-Render] 模板下载内容为空：$rawUrl")
                 return@withContext false
+            }
+
+            // R28：**落盘前**校验内容（校验失败就不替换模板，旧的可用模板继续生效）
+            if (expected is TemplateIntegrity.Expected.Valid) {
+                val actual = TemplateIntegrity.sha256(tempFile)
+                if (!TemplateIntegrity.matches(actual, expected.hex)) {
+                    context.log(LogLevel.ERROR, TemplateIntegrity.mismatchMessage(expected.hex, actual))
+                    return@withContext false
+                }
             }
 
             if (!moveAtomically(tempFile, destinationFile)) {

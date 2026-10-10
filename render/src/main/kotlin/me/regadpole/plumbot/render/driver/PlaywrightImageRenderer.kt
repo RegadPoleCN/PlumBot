@@ -112,24 +112,40 @@ internal class PlaywrightImageRenderer(
         // 持久化目录与下载镜像必须在 Playwright.create() **之前**通过环境变量注入
         val pw = Playwright.create(Playwright.CreateOptions().setEnv(playwrightEnvironment()))
 
+        // R25 / D6：沙箱**默认开启**。此前这里无条件传 `--no-sandbox`，等于这条防线从未生效。
+        // 键名取反向语义（disable_sandbox）：键缺失时等于沙箱开启，属安全侧默认。
+        val sandboxDisabled = context.config.getBoolean("feature", "img", "playwright", "disable_sandbox")
+        if (sandboxDisabled) {
+            context.log(LogLevel.WARN, PlaywrightSandbox.disabledWarning())
+        }
+
         val launchOptions = BrowserType.LaunchOptions()
             .setHeadless(true)
-            .setArgs(listOf(
-                "--no-sandbox",
-                "--disable-setuid-sandbox",
-                "--disable-dev-shm-usage",
-                "--disable-gpu",
-                // 依据冻结基线 D-9：头像改为服务端预取并合成 data URL 后，
-                // 浏览器不再需要跨域取图，故移除 --disable-web-security/--allow-file-access-from-files。
-                "--disable-crash-reporter",
-                "--disable-breakpad",
-                "--no-crash-upload",
-                "--mute-audio"
-            ))
+            .setArgs(
+                listOf(
+                    "--disable-dev-shm-usage",
+                    "--disable-gpu",
+                    // 依据冻结基线 D-9：头像改为服务端预取并合成 data URL 后，
+                    // 浏览器不再需要跨域取图，故移除 --disable-web-security/--allow-file-access-from-files。
+                    "--disable-crash-reporter",
+                    "--disable-breakpad",
+                    "--no-crash-upload",
+                    "--mute-audio"
+                ) + PlaywrightSandbox.args(sandboxDisabled)
+            )
 
         applyBrowserDecision(launchOptions)
 
-        val br = pw.chromium().launch(launchOptions)
+        val br = try {
+            pw.chromium().launch(launchOptions)
+        } catch (e: Throwable) {
+            // 沙箱不可用（容器常见）时给出**明确指引**，但**不自动关沙箱** ——
+            // 自动降级等于悄悄拆掉防线；失败会走既有的"降级为纯文本 + 计数"，不会静默无图。
+            if (!sandboxDisabled && PlaywrightSandbox.looksLikeSandboxFailure(e.message)) {
+                context.log(LogLevel.ERROR, PlaywrightSandbox.sandboxFailureHint())
+            }
+            throw e
+        }
 
         br.onDisconnected {
             context.log(LogLevel.WARN, "[PlumBot-Render] 底层 Chromium 意外退出，看门狗回收资源并重置...")

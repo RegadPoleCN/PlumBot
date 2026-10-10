@@ -93,7 +93,60 @@ internal class ImageRenderManager(
 
     override val isImageCapable: Boolean
         get() = rendererFor(ENGINE_AWT)?.isSupported == true ||
-            runCatching { Class.forName(PLAYWRIGHT_CLASS) }.isSuccess
+            runCatching { Class.forName(PLAYWRIGHT_CLASS) }.isSuccess ||
+            playwrightLoadSucceeded
+
+    /**
+     * R17：**先触发按需装载，再判定**能否出图。
+     *
+     * 为什么不能只看 [isImageCapable]：Playwright 的类由 Libby 在**首次需要时**下载装载，
+     * 而按需装载此前只发生在"驱动构造"里。于是调用方的门控会在装载被触发**之前**判定
+     * "不可出图"，那条装载路径永远走不到 —— 表现为"配了 `engine=playwright` 却一直出纯文本"。
+     */
+    override fun warmUpEngines(): Boolean {
+        val engine = runCatching { engineFor(RenderRoute.STATUS) }.getOrDefault(ENGINE_AWT)
+        if (engine != ENGINE_PLAYWRIGHT) return isImageCapable
+        return ensurePlaywrightLoaded() || rendererFor(ENGINE_AWT)?.isSupported == true
+    }
+
+    /** 已成功装载过（避免重复触发下载）。 */
+    @Volatile
+    private var playwrightLoadSucceeded = false
+
+    /** 装载失败冷却（R17）：离线/仓库不可达时不要每条消息都重试一次下载。 */
+    private val playwrightLoadCooldown = FailureCooldown(ttlMillis = PLAYWRIGHT_LOAD_COOLDOWN_MS)
+
+    private fun ensurePlaywrightLoaded(): Boolean {
+        if (playwrightLoadSucceeded) return true
+        if (runCatching { Class.forName(PLAYWRIGHT_CLASS) }.isSuccess) {
+            playwrightLoadSucceeded = true
+            return true
+        }
+
+        val loader = libraryLoader ?: return false
+        if (playwrightLoadCooldown.isCooling(PLAYWRIGHT_LOAD_KEY)) return false
+
+        return try {
+            val loaded = loader.ensurePlaywright()
+            if (loaded) {
+                playwrightLoadSucceeded = true
+                playwrightLoadCooldown.clear(PLAYWRIGHT_LOAD_KEY)
+                true
+            } else {
+                playwrightLoadCooldown.recordFailure(PLAYWRIGHT_LOAD_KEY)
+                context.log(
+                    LogLevel.WARN,
+                    "[PlumBot-Render] Playwright 按需装载失败（离线或仓库不可达）：" +
+                        "已进入 ${PLAYWRIGHT_LOAD_COOLDOWN_MS / 1000}s 冷却，本引擎暂时不可用。"
+                )
+                false
+            }
+        } catch (t: Throwable) {
+            playwrightLoadCooldown.recordFailure(PLAYWRIGHT_LOAD_KEY)
+            context.log(LogLevel.WARN, "[PlumBot-Render] 按需装载异常：${t.message}")
+            false
+        }
+    }
 
     private fun rendererFor(engine: String): ImageRenderer? {
         if (engine == ENGINE_PLAYWRIGHT) {
@@ -534,6 +587,10 @@ internal class ImageRenderManager(
         const val CONCURRENCY = 2
 
         /** 允许排队的深度；超出立即降级纯文本，**不排队、不丢弃**。 */
+        /** Playwright 按需装载失败的冷却时长（R17）：避免离线环境中每条消息都触发下载尝试。 */
+        const val PLAYWRIGHT_LOAD_COOLDOWN_MS = 60_000L
+        /** 冷却键（单引擎，固定值即可）。 */
+        const val PLAYWRIGHT_LOAD_KEY = "playwright-load"
         const val QUEUE_DEPTH = 6
 
         const val MAX_TRACKED_TARGETS = 512

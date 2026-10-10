@@ -46,6 +46,18 @@ interface RenderPortal {
     /** 当前环境是否**有可能**产出图片（用于调用方提前短路，不代表某次渲染一定成功）。 */
     val isImageCapable: Boolean
 
+    /**
+     * **预加载入口**（R17）：把"按需装载的引擎依赖"准备好，再报告能否出图。
+     *
+     * 与 [isImageCapable] 的区别是**顺序**：后者只是"此刻是否可用"的快照，
+     * 于是当引擎依赖尚未装载（Playwright 由 Libby 按需下载）时，调用方可能**在装载被触发之前**
+     * 就判定"不能出图"，从而永远走不到那条按需装载路径 —— 表现为"配了 playwright 却一直出纯文本"。
+     *
+     * 默认实现退化为 [isImageCapable]（保持既有实现者不变）；内置实现会先尝试装载再判定，
+     * 并对失败加冷却，避免每条消息都触发一次下载尝试。
+     */
+    fun warmUpEngines(): Boolean = isImageCapable
+
     /** 注入渲染配置（字体、下载 UA 等）。可在启动期与重载期调用。 */
     fun configure(config: RenderConfig)
 

@@ -222,6 +222,12 @@ feature:
             template_url: "https://raw.githubusercontent.com/RegadPoleCN/PlumBot-Web-Templates/main/dist/index.html"
             # 期望的模板协议版本；与模板运行时 manifest 不符时会直接降级为 awt
             template_protocol: 1
+            # 模板的 SHA-256（R28：模板版本化 + 校验和）。
+            #   留空 = 不校验（默认，向后兼容）
+            #   64 位十六进制（可带 sha256: 前缀）= 下载后**落盘前**校验；不匹配则拒绝替换模板（旧模板继续生效）
+            #   写了但格式非法 = 直接拒绝下载并报错（不做静默跳过，否则这个开关会变成安慰剂）
+            # 计算方式：scripts/verify-template.ps1 <模板文件>
+            template_sha256: ""
             # 模板下载体积上限（字节）
             template_max_bytes: 8388608
             download_timeout_ms: 10000
@@ -231,6 +237,12 @@ feature:
             # 取值 1.0 ~ 4.0，支持 1.5 这类小数；超过区间会回落 1.5 并告警
             # 体积提示：像素数按**面积**增长 —— 1.5 相比 2.0 约省 44% 字节，2.0 相比 1.0 是 4 倍
             scale_factor: 1.5
+            # Chromium 沙箱开关（决策 D6）。注意是**反向键**：
+            #   false/缺失 = 沙箱开启（默认，安全侧）
+            #   true       = 关闭沙箱（仅在容器内 Chromium 因缺少 CAP_SYS_ADMIN / user namespace 无法启动时才需要）
+            # 关闭沙箱会显著降低模板被投毒时的攻击面防护，请确认进程隔离由容器/编排层提供。
+            # 沙箱启动失败时**不会自动降级**，而是给出告警与指引，并把该次渲染降级为纯文本。
+            disable_sandbox: false
             # 卡片图输出格式：png（默认，文字最清晰）或 jpeg（体积显著更小，文字边缘有轻微振铃）
             # 无法使用 WebP：JDK 自带 ImageIO 不支持写 WebP，引入第三方依赖的代价大于收益
             image_format: png
