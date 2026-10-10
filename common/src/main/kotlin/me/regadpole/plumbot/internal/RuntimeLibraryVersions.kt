@@ -33,6 +33,24 @@ object RuntimeLibraryVersions {
     const val AONE_BOT = "1.0.11-beta"
     const val GSON = "2.11.0"
     const val CONFIGURATE_YAML = "4.2.0"
-    const val CONFIGURATE_HOCON = "4.2.0"
     const val CONFIGURATE_EXTRA_KOTLIN = "4.2.0"
+
+    /**
+     * 协程缓存（[me.regadpole.plumbot.cache.DefaultBotCache] 等）使用。
+     *
+     * 注意：caffeine 是 aedile 的**传递依赖**（见 `libs.versions.toml` 的 aedile 条目），
+     * 但运行期必须**显式装载并重定位**：产物里对这些类的引用已被改写为
+     * `me.regadpole.plumbot.lib.com.github.benmanes.caffeine...`，仅靠传递依赖拿到的是未重定位版本。
+     * 升级 aedile 时必须同步核对它声明的 caffeine 版本。
+     */
+    const val AEDILE = "2.0.3"
+    const val CAFFEINE = "3.1.8"
+
+    /**
+     * Playwright（高清渲染引擎）。
+     *
+     * **仅在 `engine=playwright` 且真正出图时**才由 [me.regadpole.plumbot.render.RenderLibraryLoader]
+     * 按需下载并装载 —— 默认 `engine=awt` 时零下载、零装载、类不加载。
+     */
+    const val PLAYWRIGHT = "1.49.0"
 }

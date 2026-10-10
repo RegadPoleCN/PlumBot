@@ -47,6 +47,10 @@ object ConfigMigrator {
 
         var hasModified = false
 
+        // 渲染门控迁移的关键时序：必须在 mergeNodes **之前**记录新键是否缺失，
+        // 合并之后新键一律存在，那时再判就晚了（详见 RenderGateMigration 的说明）。
+        val pendingGates = RenderGateMigration.pendingRoutes(localRoot)
+
         fun mergeNodes(defaultNode: CommentedConfigurationNode, localNode: CommentedConfigurationNode) {
             defaultNode.childrenMap().forEach { (key, childDefault) ->
                 val childLocal = localNode.node(key)
@@ -61,6 +65,11 @@ object ConfigMigrator {
         }
 
         mergeNodes(defaultRoot, localRoot)
+
+        // 用旧键的**实际取值**（而非默认值）填充新键，保证升级前后行为完全一致
+        if (RenderGateMigration.applyLegacyValues(localRoot, pendingGates)) {
+            hasModified = true
+        }
 
         if (hasModified) {
             localLoader.save(localRoot)

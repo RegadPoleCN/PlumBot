@@ -51,6 +51,17 @@ feature:
         whitelist: true
         maxNum: 1
         adminBypass: true
+        # 【防呆检查，不是安全边界】管理员**代绑**时（#addBind <QQ> <玩家名>）确认被代绑的
+        # QQ 当前在本群内，用于拦住"QQ 号打错 → 白名单绑到无关账号"这类手误。
+        #
+        # 只作用于代绑这一条路径：自助申请者是在本群发的消息，成员身份已由消息本身确立，
+        # 再查一次没有新信息，反而可能因查询超时被误判为"不在群"而拒掉合法申请。
+        #
+        # 【重要】它不构成"白名单里的 QQ 一定在群内"的保证 —— 游戏内 /plumbot bind add
+        # 与 PlumBotAPI.addBinding 两条写入路径无法查询 QQ 群成员，不受本开关约束。
+        #
+        # 依赖适配器的 GROUP_MEMBER_CHECK 能力；缺失时**放行并告警**（否则代绑会整体不可用）。
+        # 成员查询超时与"确认不在群"不可区分，两者都按拒绝处理。
         require_in_group: false
         pic: true
     joinAndLeave: 
@@ -87,10 +98,152 @@ feature:
     # =========================================================================
     remote_console:
         enable: false
+        # 审计日志是否记录完整指令（决策 D9）
+        #   true  = 记完整指令（默认，保留事后审计能力）
+        #   false = 只记指令名与参数个数（指令可能携带敏感参数时选它）
+        log_commands: true
         # 回显最大字符数限制（防止刷屏封号）
         max_output_length: 1500
+        # 回显是否以图片卡片发送（启用 & 色码渲染）
+        pic: false
+    # =========================================================================
+    # 帮助指令 (/help) 的独立出图门控
+    # 此前借用 feature.bind.pic，导致关闭白名单图片会连带关掉帮助图片
+    # =========================================================================
+    help:
+        pic: false
+    # =========================================================================
+    # 白名单拦截踢出提示的出图门控（独立于 bind.pic，属安全通知）
+    # =========================================================================
+    kick:
+        pic: false
+    # =========================================================================
+    # 头像卡片指令 (%cmdprefix%avatar <玩家名>) 的开关与出图门控
+    # Hytale 上渲染原生外观（服务端合成），其余平台回落绑定 QQ 头像
+    #
+    # avatar.enable  = 指令本身是否生效（默认开启；此前该键缺失，
+    #                  读取结果为 false，导致指令"存在但毫无反应"）
+    # avatarCard.pic = 该指令是否出图（false 时只回文本）
+    # =========================================================================
+    avatar:
+        enable: true
+    avatarCard:
+        pic: true
     img:
+        # 渲染引擎模式：none (纯文本) / awt (JVM轻量默认) / playwright (Vue卡片超清)
+        # 任何拼错的取值同样会告警并回落 awt（不再静默降级）
+        engine: "awt"
         file: "%plugin_folder%/MiSans-Normal.ttf"
+
+        # 文本可读性规则（AWT 引擎）
+        # 默认值与 render-protocol.json 的 text 节点由 checkRenderProtocol 校验一致
+        text:
+            # 文字底板色（#RRGGBB）—— 保证黑白与彩色色码都能看清
+            base: "#1E2430"
+            # 默认文字色（#RRGGBB）
+            color: "#E6E6E6"
+            # 是否自动描边（对比度不足时按底板反色描边）
+            auto_outline: true
+            # 自动描边触发阈值（WCAG 对比度）
+            contrast_threshold: 4.5
+
+        # 逐内置命令覆盖引擎（缺省继承上面的 engine）
+        # 可用 route：status / playerList / whitelist / bindList / help / load / unload /
+        #            message / joinAndLeave / changeServer / death / advancement / kick /
+        #            console / text / hytaleAvatar
+        # 建议：message（聊天转发）保持 awt —— 它是唯一高频路径
+        #
+        # 每条 route 可覆盖的字段：
+        #   engine      : awt / playwright / none
+        #   timeout_ms  : 单次渲染超时（仅 playwright 生效）
+        # 注意：设备像素比是**浏览器上下文级**设置，不能逐路由配置，
+        #       请用下面的 playwright.scale_factor（写上来的 views.*.scale_factor 会被忽略并告警）
+        views:
+            # pic: 该 route 是否以图片回复（取代旧的 feature.<gate>.pic）
+            # 升级时若旧键存在，会以**旧键的实际取值**迁移过来，行为不变（见 RenderGateMigration）
+            # text / hytaleAvatar 无独立门控：由调用方（如 avatar 指令）决定是否出图
+            status: { engine: "awt", pic: false }
+            playerList: { engine: "awt", pic: false }
+            message: { engine: "awt", pic: false }
+            whitelist: { pic: false }
+            bindList: { pic: false }
+            help: { pic: false }
+            load: { pic: false }
+            unload: { pic: false }
+            joinAndLeave: { pic: false }
+            changeServer: { pic: false }
+            death: { pic: false }
+            advancement: { pic: false }
+            kick: { pic: false }
+            console: { pic: false }
+
+        # 载荷长度治理（取代旧的"500 字符静默截断"）
+        limits:
+            # 展示文本单字段上限（超出会截断并追加省略号，且记录告警）
+            display_text_max: 1024
+            # 单个图层（data URL）字节上限
+            per_layer_max: 262144
+            # 二进制总量硬上限
+            binary_total_max: 1048576
+            # 图层数上限
+            layers_max: 16
+            # 文本字符总量告警阈值
+            total_text_warn: 262144
+
+        # 头像：服务端预取 + 磁盘缓存（浏览器只收到成品 data URL）
+        avatar:
+            # 出口白名单（留空则使用内置列表：Mojang / crafatar / mc-heads / minotar / QQ）
+            domains: []
+            # 缓存目录；%plugin_folder% 会被替换为插件数据目录
+            cache_dir: "%plugin_folder%/cache/avatars"
+            # 缓存有效期（小时）
+            cache_ttl_hours: 168
+            # 裁切后的头像边长（像素）
+            head_size: 128
+            # 五级漏斗的逐级超时 / 总预算（毫秒）
+            # 逐级 800ms：某一级卡住不会拖垮整条漏斗；总预算 3000ms 独立于渲染超时窗口
+            level_timeout_ms: 800
+            total_budget_ms: 3000
+            # 正版皮肤查询地址（可换国内镜像 / 自建反代；仅接受 https）
+            session_server: "https://sessionserver.mojang.com/session/minecraft/profile"
+            # 漏斗全灭后的冷却分钟数；**负数表示禁用熔断**（0 或键缺失 = 默认 10 分钟）。
+            # 没有它时，查不到皮肤的玩家会在每次列表刷新时把整条漏斗（最坏 3 秒）跑满。
+            failure_cooldown_minutes: 10
+
+        playwright:
+            # 主题文件夹名称：直接对应 plugins/PlumBot/web/ 下的子目录
+            theme: "default"
+            # 自动下载的单文件模板直链 (若本地缺少 index.html 则自动从云端拉取)
+            template_url: "https://raw.githubusercontent.com/RegadPoleCN/PlumBot-Web-Templates/main/dist/index.html"
+            # 期望的模板协议版本；与模板运行时 manifest 不符时会直接降级为 awt
+            template_protocol: 1
+            # 模板下载体积上限（字节）
+            template_max_bytes: 8388608
+            download_timeout_ms: 10000
+            # 单次渲染超时（毫秒）
+            render_timeout_ms: 3500
+            # 设备像素比（Retina 高清渲染）；浏览器上下文级设置，只能全局配置
+            # 取值 1.0 ~ 4.0，支持 1.5 这类小数；超过区间会回落 1.5 并告警
+            # 体积提示：像素数按**面积**增长 —— 1.5 相比 2.0 约省 44% 字节，2.0 相比 1.0 是 4 倍
+            scale_factor: 1.5
+            # 卡片图输出格式：png（默认，文字最清晰）或 jpeg（体积显著更小，文字边缘有轻微振铃）
+            # 无法使用 WebP：JDK 自带 ImageIO 不支持写 WebP，引入第三方依赖的代价大于收益
+            image_format: png
+            # image_format=jpeg 时的质量（1~100）；85 通常是清晰度与体积的平衡点
+            jpeg_quality: 85
+            # 把 feature.img.file 的字体注入页面（@font-face + data URL），解决中文/Emoji 豆腐块。
+            # 用同一个 TTF 使 awt 与 playwright 两条途径字形一致；超过上限则跳过并记录。
+            font_max_bytes: 16777216
+            # 开发期直读目录（留空禁用）；填写后该目录会被纳入 file:// 白名单
+            dev_web_dir: ""
+            # ① 优先：指定宿主机已有 Chrome/Chromium 可执行文件路径
+            custom_chrome_path: ""
+            # ② 未指定则自动探测系统浏览器；也可显式指定 chrome / msedge
+            browser_channel: ""
+            # 浏览器二进制持久化目录（默认落在插件数据目录内，避免污染用户主目录）
+            browsers_path: "%plugin_folder%/playwright-browsers"
+            # 浏览器下载镜像（PLAYWRIGHT_DOWNLOAD_HOST），国内网络可填镜像地址
+            download_host: ""
 
 database: 
     mode: "sqlite"
@@ -111,6 +264,7 @@ keys:
     queryBind: ["查询白名单"]
     status: ["status", "tps", "状态"]
     remote_console: ["cmd", "console", "执行"]
+    avatar: ["avatar", "头像"]
 
 # 调试选项
 debug:

@@ -14,6 +14,15 @@ server2ob: "[%server%] %player_name%: %message%"
 playerList: "Online Players: %player_list% for %player_num% players"
 
 # player_name
+avatarCard: "玩家 %player_name% 的头像"
+# 无参数时的用法提示
+avatarUsage: "用法：%cmdprefix%avatar <玩家名>"
+
+# user_id —— feature.bind.require_in_group 代绑校验失败时的拒绝文案
+# 注意：成员查询"确认不在群"与"超时未返回"不可区分，故文案需对两种情况都成立
+notInGroup: "无法为 QQ %user_id% 添加白名单：该账号不在本群，或成员查询超时未返回。请核对 QQ 号后重试。"
+
+# player_name
 joinProxy: "%player_name% join the proxy"
 # player_name, server
 leaveProxy: "%player_name% leave the proxy"
@@ -66,20 +75,14 @@ help:
   - "%cmdprefix%$deleteBind <游戏名>   - 移除白名单"
   - "%cmdprefix%$queryBind   - 查询自己申请的所有白名单"
   - "%cmdprefix%$status   - 查看服务器性能与状态"
+  - "%cmdprefix%$avatar <游戏名>   - 查看玩家头像"
   - "%cmdprefix%$remote_console <指令>   - [管理员] 远程执行控制台指令"
 
 # tps_1m, tps_5m, tps_15m, mspt, used_mem, max_mem, online
-serverStatus: "服务器运行状态:\nTPS: %tps_1m%, %tps_5m%, %tps_15m%\nMSPT: %mspt% ms\n内存: %used_mem%MB / %max_mem%MB\n在线人数: %online%"
+serverStatus: "服务器运行状态:\nTPS: %tps_1m%, %tps_5m%, %tps_15m%\nMSPT: %mspt% ms\n内存: %used_mem%MB / %max_mem%MB\n在线人数: %online%\n健康: %health%"
 statusUnavailable: "当前服务端平台不支持性能指标监控或尚未就绪。"
 
 # remote command
 remoteCommandDenied: "权限不足：您未在管理员名单内，无权远程执行控制台指令。"
 remoteCommandDisabled: "远程控制台通道当前处于关闭状态（可在配置中开启）。"
 remoteCommandExecuted: "控制台执行回显:\n%output%"
-
-noCommandFound: "<red>请正确输入命令"
-commandAddBind: "<green>已将<aqua>%player%<green>添加至<aqua>%target_id%<green>的白名单"
-commandDeleteBindById: "<green>已将<aqua>%player%<green>从白名单中移除"
-commandDeleteBindByQQ: "<green>已将<aqua>%target_id%<green>的所有白名单中移除"
-commandQueryBindById: "<aqua>%player%<green>的白名单为<aqua>%target_id%"
-commandQueryBindByQQ: "<aqua>%target_id%<green>拥有白名单: <aqua>%player%"
