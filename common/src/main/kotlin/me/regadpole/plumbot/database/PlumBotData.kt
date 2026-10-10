@@ -39,7 +39,9 @@ fun Binding.Companion.of(data: ResultSet?): Binding? {
 fun Binding.Companion.of(data: ResultProcessorList): List<Binding> {
     val result = ArrayList<Binding>()
     data.forEach {
-        if (wasNull()) return@forEach
+        // 不要在这里调用 `wasNull()`：JDBC 规范里它指的是"上一次 getXxx 读到的列"，
+        // 而本行尚未读任何列。SQLite 驱动会直接抛 `column -1 out of bounds`（MySQL 恰好返回 false，
+        // 因此该缺陷只在 SQLite 后端暴露）。空值由下面的 null 判断处理。
         val id = getInt("id")
         val userId = getString("user_id") ?: return@forEach
         val playerName = getString("player_name") ?: return@forEach

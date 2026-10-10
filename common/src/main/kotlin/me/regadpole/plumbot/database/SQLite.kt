@@ -23,11 +23,22 @@ import taboolib.module.database.HostSQLite
 import taboolib.module.database.SQLite
 import java.io.File
 
-class SQLite(path: String) : AbstractBindingDatabase<HostSQLite, SQLite>(HostSQLite(File(path))) {
+class SQLite(path: String) :
+    AbstractBindingDatabase<HostSQLite, SQLite>(HostSQLite(File(path)), BINDING_TABLE_NAME) {
 
-    override val tableName = "binding"
     override fun SQLite.configureIdColumn() = id()
     override fun SQLite.configureUserIdColumn() = type(ColumnTypeSQLite.TEXT)
     override fun SQLite.configurePlayerNameColumn() = type(ColumnTypeSQLite.TEXT)
     override fun SQLite.configureTextColumn() = type(ColumnTypeSQLite.TEXT)
+
+    /** SQLite 支持 `IF NOT EXISTS`，天然幂等。 */
+    override fun createUniquePlayerNameIndex() {
+        dataSource.connection.use { conn ->
+            conn.createStatement().use { st ->
+                st.executeUpdate(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS idx_binding_player_name ON $BINDING_TABLE_NAME (player_name)"
+                )
+            }
+        }
+    }
 }

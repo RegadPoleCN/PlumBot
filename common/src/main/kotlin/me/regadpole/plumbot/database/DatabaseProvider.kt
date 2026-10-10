@@ -1,4 +1,4 @@
-﻿/*
+/*
  *     PlumBot-V3
  *     Copyright (C) 2026  RegadPoleCN
  *
@@ -18,6 +18,8 @@
 
 package me.regadpole.plumbot.database
 
+import me.regadpole.plumbot.api.database.Binding
+import me.regadpole.plumbot.internal.HealthCounters
 import me.regadpole.plumbot.api.database.IDatabase
 import java.util.*
 
@@ -26,14 +28,34 @@ object DatabaseProvider {
     private var database: IDatabase? = null
     private var hasLoaded = false
 
+    /**
+     * @deprecated 零调用成员：请改用 `getDatabaseOrNull() != null` 判断（D8 弃用周期，主版本内保留）。
+     */
+    @Deprecated("改用 getDatabaseOrNull() != null")
     val isReady: Boolean
         get() = hasLoaded && database != null
 
     private val loadedDatabase: IDatabase
         get() = database ?: throw IllegalStateException("DatabaseProvider 尚未就绪，数据库未初始化完成！")
 
+    /**
+     * 初始化并接管数据库实例。
+     *
+     * 顺序保证：**先 `initialize()` 成功，再替换引用**。失败时关闭刚创建的实例并原样抛出，
+     * 既不会留下"引用已就绪但表没建好"的半初始化状态，也不会泄漏连接池。
+     */
     fun start(database: IDatabase) {
-        database.initialize()
+        try {
+            database.initialize()
+        } catch (t: Throwable) {
+            HealthCounters.increment(HealthCounters.Key.DB_INIT_FAILURES)
+            runCatching { database.close() }
+            throw t
+        }
+        val previous = this.database
+        if (previous != null && previous !== database) {
+            runCatching { previous.close() }
+        }
         this.database = database
         hasLoaded = true
     }
@@ -66,6 +88,18 @@ object DatabaseProvider {
     }
 
     fun getBindByUser(user: Long): MutableMap<String, Int> = getBindByUser(user.toString())
+
+    /**
+     * 返回完整绑定记录（含 `bindingTime` 与 `playerUUID`）。
+     *
+     * 便捷方法 [getBindByUser] 把记录压成 `Map<玩家名, 绑定ID>`，会丢掉绑定时间等字段 ——
+     * 需要展示绑定时间的路径请使用本方法。
+     */
+    fun getBindingsByUser(user: String): List<Binding> = loadedDatabase.getByUser(user.trim())
+
+    /** 返回单条完整绑定记录（含 `bindingTime`），未绑定返回 `null`。 */
+    fun getBindingByName(name: String): Binding? = loadedDatabase.getByName(name)
+
     fun addBind(user: Long, name: String) = loadedDatabase.addBind(user, name)
     fun addBind(user: String, name: String) = loadedDatabase.addBind(user, name)
     fun removeBindByUser(user: Long) = loadedDatabase.removeBindByUser(user.toString())

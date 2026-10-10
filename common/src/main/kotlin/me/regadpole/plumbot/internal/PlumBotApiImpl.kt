@@ -19,6 +19,7 @@
 package me.regadpole.plumbot.internal
 
 import kotlinx.coroutines.Dispatchers
+import me.regadpole.plumbot.internal.PlayerNameRules
 import kotlinx.coroutines.withContext
 import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.ListenerHandle
@@ -44,8 +45,6 @@ fun createPlumBotApi(plugin: PlumBot): PlumBotAPI = PlumBotApiImpl(plugin)
 
 internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
 
-    private val playerNameRegex = Regex("""^[a-zA-Z0-9_.*]{3,16}$""")
-
     override val extensionRegistry: BotExtensionRegistry by lazy {
         DefaultBotExtensionRegistry(BotProvider)
     }
@@ -56,6 +55,8 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
     override val currentBotId: String
         get() = BotProvider.getBot()?.metadata?.type ?: "unknown"
 
+    /** @deprecated 见 `PlumBotAPI.isBotConnected`（D8 弃用周期）。 */
+    @Deprecated("语义含糊，请改用状态查询 API")
     override val isBotConnected: Boolean
         get() = BotProvider.getBot() != null
 
@@ -100,6 +101,18 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
         }
     }
 
+    override suspend fun sendGroupImage(groupId: Long, imageBytes: ByteArray) = withContext(Dispatchers.IO) {
+        if (imageBytes.isEmpty()) {
+            throw IllegalArgumentException("图片字节为空")
+        }
+        val bot = BotProvider.getBot() ?: throw BotNotReadyException()
+        try {
+            bot.sendGroupImage(groupId, imageBytes)
+        } catch (e: Throwable) {
+            throw BotMessageSendException("发送群图片失败 (群: $groupId)", e)
+        }
+    }
+
     override suspend fun broadcastToAllGroups(message: String, asImage: Boolean) {
         for (groupId in boundGroupIds) {
             runCatching { sendGroupMessage(groupId, message, asImage) }
@@ -136,8 +149,12 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
     }
 
     override suspend fun getBindingUser(uuid: UUID): Long? = withContext(Dispatchers.IO) {
-        DatabaseProvider.getBindByUser(uuid.toString()).values.firstOrNull()?.toLong()
-            ?: DatabaseProvider.getBindByName(uuid.toString())?.toLongOrNull()
+        // 按 player_uuid 查询：此前把 UUID 当 user_id 再当 player_name 查，两个分支都不可能命中，
+        // 结果对外恒为 null（UUID 反查形同未实现）。
+        DatabaseProvider.getDatabase()
+            ?.getByPlayerUuid(uuid.toString())
+            ?.userId
+            ?.toLongOrNull()
     }
 
     override suspend fun getBindingAccounts(userId: Long): Map<String, UUID?> = withContext(Dispatchers.IO) {
@@ -155,7 +172,7 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
     override suspend fun addBinding(userId: Long, playerName: String, uuid: UUID?): Boolean = withContext(Dispatchers.IO) {
         val database = DatabaseProvider.getDatabase() ?: return@withContext false
         val cleanName = playerName.trim()
-        if (!playerNameRegex.matches(cleanName)) return@withContext false
+        if (!PlayerNameRules.isValid(cleanName)) return@withContext false
         if (isPlayerWhitelisted(cleanName)) return@withContext false
 
         database.addBind(userId, cleanName)
@@ -167,11 +184,15 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
 
     override suspend fun removeBinding(playerName: String): Boolean = withContext(Dispatchers.IO) {
         val database = DatabaseProvider.getDatabase() ?: return@withContext false
-        val cleanName = playerName.trim()
-        if (!isPlayerWhitelisted(cleanName)) return@withContext false
+        // N12：**匹配与踢人统一走规范化名**。
+        // DB 侧一律存 lowercase（`AbstractBindingDatabase.normalize`），而踢人此前用原始大小写，
+        // 造成"库里是 steve、踢人时传 Steve"这类不对称 —— 在三端宿主上是否都能踢掉并无保证。
+        // 规范化后两侧同名；对外展示若需要原始大小写，应由调用方或宿主在线玩家名提供。
+        val normalized = playerName.trim().lowercase()
+        if (!isPlayerWhitelisted(normalized)) return@withContext false
 
-        database.removeBind(cleanName)
-        plugin.kickPlayer(cleanName)
+        database.removeBind(normalized)
+        plugin.kickPlayer(normalized)
         true
     }
 
