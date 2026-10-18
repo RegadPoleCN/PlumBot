@@ -260,6 +260,15 @@ internal class ImageRenderManager(
         avatarResolverRef = null
     }
 
+    /**
+     * 只反映"配置是否启用"：门控关闭或 `engine=none` 视为**主动关闭**；
+     * 队列溢出、引擎不可用等属于"启用后失败"，由 [render] 的 Unavailable/Failed 表达。
+     */
+    override fun isImageEnabled(route: String): Boolean {
+        val parsed = RenderRoute.byName(route) ?: return false
+        return picEnabled(parsed) && engineFor(parsed) != ENGINE_NONE
+    }
+
     override suspend fun render(request: RenderRequest): RenderResult {
         val route = RenderRoute.byName(request.route)
             ?: return RenderResult.Failed("未知路由: ${request.route}")

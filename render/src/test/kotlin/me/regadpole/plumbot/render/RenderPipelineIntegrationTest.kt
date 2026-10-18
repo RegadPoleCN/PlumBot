@@ -414,4 +414,29 @@ class RenderPipelineIntegrationTest {
             assertNotEquals(RenderResult.Unavailable, result, "${route.route} 没有独立门控，不该被门控拦下")
         }
     }
+
+    /**
+     * 计数分离的前提（A23）：`isImageEnabled` 只回答"配置有没有启用图片"。
+     *
+     * 若把 `Unavailable` 的其他原因（队列溢出、引擎不可用）也算成"关闭"，
+     * `/plumbot status` 里的"配置关闭"会虚高，而真正的降级故障被掩盖。
+     */
+    @Test
+    fun `isImageEnabled 只反映配置门控与 engine none`() {
+        RenderRoute.entries.filter { it.legacyGate != null }.forEach { route ->
+            assertEquals(
+                false,
+                portal(mapOf("feature.img.views.${route.route}.pic" to false)).isImageEnabled(route.route),
+                "${route.route}: 规范键关闭应报告未启用",
+            )
+            assertEquals(
+                true,
+                portal(mapOf("feature.img.views.${route.route}.pic" to true)).isImageEnabled(route.route),
+                "${route.route}: 规范键开启应报告启用",
+            )
+        }
+        assertEquals(false, portal(mapOf("feature.img.engine" to "none")).isImageEnabled("status"), "engine=none 等于主动关闭")
+        assertEquals(true, portal(emptyMap()).isImageEnabled("text"), "无门控路由默认启用")
+        assertEquals(false, portal(emptyMap()).isImageEnabled("noSuchRoute"), "未知路由无法出图")
+    }
 }

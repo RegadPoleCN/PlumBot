@@ -35,8 +35,17 @@ object HealthCounters {
 
     /** 预定义键，避免各处拼字符串写错。 */
     enum class Key {
-        /** 渲染降级为纯文本（引擎失败/超时/内容不可用）。 */
+        /** 渲染降级为纯文本（引擎失败/超时/队列溢出等**启用后**的失败）。 */
         RENDER_FALLBACK,
+
+        /**
+         * 按配置主动关闭图片、直接发纯文本的次数（`feature.img.views.<route>.pic=false`
+         * 或 `feature.img.engine=none`）。
+         *
+         * 与 [RENDER_FALLBACK] 分开计：两者都表现为"没图"，但前者是预期行为、后者是故障。
+         * 混在一起会让降级计数长期虚高，真故障被淹没。
+         */
+        RENDER_DISABLED,
 
         /** 因队列容量耗尽被拒绝的渲染请求。 */
         RENDER_QUEUE_REJECTED,

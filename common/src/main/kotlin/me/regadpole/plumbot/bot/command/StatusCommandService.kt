@@ -137,14 +137,15 @@ class StatusCommandService(private val service: BotCommandService) {
     )
 
     /**
-     * 运行时健康摘要（渲染降级 / 队列拒绝 / 过滤命中 / 词库重载失败 / Bot 启停 / DB 失败）。
+     * 运行时健康摘要（渲染降级/关闭 / 队列拒绝 / 过滤命中 / 词库重载失败 / Bot 启停 / DB 失败）。
      *
      * 数值全为 0 时仍显示一行 —— "全零"本身就是有效信息（说明没有静默降级）。
      */
     private fun healthLine(): String {
         // 渲染侧指标由门户自持（`:render` 不依赖 `:common`），这里一并汇总
         val queueRejected = RenderProvider.getOrNull()?.metrics()?.get("render.queueRejected") ?: 0L
-        return "渲染降级 ${HealthCounters.get(HealthKey.RENDER_FALLBACK)} · 队列拒绝 $queueRejected · " +
+        return "渲染降级 ${HealthCounters.get(HealthKey.RENDER_FALLBACK)}（配置关闭 ${HealthCounters.get(HealthKey.RENDER_DISABLED)}）· " +
+            "队列拒绝 $queueRejected · " +
             "过滤命中 ${HealthCounters.get(HealthKey.FILTER_HITS)} · 词库失败 ${HealthCounters.get(HealthKey.FILTER_RELOAD_FAILURES)} · " +
             "Bot 启停 ${HealthCounters.get(HealthKey.BOT_STARTED)}/${HealthCounters.get(HealthKey.BOT_UNLOADED)} · " +
             // R02：把连接状态放进摘要 —— 布尔式的"已连接"看不出"正在重连"，而重连期间消息是发不出去的

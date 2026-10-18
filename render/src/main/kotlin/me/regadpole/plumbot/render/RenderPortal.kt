@@ -58,6 +58,17 @@ interface RenderPortal {
      */
     fun warmUpEngines(): Boolean = isImageCapable
 
+    /**
+     * 该路由**是否按配置启用了图片**（门控 + 引擎不为 `none`）。
+     *
+     * 与 `render()` 返回 [RenderResult.Unavailable] 的区别：后者还包含"队列溢出、
+     * 主引擎失败且 AWT 不可用"等**启用后**的失败。调用方据此把"用户主动关闭"
+     * 与"启用但降级"分开计数 —— 否则降级指标会长期虚高。
+     *
+     * 默认 `true`（未知路由/既有实现者按原行为处理）。
+     */
+    fun isImageEnabled(route: String): Boolean = true
+
     /** 注入渲染配置（字体、下载 UA 等）。可在启动期与重载期调用。 */
     fun configure(config: RenderConfig)
 
