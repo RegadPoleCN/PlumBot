@@ -21,6 +21,7 @@ package me.regadpole.plumbot.velocity.platform
 import com.alessiodp.libby.VelocityLibraryManager
 import com.alessiodp.libby.Library
 import com.velocitypowered.api.plugin.PluginManager
+import me.regadpole.plumbot.internal.KyoriSupport
 import me.regadpole.plumbot.internal.RuntimeLibraries
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
 import me.regadpole.plumbot.api.platform.PlatformConfig
@@ -29,7 +30,7 @@ import org.slf4j.Logger
 import java.nio.file.Path
 
 class VelocityDependencyLoader(
-    plugin: Any,
+    private val plugin: Any,
     logger: Logger,
     dataDirectory: Path,
     pluginManager: PluginManager,
@@ -104,9 +105,11 @@ class VelocityDependencyLoader(
      *
      * 此前这里只装数据库驱动，导致代理端连 `config.yml` 都解析不了（configurate 缺失），
      * 且产物中已被重定位的 Hikari/aedile/Caffeine 引用无对应类。
+     *
+     * Adventure 例外：Velocity 自带 kyori，KyoriSupport 会跳过回退副本，直接共享宿主类。
      */
     private fun loadCommonLibraries() {
-        RuntimeLibraries.ALL.forEach { spec ->
+        KyoriSupport.manifestFor(plugin.javaClass.classLoader).forEach { spec ->
             val builder = Library.builder()
                 .groupId(spec.groupId)
                 .artifactId(spec.artifactId)

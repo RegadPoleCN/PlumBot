@@ -12,7 +12,8 @@ dependencies {
 
     // hytale
     compileOnly("com.hypixel.hytale:Server:+")
-    implementation(libs.adventureHytale)
+    // Hytale 宿主不带 kyori：运行期由 KyoriSupport 检测并交给 Libby 装载
+    compileOnly(libs.adventureApi)
     implementation(libs.libbyHytale)
     implementation(libs.bstatsHytale)
 }

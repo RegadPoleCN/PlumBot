@@ -164,4 +164,35 @@ class RuntimeLibrariesTest {
             "provider 不能混进跨平台清单（Bukkit/Velocity 已由宿主提供绑定）",
         )
     }
+
+    /**
+     * 回退清单只在宿主**没有** Adventure 时使用（Spigot/Hytale）。
+     *
+     * 一旦这里出现重定位规则，或者在 [RuntimeLibraries.ALL] 里重复装载，
+     * 就会重新制造「插件 Component ≠ 宿主 Component」的跨 API 事故。
+     */
+    @Test
+    fun `kyori fallback mirrors the host package names and never relocates`() {
+        assertEquals(
+            listOf(
+                "net{}kyori:adventure-api:${RuntimeLibraryVersions.ADVENTURE}",
+                "net{}kyori:adventure-key:${RuntimeLibraryVersions.ADVENTURE}",
+                "net{}kyori:examination-api:${RuntimeLibraryVersions.EXAMINATION_API}",
+                "net{}kyori:examination-string:${RuntimeLibraryVersions.EXAMINATION_API}",
+                "net{}kyori:adventure-text-minimessage:${RuntimeLibraryVersions.ADVENTURE}",
+                "net{}kyori:adventure-text-serializer-legacy:${RuntimeLibraryVersions.ADVENTURE}",
+            ),
+            RuntimeLibraries.KYORI_FALLBACK.map { it.coordinate },
+            "回退项必须与宿主同版本、同包名",
+        )
+        RuntimeLibraries.KYORI_FALLBACK.forEach { spec ->
+            assertTrue(!spec.transitive, "回退项不得解析传递依赖（optional 会带进一堆无关 jar）")
+            assertTrue(spec.relocates.isEmpty(), "回退项必须保持原包名，重定位会再次割裂宿主类身份")
+        }
+
+        val base = RuntimeLibraries.ALL.map { it.coordinate }.toSet()
+        RuntimeLibraries.KYORI_FALLBACK.forEach { spec ->
+            assertTrue(spec.coordinate !in base, "回退项 ${spec.coordinate} 不能同时出现在 ALL 里")
+        }
+    }
 }

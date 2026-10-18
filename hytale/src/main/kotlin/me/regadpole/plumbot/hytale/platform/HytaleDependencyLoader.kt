@@ -22,12 +22,13 @@ import com.alessiodp.libby.HytaleLibraryManager
 import com.alessiodp.libby.Library
 import com.hypixel.hytale.server.core.plugin.JavaPlugin
 import me.regadpole.plumbot.api.platform.PlatformConfig
+import me.regadpole.plumbot.internal.KyoriSupport
 import me.regadpole.plumbot.internal.RuntimeLibraries
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
 import me.regadpole.plumbot.render.RenderLibraryLoader
 
 class HytaleDependencyLoader(
-    plugin: JavaPlugin,
+    private val plugin: JavaPlugin,
     private val configProvider: () -> PlatformConfig?
 ) : RenderLibraryLoader {
     private val libraryManager by lazy { HytaleLibraryManager(plugin) }
@@ -78,8 +79,9 @@ class HytaleDependencyLoader(
 
         // 与 Bukkit/Velocity 使用同一份清单：此前只装数据库驱动，
         // 导致 Hytale 端无法解析 config.yml，且产物中已重定位的引用无对应类。
+        // Adventure：Hytale 宿主不带 kyori，KyoriSupport 会补上原包名运行时；
         // HYTALE_ONLY 只多一个 SLF4J provider（宿主不带，缺了日志会整晚静默）。
-        (RuntimeLibraries.ALL + RuntimeLibraries.HYTALE_ONLY).forEach { spec ->
+        (KyoriSupport.manifestFor(plugin.javaClass.classLoader) + RuntimeLibraries.HYTALE_ONLY).forEach { spec ->
             val builder = Library.builder()
                 .groupId(spec.groupId)
                 .artifactId(spec.artifactId)

@@ -43,6 +43,13 @@ object RuntimeLibraryVersions {
     const val JAVA_WEBSOCKET = "1.5.7"
 
     /**
+     * Adventure（kyori）版本：只在宿主不带 kyori 时由 Libby 装载（见 [KyoriSupport]）。
+     * 这三个版本与 `gradle/libs.versions.toml` 的 adventureVersion / examination 版本同步。
+     */
+    const val ADVENTURE = "4.21.0"
+    const val EXAMINATION_API = "1.3.0"
+
+    /**
      * 缓存（[me.regadpole.plumbot.cache.DefaultBotCache] 等）使用。
      *
      * 注意：aedile-core 自身也引用 caffeine（其 POM 声明 caffeine 3.1.8 为 compile 依赖），

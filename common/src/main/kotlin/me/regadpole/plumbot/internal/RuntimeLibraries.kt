@@ -204,6 +204,48 @@ object RuntimeLibraries {
         ),
     )
 
+    /**
+     * **仅当宿主不带 kyori（Adventure）时**补充装载的运行时。
+     *
+     * 装载策略见 [KyoriSupport]：Paper/Leaf 与 Velocity 自带 `net.kyori`，插件直接用宿主类
+     * （只有共享同一份 `Component`，组件才能跨 API 边界互通）；Spigot/Hytale 没有，才由 Libby
+     * 装入下面这套**原包名**类（不重定位，因为产物里不再有重定位副本）。
+     *
+     * 顺序 = 依赖顺序；`net.kyori:option` 不在此列（[ALL] 已为 configurate 显式装载）。
+     */
+    val KYORI_FALLBACK: List<Spec> = listOf(
+        Spec(
+            groupId = "net{}kyori",
+            artifactId = "adventure-api",
+            version = RuntimeLibraryVersions.ADVENTURE,
+        ),
+        Spec(
+            groupId = "net{}kyori",
+            artifactId = "adventure-key",
+            version = RuntimeLibraryVersions.ADVENTURE,
+        ),
+        Spec(
+            groupId = "net{}kyori",
+            artifactId = "examination-api",
+            version = RuntimeLibraryVersions.EXAMINATION_API,
+        ),
+        Spec(
+            groupId = "net{}kyori",
+            artifactId = "examination-string",
+            version = RuntimeLibraryVersions.EXAMINATION_API,
+        ),
+        Spec(
+            groupId = "net{}kyori",
+            artifactId = "adventure-text-minimessage",
+            version = RuntimeLibraryVersions.ADVENTURE,
+        ),
+        Spec(
+            groupId = "net{}kyori",
+            artifactId = "adventure-text-serializer-legacy",
+            version = RuntimeLibraryVersions.ADVENTURE,
+        ),
+    )
+
     /** 需要重定位的包名清单（测试与排查用）。 */
     val RELOCATED_PACKAGES: Set<String> = ALL.flatMap { it.relocates }.map { it.from }.toSet()
 }

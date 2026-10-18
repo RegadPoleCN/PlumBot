@@ -3,7 +3,9 @@ plugins {
 }
 
 dependencies {
-    api(libs.adventureApi)
+    // Adventure 由宿主提供（Paper/Velocity 自带），或在缺少时由 Libby 运行期装载
+    // （见 KyoriSupport）；因此只编译期可见，不再随 api 模块打进产物。
+    compileOnly(libs.adventureApi)
     api(libs.kotlinxCoroutines)
     api(libs.kotlinxDatetime)
 }

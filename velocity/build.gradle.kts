@@ -15,6 +15,9 @@ dependencies {
     implementation(project(":adapter:miraimc"))
 
     compileOnly(libs.velocityApi)
+    // Adventure 不再由 :api 传递暴露；Velocity 宿主自带 kyori，这里只编译期可见
+    compileOnly(libs.adventureApi)
+    compileOnly(libs.adventureTextMinimessage)
     compileOnly(libs.miraimcVelocity)
     kapt(libs.velocityApi)
 

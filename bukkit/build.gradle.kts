@@ -13,7 +13,9 @@ dependencies {
 
     // bukkit
     compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")
-    implementation(libs.adventureBukkit)
+    // Adventure 一律走宿主或 Libby 运行期装载，不随产物打包（见 KyoriSupport）
+    compileOnly(libs.adventureApi)
+    compileOnly(libs.adventureTextSerializerLegacy)
     implementation(libs.libbyBukkit)
     compileOnly(libs.miraimcBukkit)
     implementation(libs.bstatsBukkit)

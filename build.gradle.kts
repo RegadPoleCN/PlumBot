@@ -451,18 +451,20 @@ subprojects {
  * 单独运行：`gradlew checkRelocation`。
  *
  * 断言内容：
- * 1. `net/kyori/option`、`net/kyori/examination` **不得**以原前缀出现（D7 要求重定位）；
+ * 1. **产物里不得出现任何 kyori（Adventure）类**——无论原前缀还是重定位前缀。
+ *    Adventure 由宿主提供（Paper/Leaf、Velocity），缺失时由 Libby 按原包名回退装载；
+ *    一旦打包，插件里的 `Component` 与宿主就不是同一个类，跨 API 传递必炸
+ *    （Velocity `/plumbot status` 的 `NoClassDefFoundError` 即此因）。
  * 2. 不得出现 `top/` 命名空间（历史方案的回归防线）；
  * 3. `com/google/gson` **允许**保留原前缀（D7 明确豁免 —— 接受宿主自带 Gson）。
  */
 val checkRelocation = tasks.register("checkRelocation") {
     group = "verification"
-    description = "Asserts relocated prefixes and the top/* namespace are absent from dist jars."
+    description = "Asserts no kyori classes and no relocated prefixes leak into dist jars."
     dependsOn(copyDist)
 
     val distDir = layout.projectDirectory.dir("dist")
-    val mustBeRelocated = listOf("net/kyori/option/", "net/kyori/examination/")
-    val forbiddenPrefixes = listOf("top/")
+    val forbiddenPrefixes = listOf("top/", "net/kyori/", "me/regadpole/plumbot/lib/net/kyori/")
 
     doLast {
         val jars = distDir.asFile.listFiles { f -> f.isFile && f.extension == "jar" }?.toList().orEmpty()
@@ -474,12 +476,6 @@ val checkRelocation = tasks.register("checkRelocation") {
         jars.forEach { jar ->
             java.util.zip.ZipFile(jar).use { zip ->
                 val names = zip.entries().toList().map { it.name }
-                mustBeRelocated.forEach { prefix ->
-                    val hits = names.count { it.startsWith(prefix) }
-                    if (hits > 0) {
-                        violations += "${jar.name}: 仍有 $hits 个条目以未重定位前缀 $prefix 开头（D7 要求重定位）"
-                    }
-                }
                 forbiddenPrefixes.forEach { prefix ->
                     val hits = names.count { it.startsWith(prefix) }
                     if (hits > 0) violations += "${jar.name}: 出现禁用命名空间前缀 $prefix（$hits 条）"
@@ -492,7 +488,7 @@ val checkRelocation = tasks.register("checkRelocation") {
                 "checkRelocation failed with ${violations.size} violation(s):\n" + violations.joinToString("\n") { "  - $it" }
             )
         }
-        println("checkRelocation: 产物重定位断言通过（${jars.size} 个包；com/google/gson 按 D7 豁免）。")
+        println("checkRelocation: 产物重定位断言通过（${jars.size} 个包；无 kyori 类；com/google/gson 按 D7 豁免）。")
     }
 }
 
@@ -534,9 +530,6 @@ val checkRuntimeLibraries = tasks.register("checkRuntimeLibraries") {
         "org.spigotmc:spigot-api" to "宿主机 API（服务端自带）",
         "com.hypixel.hytale:Server" to "宿主机 API（Hytale 服务端自带）",
         "com.velocitypowered:velocity-api" to "宿主机 API（代理端自带）",
-        "net.kyori:adventure-api" to "随产物打包（Shadow 重定位；由 checkRelocation 兜底断言）",
-        "net.kyori:adventure-text-minimessage" to "随产物打包（Shadow 重定位）",
-        "net.kyori:adventure-text-serializer-legacy" to "随产物打包（Shadow 重定位）",
         // MiraiMC 是**宿主插件**：本适配器运行在它内部，由它提供这些类（不是我们要装载的库）
         "io.github.dreamvoid:MiraiMC-Bukkit" to "宿主插件 API（适配器运行于 MiraiMC 内）",
         "io.github.dreamvoid:MiraiMC-Velocity" to "宿主插件 API（适配器运行于 MiraiMC 内）",

@@ -20,6 +20,7 @@ package me.regadpole.plumbot.bukkit.platform
 
 import com.alessiodp.libby.BukkitLibraryManager
 import com.alessiodp.libby.Library
+import me.regadpole.plumbot.internal.KyoriSupport
 import me.regadpole.plumbot.internal.RuntimeLibraries
 import me.regadpole.plumbot.internal.RuntimeLibraryVersions
 import me.regadpole.plumbot.api.platform.PlatformConfig
@@ -27,7 +28,7 @@ import me.regadpole.plumbot.render.RenderLibraryLoader
 import org.bukkit.plugin.java.JavaPlugin
 
 class BukkitDependencyLoader(
-    plugin: JavaPlugin,
+    private val plugin: JavaPlugin,
     private val configProvider: () -> PlatformConfig?
 ) : RenderLibraryLoader {
     private val libraryManager: BukkitLibraryManager by lazy { BukkitLibraryManager(plugin) }
@@ -98,9 +99,12 @@ class BukkitDependencyLoader(
      * 清单是单一真源（三端共用），这里只负责把 `Spec` 映射成 Libby 的 `Library`：
      * 传递依赖开关与 relocate 规则都由清单给出 —— 产物里对这些库的引用已被 Shadow
      * 改写成重定位名，漏掉任一 relocate 都会在运行期炸 `NoClassDefFoundError`。
+     *
+     * Adventure 例外：宿主自带 kyori（Paper/Leaf）时直接复用宿主类；只有 Spigot 这类
+     * 不带的宿主才装载回退副本（见 [KyoriSupport]）。
      */
     private fun loadManifestLibraries() {
-        RuntimeLibraries.ALL.forEach { spec ->
+        KyoriSupport.manifestFor(plugin.javaClass.classLoader).forEach { spec ->
             val builder = Library.builder()
                 .groupId(spec.groupId)
                 .artifactId(spec.artifactId)
