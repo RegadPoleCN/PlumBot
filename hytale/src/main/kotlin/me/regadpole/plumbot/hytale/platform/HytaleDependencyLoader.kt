@@ -78,7 +78,8 @@ class HytaleDependencyLoader(
 
         // 与 Bukkit/Velocity 使用同一份清单：此前只装数据库驱动，
         // 导致 Hytale 端无法解析 config.yml，且产物中已重定位的引用无对应类。
-        RuntimeLibraries.ALL.forEach { spec ->
+        // HYTALE_ONLY 只多一个 SLF4J provider（宿主不带，缺了日志会整晚静默）。
+        (RuntimeLibraries.ALL + RuntimeLibraries.HYTALE_ONLY).forEach { spec ->
             val builder = Library.builder()
                 .groupId(spec.groupId)
                 .artifactId(spec.artifactId)

@@ -23,24 +23,31 @@ package me.regadpole.plumbot.internal
  *
  * 本文件中所有版本号均为 [gradle/libs.versions.toml] 中对应库版本的镜像，
  * 修改时必须同步更新 gradle/libs.versions.toml，以保证编译期依赖与运行时下载依赖一致。
+ *
+ * 清单只覆盖 `common/build.gradle.kts` 中 `compileOnly` 的运行期库；Kotlin 标准库/协程
+ * 由产物内联（不在此列）。各库的传递依赖**不随 POM 解析**，需要什么必须显式列出。
  */
 object RuntimeLibraryVersions {
     const val SQLITE_JDBC = "3.49.0.0"
     const val MYSQL_CONNECTOR = "8.3.0"
     const val HIKARI_CP = "4.0.3"
     const val GUAVA = "21.0"
+    const val SLF4J = "2.0.16"
     const val TABOOLIB_DATABASE = "1.0.2"
     const val AONE_BOT = "1.0.11-beta"
     const val GSON = "2.11.0"
+    const val CONFIGURATE_CORE = "4.2.0"
     const val CONFIGURATE_YAML = "4.2.0"
-    const val CONFIGURATE_EXTRA_KOTLIN = "4.2.0"
+    const val GEANTYREF = "1.3.16"
+    const val KYORI_OPTION = "1.1.0"
+    const val JAVA_WEBSOCKET = "1.5.7"
 
     /**
-     * 协程缓存（[me.regadpole.plumbot.cache.DefaultBotCache] 等）使用。
+     * 缓存（[me.regadpole.plumbot.cache.DefaultBotCache] 等）使用。
      *
-     * 注意：caffeine 是 aedile 的**传递依赖**（见 `libs.versions.toml` 的 aedile 条目），
-     * 但运行期必须**显式装载并重定位**：产物里对这些类的引用已被改写为
-     * `me.regadpole.plumbot.lib.com.github.benmanes.caffeine...`，仅靠传递依赖拿到的是未重定位版本。
+     * 注意：aedile-core 自身也引用 caffeine（其 POM 声明 caffeine 3.1.8 为 compile 依赖），
+     * 而运行期关闭了传递解析，因此 caffeine 必须在清单里**显式装载并重定位**：
+     * 产物里对这些类的引用已被改写为 `me.regadpole.plumbot.lib.com.github.benmanes.caffeine...`。
      * 升级 aedile 时必须同步核对它声明的 caffeine 版本。
      */
     const val AEDILE = "2.0.3"

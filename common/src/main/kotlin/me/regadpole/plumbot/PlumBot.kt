@@ -20,7 +20,7 @@ package me.regadpole.plumbot
 
 import me.regadpole.config.DatabaseSource
 import me.regadpole.plumbot.api.StableApi
-import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.config.MessagesBinder
 import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.database.DatabaseProvider
@@ -39,7 +39,6 @@ import taboolib.module.database.Database
 import java.io.File
 import java.nio.file.Path
 import kotlin.io.path.pathString
-import kotlin.reflect.KMutableProperty
 
 @StableApi
 interface PlumBot {
@@ -169,17 +168,6 @@ interface PlumBot {
             log(LogLevel.WARN, "messages.yml 加载失败，使用默认消息配置")
             return
         }
-        Messages::class.members.forEach {
-            if (it is KMutableProperty<*>) {
-                when (it.returnType.classifier) {
-                    String::class -> {
-                        val value = messagesConf.getString(it.name)
-                        if (value != null) it.setter.call(Messages, value)
-                    }
-                    List::class -> it.setter.call(Messages, messagesConf.getStringList(it.name))
-                }
-//                log(LogLevel.DEBUG, "messages: ${it.name} -> ${it.call(Messages)}")
-            }
-        }
+        MessagesBinder.apply(messagesConf)
     }
 }

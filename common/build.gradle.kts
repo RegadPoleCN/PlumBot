@@ -13,7 +13,6 @@ dependencies {
     compileOnly(libs.gson)
     // config
     compileOnly(libs.configurateYaml)
-    compileOnly(libs.configurateExtraKotlin)
     // cache
     compileOnly(libs.aedile)
     // database
@@ -22,7 +21,6 @@ dependencies {
     compileOnly(libs.mysql)
     compileOnly(libs.sqlite)
     // kotlin
-    implementation(kotlin("reflect"))
     testImplementation(kotlin("test"))
     // 迁移测试需要真实解析 YAML（生产环境为 compileOnly）
     testImplementation(libs.configurateYaml)
