@@ -21,11 +21,11 @@ package me.regadpole.plumbot.adapter.onebot
 import kotlinx.coroutines.*
 import me.regadpole.plumbot.internal.HealthCounters
 import me.regadpole.plumbot.api.bot.BotAdapterMetadata
+import me.regadpole.plumbot.api.bot.BotState
 import me.regadpole.plumbot.api.bot.IBot
 import me.regadpole.plumbot.api.bot.MemberInfo
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.bot.AbstractBotAdapter
-import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.listener.DefaultBotHandler
 import top.alazeprt.aonebot.action.GetGroupInfo
@@ -53,12 +53,19 @@ class OneBotAdapter(
     private var connectionMonitorJob: Job? = null
 
     override fun start(): IBot {
+        transitionTo(BotState.CONNECTING)
         handler = DefaultBotHandler(context, this)
-        doStart()
+        try {
+            doStart()
+        } catch (t: Throwable) {
+            transitionTo(BotState.FAILED, "启动失败：${t.message}")
+            throw t
+        }
 
-        // 复用基类的 load 广播（旧实现在此复制了一份相同逻辑，改动需两处同步）
-        announceLoaded()
-        // 注意：不在此处同步调用 preloadGroupCaches()，由 WebSocket 连接成功状态机在连接就绪后异步触发！
+        // WebSocket 连接是异步建立的：load 广播不能在这里发 —— 旧实现会在客户端尚未连接时
+        // 调用 action()，抛 WebsocketNotConnectedException（2026-10-18 Velocity/Hytale 实测）。
+        // 广播改由基类 markOnline() 在监控循环确认连接后补发；群缓存同样等连接就绪后再预热，
+        // 不能走基类 start() 里的同步 preloadGroupCaches()。
         return this
     }
 

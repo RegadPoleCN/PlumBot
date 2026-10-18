@@ -191,6 +191,9 @@ open class FakeBot(
     var doStartCalled = false
     var doShutdownCalled = false
 
+    /** 让发送抛异常（模拟 WebSocket 未连接 / 宿主通道不可用）。 */
+    var failOnSend = false
+
     override fun doStart() {
         doStartCalled = true
         failOnStart?.let { throw it }
@@ -234,10 +237,12 @@ open class FakeBot(
         CompletableFuture.completedFuture("group-$groupId")
 
     override fun sendGroupMsg(targetId: Long, message: String) {
+        if (failOnSend) throw IllegalStateException("测试：Bot 未连接")
         sentMessages += message
     }
 
     override fun sendUserMsg(targetId: Long, message: String) {
+        if (failOnSend) throw IllegalStateException("测试：Bot 未连接")
         sentMessages += message
     }
 }

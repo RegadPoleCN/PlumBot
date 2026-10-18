@@ -147,10 +147,26 @@ abstract class AbstractBotAdapter : IBot {
     ) {
         val fallback = stripColorCodes(fallbackText)
         val portal = if (pic) RenderProvider.getOrNull() else null
+        if (portal == null) {
+            // 平台没有渲染门户：属于"没有出图能力"，与用户配置关闭一起归入 DISABLED
+            HealthCounters.increment(HealthCounters.Key.RENDER_DISABLED)
+            sendSafely(isGroup, targetId, fallback)
+            return
+        }
+        // 配置门控与"渲染失败"必须分开：门控关闭是预期行为，不能污染降级指标
+        if (!portal.isImageEnabled(route.route)) {
+            HealthCounters.increment(HealthCounters.Key.RENDER_DISABLED)
+            context.log(LogLevel.DEBUG, "[PlumBot-Render] 路由 ${route.route} 未启用图片，按配置发送纯文本")
+            sendSafely(isGroup, targetId, fallback)
+            return
+        }
         // R17：用 warmUpEngines（先触发按需装载）而不是 isImageCapable（只看当前是否可用）——
         // 否则"引擎依赖尚未装载"会被误判为"不能出图"，按需装载路径永远走不到。
-        if (portal == null || !portal.warmUpEngines()) {
-            sendPlain(isGroup, targetId, fallback)
+        if (!portal.warmUpEngines()) {
+            // 已启用却拿不到引擎：这是故障，不是配置，必须计入降级并留下线索
+            HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
+            context.log(LogLevel.WARN, "[PlumBot-Render] 渲染引擎不可用（${route.route}），降级为纯文本")
+            sendSafely(isGroup, targetId, fallback)
             return
         }
 
@@ -171,17 +187,24 @@ abstract class AbstractBotAdapter : IBot {
 
             val png = (result as? RenderResult.Image)?.png
             if (png == null) {
-                // 渲染失败会静默降级为纯文本：功能仍"可用"，只是悄悄没图，必须计数才看得出来
+                // 走到这里说明"配置已启用"，没图就是降级（队列溢出/引擎失败），必须计入降级指标。
+                // Failed 的具体原因由门户/异常分支记 WARN；此处只用 DEBUG 补一条路由线索，避免刷屏。
                 HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
-                sendPlain(isGroup, targetId, fallback)
+                val reason = (result as? RenderResult.Failed)?.reason
+                context.log(
+                    LogLevel.DEBUG,
+                    "[PlumBot-Render] 渲染未产出图片（${route.route}）${reason?.let { ": $it" } ?: ""}，降级为纯文本"
+                )
+                sendSafely(isGroup, targetId, fallback)
                 return@launchTracked
             }
 
             runCatching {
                 if (isGroup) sendGroupImage(targetId, png) else sendUserImage(targetId, png)
             }.onFailure {
+                HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
                 context.log(LogLevel.WARN, "[PlumBot-Render] 图片发送失败: ${it.message}，降级为纯文本")
-                sendPlain(isGroup, targetId, fallback)
+                sendSafely(isGroup, targetId, fallback)
             }
         }
     }
@@ -268,11 +291,30 @@ abstract class AbstractBotAdapter : IBot {
         if (isGroup) sendGroupMsg(targetId, text) else sendUserMsg(targetId, text)
     }
 
+    /**
+     * 发送纯文本的**安全包装**：连接不可用时只记一条 WARN，不向调用方（协程/宿主线程）抛异常。
+     *
+     * 2026-10-18 实测：OneBot 后端未启动时 `client.action()` 抛 `WebsocketNotConnectedException`，
+     * 异常从 `renderJobs` 协程冒到宿主日志（Velocity/Hytale 各刷一屏），看起来像插件崩溃。
+     * 生命周期广播的正确语义是"发不出去就放弃"，而不是把宿主日志变成异常转储。
+     */
+    private fun sendSafely(isGroup: Boolean, targetId: Long, text: String) {
+        try {
+            sendPlain(isGroup, targetId, text)
+        } catch (t: Exception) {
+            context.log(
+                LogLevel.WARN,
+                "[PlumBot] 纯文本发送失败（${t.javaClass.simpleName}: ${t.message}），已跳过"
+            )
+        }
+    }
+
     fun stripColorCodes(message: String): String =
         message.replace(COLOR_CODE_AMP, "").replace(COLOR_CODE_SECTION, "")
 
     override fun start(): IBot {
         transitionTo(BotState.CONNECTING)
+        loadAnnounced = false
         handler = DefaultBotHandler(context, this)
 
         // 协议相关初始化（连接、登录校验等），子类实现。
@@ -284,7 +326,14 @@ abstract class AbstractBotAdapter : IBot {
             throw t
         }
 
-        announceLoaded()
+        // 同步适配器（MiraiMC 等）会在 doStart 内调用 markOnline()，广播已在那时补发；
+        // 异步适配器（OneBot）此刻仍在 CONNECTING，由 markOnline() 在连接就绪后触发。
+        // 2026-10-18 实测：旧实现在这里无条件广播，OneBot 后端未启动时会抛
+        // WebsocketNotConnectedException（Velocity/Hytale 各刷一屏异常）。
+        if (botState == BotState.ONLINE && !loadAnnounced) {
+            loadAnnounced = true
+            announceLoaded()
+        }
 
         preloadGroupCaches()
 
@@ -292,8 +341,14 @@ abstract class AbstractBotAdapter : IBot {
     }
 
     override fun shutdown() {
+        // 只有"确实在线过"才广播关闭：从未连上（OneBot 后端未启动）时发送同样会抛
+        // WebsocketNotConnectedException，且这条消息本来就没有任何接收者。
+        val wasOnline = botState == BotState.ONLINE
         transitionTo(BotState.STOPPING)
-        announceUnloaded()
+        if (loadAnnounced && wasOnline) {
+            announceUnloaded()
+        }
+        loadAnnounced = false
 
         // 卸载广播是异步出图任务：先有界等待它们结束，再回收作用域，
         // 否则刚派发的通知会被 cancel 掉。
@@ -330,6 +385,10 @@ abstract class AbstractBotAdapter : IBot {
     @Volatile
     private var botState: BotState = BotState.INIT
 
+    /** 本次启动是否已补发 load 广播：异步连接只在首次确认在线时广播，重连不重复。 */
+    @Volatile
+    private var loadAnnounced = false
+
     override val state: BotState get() = botState
 
     /**
@@ -347,7 +406,16 @@ abstract class AbstractBotAdapter : IBot {
     }
 
     /** 子类在**确认连接可用**后调用（OneBot 在 WebSocket 就绪、同步适配器在完成初始化后）。 */
-    protected fun markOnline() = transitionTo(BotState.ONLINE)
+    protected fun markOnline() {
+        val wasOnline = botState == BotState.ONLINE
+        transitionTo(BotState.ONLINE)
+        // 首次确认在线时才补发 load 广播：连接未就绪时 action() 会抛
+        // WebsocketNotConnectedException（2026-10-18 Velocity/Hytale 实测）。
+        if (!wasOnline && !loadAnnounced) {
+            loadAnnounced = true
+            announceLoaded()
+        }
+    }
 
     /** 子类在检测到断线并进入重连循环时调用。 */
     protected fun markRetrying(reason: String? = null) = transitionTo(BotState.RETRYING, reason)
