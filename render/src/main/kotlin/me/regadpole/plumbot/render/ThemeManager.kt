@@ -40,7 +40,7 @@ import java.nio.file.StandardCopyOption
  *   `default/index.html`，导致调用方导航到空文件并白等一次导航超时；
  * - 下载改为 `Dispatchers.IO` + `disconnect()` + 体积上限 + **原子替换** + **检查每个返回值**；
  * - `template_url` 仅接受 **https**（旧实现允许 `file:` 等任意 scheme）；
- * - 开发期目录改为**显式可选配置**（旧实现硬编码 `File("web-t/dist")`，既相对进程 CWD、
+ * - 开发期目录改为**显式可选配置**（旧实现硬编码 dist 路径，既相对进程 CWD、
  *   又会被 `file://` 沙箱拦掉，属双重失效）。
  */
 internal class ThemeManager(

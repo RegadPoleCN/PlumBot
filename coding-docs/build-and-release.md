@@ -93,7 +93,11 @@
 
 1. `render/src/main/resources/render-protocol.json` 的 route 集合与 Kotlin `RenderRoute` 枚举**双向一致**；
 2. 每条 route 均声明 `featureGate` / `defaultEngine` / 非空 `payload`；
-3. 若前端 SDK（`web-t/src/sdk/protocol.ts`）存在，其协议版本与 route 集合必须与清单一致。
+3. 若本地检出了独立前端源码到 `web/`（不随本仓库提交），其 SDK 协议版本与 route 集合必须与清单一致；
+4. 在同样前提下，模板路由路径必须覆盖全部协议 route 且逐字一致；额外路径仅允许开发画廊 `preview`，并显式禁止历史写法 `list`；
+5. 文本可读性规则四方一致：协议清单 ↔ `config.yml` ↔ `TextToImg.Style.DEFAULT` ↔ `RenderPortal.RenderTextStyle`。
+
+> 前端源码不在本仓库跟踪范围内；未检出时规则 3/4 自动跳过。
 
 > 详见 **[渲染子系统规范](./render.md)**。
 

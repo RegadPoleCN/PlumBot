@@ -178,6 +178,8 @@ render:
         # 前端模板目录名
         theme: "default"
         # 模板下载、协议版本与完整性校验
+        # template_url 需是可访问的 HTTPS 单文件地址；发布前请确认地址有效。
+        # 留空或下载失败时回退 awt。
         template_url: "https://raw.githubusercontent.com/RegadPoleCN/PlumBot-Web-Templates/main/dist/index.html"
         template_protocol: 1
         template_sha256: ""
@@ -194,7 +196,8 @@ render:
         jpeg_quality: 85
         # 注入页面的字体体积上限
         font_max_bytes: 16777216
-        # 前端热更目录（开发用），留空使用内置模板
+        # 前端开发目录（开发期直读，需包含 index.html；绝对路径或相对进程工作目录）。
+        # 留空则使用缓存或 template_url。
         dev_web_dir: ""
         # 自定义 Chromium 可执行文件；browser_channel 如 chrome / msedge
         custom_chrome_path: ""

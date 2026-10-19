@@ -67,9 +67,11 @@ PlumBot/
 |---|---|---|
 | `none` | 纯文本（全局关闭出图） | 无 |
 | `awt` | JVM 轻量文本卡片（**默认**） | 无（需图形库；缺失时自动回退纯文本） |
-| `playwright` | Vue 单页模板超清卡片（按需启用） | 首次约 470MB（见下） |
+| `playwright` | Vue 单页模板超清卡片（按需启用；前端 SDK / 模板独立维护） | 首次约 470MB（见下） |
 
 配置：`render.engine` 为全局默认，`render.views.<route>.engine` 可按命令覆盖（建议 `message` 保持 `awt`，它是唯一高频路径）；每个功能是否出图由 `render.outputs.<功能>` 控制。
+
+> 前端 SDK 与官方 Vue 模板以独立 npm package 维护，不随本仓库分发；插件通过协议清单与运行时 manifest 与其对接。
 
 ### Playwright 引擎的安装
 

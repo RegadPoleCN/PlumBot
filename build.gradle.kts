@@ -243,11 +243,15 @@ fun yamlBlock(file: File, path: List<String>): Map<String, String>? {
  * 单一真源为 `render/src/main/resources/render-protocol.json`。本任务保证：
  * 1. 清单中的 route 集合与 Kotlin 的 [RenderRoute] 枚举**完全一致**（双向，防止任一侧漂移）；
  * 2. 每条 route 都声明了 `featureGate` / `defaultEngine` / `payload`；
- * 3. 若前端 SDK 存在（`web-t/src/sdk/protocol.ts`），其协议版本与 route 集合必须与清单一致。
+ * 3. 若本地检出了独立前端 SDK（`web/packages/plumbot-web-sdk/src/protocol.ts`，该目录不入库），
+ *    其协议版本与 route 集合必须与清单一致。
+ * 4. 在同样前提下，模板路由（`web/packages/plumbot-web-templates/src/router.ts`）
+ *    必须覆盖全部协议 route 且逐字一致；额外路径仅允许开发画廊 `preview`。
+ * 5. 文本可读性规则需在协议清单、config.yml、AWT 引擎默认值与运行时载体之间四方一致。
  */
 val checkRenderProtocol = tasks.register("checkRenderProtocol") {
     group = "verification"
-    description = "Validates render-protocol.json against the Kotlin route registry and the TS SDK."
+    description = "Validates render-protocol.json against the Kotlin route registry and optional local frontend sources."
 
     val rootDir = rootProject.projectDir
     doLast {
@@ -307,8 +311,8 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
 
         violations += protocolRouteViolations(routeEntries, enumRoutes)
 
-        // 3. 前端 SDK 一致性（若存在）
-        val sdkProtocol = File(rootDir, "web-t/src/sdk/protocol.ts")
+        // 3. 前端 SDK 一致性（仅本地检出 web/ 时生效，该目录不入库）
+        val sdkProtocol = File(rootDir, "web/packages/plumbot-web-sdk/src/protocol.ts")
         if (sdkProtocol.isFile) {
             val ts = sdkProtocol.readText()
             val tsProtocol = Regex("""PROTOCOL\s*=\s*(\d+)""").find(ts)?.groupValues?.get(1)
@@ -329,7 +333,10 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
         // 这一条是补上的：此前路由写作 `/list` 而协议名是 `playerList`，
         // 插件导航到 `#/playerList` 会命中 404 → 握手判为 RouteUnsupported →
         // 该 route 的 Playwright 路径**永远静默降级**，且构建期毫无提示。
-        val routerFile = File(rootDir, "web-t/src/router.ts")
+        //
+        // 模板位于 web/packages/plumbot-web-templates/src/router.ts（仅本地可选）。
+        // `preview` 是开发画廊，不属于协议路由，校验时显式放行。
+        val routerFile = File(rootDir, "web/packages/plumbot-web-templates/src/router.ts")
         if (routerFile.isFile) {
             val routerSource = routerFile.readText()
             val declaredPaths = Regex("""path:\s*['"]([^'"]+)['"]""")
@@ -342,7 +349,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             (routeNames - declaredPaths).forEach {
                 violations += "前端路由表缺失 route '$it' 的视图路径（会静默降级为 awt）"
             }
-            (declaredPaths - routeNames).forEach {
+            (declaredPaths - routeNames - setOf("preview")).forEach {
                 violations += "前端路由表存在协议未声明的路径 '/$it'"
             }
             // 明确禁止改名的历史写法，避免再次回退

@@ -86,7 +86,7 @@
 |---|---|
 | `:render` | route 注册表、字段上限、内置默认值 |
 | `config.yml` | 只做**覆盖**，不重复定义结构 |
-| 前端 TS SDK | 生成类型、派生运行时 manifest |
+| 前端 SDK / 模板 | 生成类型、派生运行时 manifest、实现 16 条视图 |
 
 **运行时握手**：模板在启动时把 `window.__PLUMBOT_MANIFEST__ = {protocol, routes, sdk}` 挂到页面；插件导航后读取并校验——
 
@@ -94,9 +94,20 @@
 - 目标 route 未声明 → 跳过渲染；
 - 旧模板未声明 manifest → 保持兼容，继续渲染。
 
-`checkRenderProtocol` 任务保证：清单与 Kotlin `RenderRoute` 枚举**双向一致**、每条 route 字段齐备、前端 SDK 的协议版本与 route 集合一致。
+`checkRenderProtocol` 任务保证：清单与 Kotlin `RenderRoute` 枚举**双向一致**、每条 route 字段齐备；当本地检出独立前端源码时，还会校验 SDK 协议版本、route 集合与模板路由路径。
 
-> ⚠️ **模板路由路径必须与协议 route 名逐字一致**（`#/playerList` 而非 `#/list`），否则该 route 永远被判为"未实现"。
+> ⚠️ **模板路由路径必须与协议 route 名逐字一致**（`#/playerList` 而非 `#/list`），否则该 route 永远被判为"未实现"。开发画廊 `#/preview` 是唯一允许的额外路径，且不得写入 manifest。
+
+### 4.1 前端 SDK 与官方模板（独立维护）
+
+前端 SDK 与官方 Vue 模板以独立 npm package 维护，不随本仓库分发。双方只需遵守以下契约：
+
+- 模板启动时写入 `window.__PLUMBOT_MANIFEST__`，route 集合必须与协议清单逐字一致；
+- 16 条协议 route 均需有对应视图，额外仅允许开发画廊 `preview`，且 `preview` 不得写入 manifest；
+- 生产模板应构建为**单文件 HTML**，确保插件用 `file://` 打开时无外部资源依赖；
+- 截图目标为 `#render-target`。
+
+插件接入：开发期用 `render.playwright.dev_web_dir` 指向本地构建目录；线上用 `template_url` 指向托管后的单文件。完整的前端使用说明随前端仓库提供。
 
 ---
 

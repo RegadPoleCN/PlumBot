@@ -52,5 +52,6 @@ TODO.md
 rendertodo*.md
 # 审查/修补文档集（本地评审产物，不入库）
 /coding-docs/review/
-/web-t/
+# Web 前端 workspace（独立维护，整体不入库）
+/web/
 temp/
