@@ -194,7 +194,6 @@ class BindApplyCommandGroupGateTest {
             "feature.bind.enable" to true,
             "feature.bind.whitelist" to true,
             "feature.bind.maxNum" to 5,
-            "feature.bind.pic" to false,
             "feature.bind.adminBypass" to true,
             "feature.bind.require_in_group" to false
         )

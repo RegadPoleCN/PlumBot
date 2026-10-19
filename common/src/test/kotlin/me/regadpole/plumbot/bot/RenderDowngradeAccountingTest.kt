@@ -57,7 +57,7 @@ class RenderDowngradeAccountingTest {
     @Test
     fun `引擎配置为 none 时图片请求计为配置关闭`() {
         HealthCounters.reset()
-        val ctx = FakePlatformContext(mapOf("feature.img.engine" to "none"))
+        val ctx = FakePlatformContext(mapOf("render.engine" to "none"))
         RenderProvider.bootstrap(ctx)
         val bot = FakeBot(ctx)
         bot.start()

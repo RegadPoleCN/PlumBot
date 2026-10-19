@@ -57,7 +57,7 @@ class RenderFontInjectorTest {
         val outcome = assertIs<RenderFontInjector.Outcome.Skipped>(
             RenderFontInjector.buildCss(null, maxBytes = 1024)
         )
-        assertTrue(outcome.reason.contains("feature.img.file"))
+        assertTrue(outcome.reason.contains("render.font"))
     }
 
     @Test

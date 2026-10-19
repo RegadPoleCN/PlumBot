@@ -94,8 +94,8 @@ class RenderQueueTest {
 
     private class TestContext : PlatformContext {
         override val config = TestConfig().apply {
-            values["feature.img.engine"] = "fake"
-            values["feature.img.views.status.pic"] = true
+            values["render.engine"] = "fake"
+            values["render.outputs.status"] = true
         }
         override val datasource: PlatformConfig get() = config
         override val dataDirectory: Path = java.nio.file.Files.createTempDirectory("plumbot-queue-test")

@@ -40,8 +40,8 @@ import kotlin.test.assertTrue
  * 渲染门户的契约测试（基线 §3.3 / §3.6 / §6）。
  *
  * 覆盖：
- * - 引擎解析 `views.<route>.engine` → `img.engine` → 内置默认；
- * - 路由门控（`feature.<legacyGate>.pic`）；无门控 route 由调用方决定；
+ * - 引擎解析 `render.views.<route>.engine` → `render.engine` → 内置默认；
+ * - 路由门控（`render.outputs.<功能>`）；无门控 route 由调用方决定；
  * - `engine: none` 全局短路；
  * - **永不抛异常**：未知路由、引擎缺失、驱动异常都必须以 [RenderResult] 返回。
  */
@@ -107,7 +107,7 @@ class RenderPortalTest {
     @Test
     fun `未知引擎值会告警并回落 awt`() {
         val logs = mutableListOf<String>()
-        val portal = portal(mapOf("feature.img.views.text.engine" to "playwrite"), logs)
+        val portal = portal(mapOf("render.views.text.engine" to "playwrite"), logs)
 
         assertIs<RenderResult.Image>(render(portal, RenderRoute.TEXT.route), "应回落 AWT 并正常出图")
         assertTrue(
@@ -120,7 +120,7 @@ class RenderPortalTest {
     @Test
     fun `未知引擎值只告警一次`() {
         val logs = mutableListOf<String>()
-        val portal = portal(mapOf("feature.img.views.text.engine" to "playwrite"), logs)
+        val portal = portal(mapOf("render.views.text.engine" to "playwrite"), logs)
 
         repeat(3) { render(portal, RenderRoute.TEXT.route) }
 
@@ -131,7 +131,7 @@ class RenderPortalTest {
     @Test
     fun `已知引擎不告警`() {
         val logs = mutableListOf<String>()
-        val portal = portal(mapOf("feature.img.views.text.engine" to "awt"), logs)
+        val portal = portal(mapOf("render.views.text.engine" to "awt"), logs)
 
         assertIs<RenderResult.Image>(render(portal, RenderRoute.TEXT.route))
         assertTrue(logs.none { it.contains("未知渲染引擎") }, "合法引擎不应告警：$logs")
@@ -141,7 +141,7 @@ class RenderPortalTest {
     fun `configure 注入的底板色会真实影响出图像素`() {
         val original = TextToImg.style
         try {
-            val portal = portal(mapOf("feature.img.views.text.engine" to "awt"))
+            val portal = portal(mapOf("render.views.text.engine" to "awt"))
             portal.configure(
                 RenderConfig(
                     textStyle = RenderTextStyle(
@@ -169,7 +169,7 @@ class RenderPortalTest {
     fun `非法颜色不会导致 configure 抛异常`() {
         val original = TextToImg.style
         try {
-            val portal = portal(mapOf("feature.img.views.text.engine" to "awt"))
+            val portal = portal(mapOf("render.views.text.engine" to "awt"))
             portal.configure(RenderConfig(textStyle = RenderTextStyle(baseColor = "not-a-color")))
             // 回落默认值，仍可正常出图
             assertIs<RenderResult.Image>(render(portal, RenderRoute.TEXT.route))
@@ -180,13 +180,13 @@ class RenderPortalTest {
 
     @Test
     fun `engine 为 none 时全局短路为 Unavailable`() {
-        val result = render(portal(mapOf("feature.img.engine" to "none")), RenderRoute.TEXT.route)
+        val result = render(portal(mapOf("render.engine" to "none")), RenderRoute.TEXT.route)
         assertEquals(RenderResult.Unavailable, result)
     }
 
     @Test
     fun `有门控的 route 在门控关闭时不渲染`() {
-        // status 的旧门控为 feature.status.pic，默认 false
+        // status 的门控为 render.outputs.status，默认 false
         val result = render(portal(emptyMap()), RenderRoute.STATUS.route, mapOf("a" to 1))
         assertEquals(RenderResult.Unavailable, result)
     }
@@ -194,7 +194,7 @@ class RenderPortalTest {
     @Test
     fun `有门控的 route 在门控打开时进入渲染`() {
         val logs = mutableListOf<String>()
-        val portal = portal(mapOf("feature.status.pic" to true), logs)
+        val portal = portal(mapOf("render.outputs.status" to true), logs)
         // AWT 不可用的环境下会返回 Failed；可用时应返回 Image。两者都属"未抛异常"
         val result = render(portal, RenderRoute.STATUS.route, mapOf("a" to 1))
         assertTrue(
@@ -218,8 +218,8 @@ class RenderPortalTest {
         // 全局 none，但 text 路由显式指定 awt → 不应被全局短路
         val portal = portal(
             mapOf(
-                "feature.img.engine" to "none",
-                "feature.img.views.${RenderRoute.TEXT.route}.engine" to "awt"
+                "render.engine" to "none",
+                "render.views.${RenderRoute.TEXT.route}.engine" to "awt"
             )
         )
         val result = render(portal, RenderRoute.TEXT.route, TextPayload(body = "hi"))
@@ -228,7 +228,7 @@ class RenderPortalTest {
 
     @Test
     fun `驱动异常被转换为 Failed 而不是抛出`() {
-        val portal = portal(mapOf("feature.img.engine" to "awt"))
+        val portal = portal(mapOf("render.engine" to "awt"))
         // 空 payload 走 formatPayload 的 toString 分支，不应崩溃
         val result = render(portal, RenderRoute.TEXT.route, Any())
         assertTrue(result is RenderResult.Image || result is RenderResult.Failed)

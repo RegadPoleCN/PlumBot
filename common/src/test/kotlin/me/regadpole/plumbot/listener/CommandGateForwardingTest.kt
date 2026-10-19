@@ -130,7 +130,7 @@ class CommandGateForwardingTest {
             "feature.message.mode" to 0,
             "feature.message.prefix" to "#",
             "feature.bind.enable" to true,
-            "feature.cmdPrefix" to "/",
+            "command.prefix" to "/",
             "groups" to listOf(10000L),
             // 命令键来自配置子节点（子配置在测试里折叠为同一层，故按叶子名取值）
             "addBind" to listOf("申请白名单"),

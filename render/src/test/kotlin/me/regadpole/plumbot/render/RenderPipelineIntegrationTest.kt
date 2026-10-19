@@ -159,7 +159,7 @@ class RenderPipelineIntegrationTest {
     @Test
     fun `状态卡端到端产出可解码 PNG`() {
         val result = render(
-            portal(mapOf("feature.img.views.status.pic" to true)),
+            portal(mapOf("render.outputs.status" to true)),
             RenderRoute.STATUS.route,
             mapOf("serverName" to "lobby", "tps" to listOf("20.0", "19.9"), "mspt" to "12.4", "usedMem" to 512, "maxMem" to 4096, "online" to 7)
         )
@@ -178,7 +178,7 @@ class RenderPipelineIntegrationTest {
     fun `reload rebuilds engines and rendering still works afterwards`() {
         // A14：reload 会**关闭并丢弃**引擎与头像管线（让它们按新配置重建）。
         // 这条用例守的正是那次改动的风险：重建后必须仍能出图，而不是变成 Failed/Unavailable。
-        val portal = portal(mapOf("feature.img.views.status.pic" to true))
+        val portal = portal(mapOf("render.outputs.status" to true))
         val payload = mapOf("serverName" to "lobby", "tps" to listOf("20.0"), "mspt" to "1", "usedMem" to 1, "maxMem" to 2, "online" to 1)
 
         val before = render(portal, RenderRoute.STATUS.route, payload)
@@ -198,7 +198,7 @@ class RenderPipelineIntegrationTest {
     @Test
     fun `玩家列表卡（含服务端预取头像）端到端产出 PNG`() {
         val result = render(
-            portal(mapOf("feature.img.views.playerList.pic" to true)),
+            portal(mapOf("render.outputs.list" to true)),
             RenderRoute.PLAYER_LIST.route,
             mapOf(
                 "total" to 2,
@@ -231,7 +231,7 @@ class RenderPipelineIntegrationTest {
             )
         )
         val result = render(
-            portal(mapOf("feature.img.views.kick.pic" to true)),
+            portal(mapOf("render.outputs.kick" to true)),
             RenderRoute.KICK.route,
             nested
         )
@@ -249,7 +249,7 @@ class RenderPipelineIntegrationTest {
     @Test
     fun `引擎为 none 时全局短路`() {
         val result = render(
-            portal(mapOf("feature.img.engine" to "none")),
+            portal(mapOf("render.engine" to "none")),
             RenderRoute.TEXT.route,
             TextPayload(body = "x")
         )
@@ -258,7 +258,7 @@ class RenderPipelineIntegrationTest {
 
     @Test
     fun `连续多次渲染互不影响且尺寸稳定`() {
-        val p = portal(mapOf("feature.img.views.status.pic" to true))
+        val p = portal(mapOf("render.outputs.status" to true))
         val payload = mapOf("serverName" to "s", "online" to 1)
 
         val sizes = (1..5).map {
@@ -270,7 +270,7 @@ class RenderPipelineIntegrationTest {
 
     @Test
     fun `同一目标并发渲染不会互相破坏`() = runBlocking {
-        val p = portal(mapOf("feature.img.views.status.pic" to true))
+        val p = portal(mapOf("render.outputs.status" to true))
         val results = (1..6).map { index ->
             async(Dispatchers.Default) {
                 p.render(
@@ -310,7 +310,7 @@ class RenderPipelineIntegrationTest {
     @Test
     fun `冷却设为禁用时每次解析都会重试`() = runBlocking {
         val player = CountingPlayerService()
-        val p = portal(mapOf("feature.img.avatar.failure_cooldown_minutes" to -1), player)
+        val p = portal(mapOf("render.avatar.failure_cooldown_minutes" to -1), player)
 
         p.resolveSkinAvatar("Steve")
         p.resolveSkinAvatar("Steve")
@@ -371,43 +371,44 @@ class RenderPipelineIntegrationTest {
     }
 
     /**
-     * 门控真值表（关联 R18）：
-     * ① 有门控的路由，规范键 `feature.img.views.<route>.pic=false` 必须一律不可用；
-     * ② 规范键为 true 时必须放行（不再被调用方的旧键拦下 —— 调用方已改为只表达"要图片"）；
-     * ③ 仅有**旧键**为 true 时也必须放行（升级兼容：迁移会把旧值物化到规范键）。
+     * 门控真值表：
+     * ① 有门控的路由，`render.outputs.<功能>=false` 必须一律不可用；
+     * ② 同一开关为 true 时必须放行（调用方只表达"要图片"，判门控只发生在门户）；
+     * ③ 多个路由共用一个功能开关时（如 whitelist/bindList 共用 `render.outputs.bind`），
+     *    该开关对每条路由都生效。
      *
-     * ②③ 只在代表性路由上断言，避免 14 条路由各跑一次完整渲染；① 的断言在门控处短路，代价极低。
+     * ②③ 只在代表性路由上断言，避免 15 条路由各跑一次完整渲染；① 的断言在门控处短路，代价极低。
      */
     @Test
     fun `门控真值表覆盖全部路由`() {
-        val gated = RenderRoute.entries.filter { it.legacyGate != null }
-        val gateless = RenderRoute.entries.filter { it.legacyGate == null }
-        assertTrue(gated.isNotEmpty() && gateless.size == 2, "路由表形态变化时本用例需要同步更新")
+        val gated = RenderRoute.entries.filter { it.featureGate != null }
+        val gateless = RenderRoute.entries.filter { it.featureGate == null }
+        assertTrue(gated.size == 15 && gateless.size == 1, "路由表形态变化时本用例需要同步更新")
 
         gated.forEach { route ->
             val off = render(
-                portal(mapOf("feature.img.views.${route.route}.pic" to false)),
+                portal(mapOf("render.outputs.${route.featureGate}" to false)),
                 route.route,
                 mapOf("serverName" to "x")
             )
-            assertEquals(RenderResult.Unavailable, off, "${route.route}: 规范键关闭必须不可用")
+            assertEquals(RenderResult.Unavailable, off, "${route.route}: 功能开关关闭必须不可用")
         }
 
         listOf(RenderRoute.STATUS, RenderRoute.KICK, RenderRoute.WHITELIST).forEach { route ->
             val on = render(
-                portal(mapOf("feature.img.views.${route.route}.pic" to true)),
+                portal(mapOf("render.outputs.${route.featureGate}" to true)),
                 route.route,
                 mapOf("serverName" to "x")
             )
-            assertNotEquals(RenderResult.Unavailable, on, "${route.route}: 规范键开启不得被门控拦下")
-
-            val legacyOnly = render(
-                portal(mapOf("feature.${route.legacyGate}.pic" to true)),
-                route.route,
-                mapOf("serverName" to "x")
-            )
-            assertNotEquals(RenderResult.Unavailable, legacyOnly, "${route.route}: 只有旧键时必须兼容放行")
+            assertNotEquals(RenderResult.Unavailable, on, "${route.route}: 功能开关开启不得被门控拦下")
         }
+
+        val sharedGate = render(
+            portal(mapOf("render.outputs.bind" to true)),
+            RenderRoute.BIND_LIST.route,
+            mapOf("serverName" to "x")
+        )
+        assertNotEquals(RenderResult.Unavailable, sharedGate, "共用 render.outputs.bind 的路由必须一起放行")
 
         gateless.forEach { route ->
             val result = render(portal(emptyMap()), route.route, TextPayload(body = "x"))
@@ -423,19 +424,19 @@ class RenderPipelineIntegrationTest {
      */
     @Test
     fun `isImageEnabled 只反映配置门控与 engine none`() {
-        RenderRoute.entries.filter { it.legacyGate != null }.forEach { route ->
+        RenderRoute.entries.filter { it.featureGate != null }.forEach { route ->
             assertEquals(
                 false,
-                portal(mapOf("feature.img.views.${route.route}.pic" to false)).isImageEnabled(route.route),
-                "${route.route}: 规范键关闭应报告未启用",
+                portal(mapOf("render.outputs.${route.featureGate}" to false)).isImageEnabled(route.route),
+                "${route.route}: 功能开关关闭应报告未启用",
             )
             assertEquals(
                 true,
-                portal(mapOf("feature.img.views.${route.route}.pic" to true)).isImageEnabled(route.route),
-                "${route.route}: 规范键开启应报告启用",
+                portal(mapOf("render.outputs.${route.featureGate}" to true)).isImageEnabled(route.route),
+                "${route.route}: 功能开关开启应报告启用",
             )
         }
-        assertEquals(false, portal(mapOf("feature.img.engine" to "none")).isImageEnabled("status"), "engine=none 等于主动关闭")
+        assertEquals(false, portal(mapOf("render.engine" to "none")).isImageEnabled("status"), "engine=none 等于主动关闭")
         assertEquals(true, portal(emptyMap()).isImageEnabled("text"), "无门控路由默认启用")
         assertEquals(false, portal(emptyMap()).isImageEnabled("noSuchRoute"), "未知路由无法出图")
     }
