@@ -2,19 +2,11 @@
 
 面向核心维护者与平台适配者。`render/` 模块负责把业务数据变成发进 QQ 的图片，并**统一收口**所有出图路径。
 
-> ## ⚠️ 勘误（2026-10-09，以源码为准）
+> ## 📌 配置说明（2026-10-19）
 >
-> 正文部分表述已过时（完整重写待办，见 `review/unresolved-issues.md` 的 U05）：
+> 出图开关统一集中在 `render.outputs.<功能>`，每个功能只保留一个键，由门户统一读取。`feature.*` 只保留 `enable` 与业务参数；`feature.img`、`feature.<功能>.pic`、`feature.img.views.<route>.pic`、`feature.help` / `feature.kick` 均已移除。`text` 路由没有独立开关，始终可渲染；`hytaleAvatar` 由 `render.outputs.avatar` 控制。
 >
-> | 正文说法 | 实际现状 |
-> |---|---|
-> | 按旧键（`feature.help.pic` / `feature.kick.pic` / `feature.remote_console.pic` 等）逐条判门控 | 门控已**单侧化**到门户，规范键为 **`feature.img.views.<route>.pic`**（16 条路由）；旧键仅在 `ConfigMigrator` 迁移后作兼容兜底，调用方**一律不再自行读旧键**（本轮 A16 已改）。`text` / `hytaleAvatar` 无独立门控，由调用方决定 |
-> | 并发与排队描述不准确 | 实际容量是 **`Semaphore(CONCURRENCY + QUEUE_DEPTH)` = 2 + 6 = 8**；`tryAcquire` 失败即视为队列溢出并返回 `Unavailable`；同一 `targetKey` 的请求由 `Mutex` 串行化（水位超限时只清理**空闲**锁条目） |
-> | "JSON 运行时驱动 + TS 生成类型" | 不成立：`render-protocol.json` 只在**构建期**被 `checkRenderProtocol` 校验（route 集合与 `RenderRoute` 双向一致、`legacyGate`/`defaultEngine`/非空 `payload`）；运行期没有 JS 驱动，前端 TS 类型是**手写**的 |
-> | "不需要跨域" | 仅对**已合成成片**（服务端预取后以 `data:` URL 注入）成立；浏览器侧仍需访问本地模板资源 |
-> | 出图超时语义 | `RenderRequest.timeoutMs` 是**整次渲染**预算，各阶段共享剩余额度（本轮 A13 修复，此前会逐阶段重复计满） |
->
-> 另：引擎与头像管线在 `reload()` 时会**关闭并重建**（按新配置），进行中的出图可能降级为文本（本轮 A14）。
+> `config_version` 固定为 **2**，不新增 3。`ConfigMigrator` 对无版本 / 1 版配置执行 1→2 迁移；对已标记 2、但仍残留开发期旧键的配置执行一次形状归一化，**版本号保持 2**。迁移映射：`feature.img.*` → `render.*`（`file` → `font`）、旧双重出图开关 → `render.outputs.<gate>`、`avatarCard.pic` → `render.outputs.avatar`、`cmdPrefix` / `keys` → `command.prefix` / `command.keys`。版本高于当前代码时原样保留，不降级改写。
 
 ---
 
@@ -47,26 +39,27 @@
 
 ## 2. 路由表
 
-路由名同时是前端模板的视图路径。`legacyGate` 表示迁移期沿用的旧配置门控 `feature.<gate>.pic`；为 `null` 表示由调用方自行决定是否出图。
+路由名同时是前端模板的视图路径。`featureGate` 指向控制该路由是否出图的开关 `render.outputs.<featureGate>`；为 `null` 表示无开关，始终允许出图。
 
-| route | 载荷 | 旧门控 |
+| route | 载荷 | outputs 键 |
 |---|---|---|
 | `status` | `serverName, tps[], mspt, usedMem, maxMem, online` | `status` |
 | `playerList` | `total, players[{name, boundQq?, avatarUrl?}]` | `list` |
 | `whitelist` | `playerName, qq, avatarUrl?, bindTime?` | `bind` |
 | `bindList` | `title, players[], total` | `bind` |
-| `help` | `prefix, lines[]` | — |
+| `help` | `prefix, lines[]` | `help` |
 | `load` / `unload` | `text` | `load` |
 | `message` | `playerName, serverName, message` | `message` |
 | `joinAndLeave` | `type, playerName, serverName?` | `joinAndLeave` |
 | `changeServer` | `playerName, originServer, targetServer` | `joinAndLeave` |
 | `death` | `playerName, serverName, deathMessage` | `death` |
 | `advancement` | `playerName, serverName, advancementTitle` | `advancement` |
-| `kick` | `playerName` | `bind` |
-| `console` / `text` | `title?, body, ampersandCodes` | — |
-| `hytaleAvatar` | `username, avatarUrl?, fallbackQq?` | — |
+| `kick` | `playerName` | `kick` |
+| `console` | `title?, body, ampersandCodes` | `remote_console` |
+| `text` | `title?, body, ampersandCodes` | — |
+| `hytaleAvatar` | `username, avatarUrl?, fallbackQq?` | `avatar` |
 
-**引擎解析优先级**：`feature.img.views.<route>.engine` → `feature.img.engine` → 内置默认 `awt`。
+**引擎解析优先级**：`render.views.<route>.engine` → `render.engine` → 内置默认 `awt`。
 
 > `message`（游戏聊天→QQ）是唯一高频路径，**建议固定 awt**：Playwright 单次 100–500ms、池仅 2 页 2 线程。
 
@@ -121,7 +114,7 @@
 ### 5.2 浏览器获取三级链
 
 ```
-① feature.img.playwright.custom_chrome_path 有效 → 直接使用
+① render.playwright.custom_chrome_path 有效 → 直接使用
      （路径无效：告警并落 ②，不直接失败）
 ② browser_channel 显式指定 → 自动探测系统 Chrome/Edge
 ③ 均未命中 → Playwright 自动下载
@@ -173,8 +166,8 @@ Playwright 版本变更必须重新下载浏览器二进制，且其自带旧版
 ③ 都不可用 → 前端组件逐级降级（绑定 QQ → 中性占位图）
 ```
 
-- **磁盘缓存**：`AvatarCache`，SHA-256 文件名、TTL、原子替换；`feature.img.avatar.cache_dir` / `cache_ttl_hours` 可配。
-- **出口白名单 + 解析后 IP 判定 + 体积上限 + 仅 https**：`feature.img.avatar.domains` 可覆盖内置列表。
+- **磁盘缓存**：`AvatarCache`，SHA-256 文件名、TTL、原子替换；`render.avatar.cache_dir` / `cache_ttl_hours` 可配。
+- **出口白名单 + 解析后 IP 判定 + 体积上限 + 仅 https**：`render.avatar.domains` 可覆盖内置列表。
 - **有序图层只是服务端内部中间表示**，线上契约收敛为**单张成品图** → 浏览器端不需要 canvas、不需要跨域、也不需要模式嗅探。
 
 ### 6.1 Hytale 资产策略（重要）
@@ -197,7 +190,7 @@ Hytale 服务端为 **Hypixel Studios 专有许可**。因此：
 | ② 二进制/图层 | `data:` URL | **不做字符截断**；按单层上限 + 总量预算 + 图层数上限判定，超限**丢该层** |
 | ③ 整体预算 | payload 文本总量 | 超阈值告警 |
 
-递归穿透 `Map` / `List` / `Set` / `Array`（旧实现只处理顶层，嵌套结构完全绕过）。额度由 `feature.img.limits.*` 配置。
+递归穿透 `Map` / `List` / `Set` / `Array`（旧实现只处理顶层，嵌套结构完全绕过）。额度由 `render.limits.*` 配置。
 
 ---
 

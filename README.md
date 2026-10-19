@@ -69,7 +69,7 @@ PlumBot/
 | `awt` | JVM 轻量文本卡片（**默认**） | 无（需图形库；缺失时自动回退纯文本） |
 | `playwright` | Vue 单页模板超清卡片（按需启用） | 首次约 470MB（见下） |
 
-配置：`feature.img.engine` 为全局默认，`feature.img.views.<route>.engine` 可按命令覆盖（建议 `message` 保持 `awt`，它是唯一高频路径）。
+配置：`render.engine` 为全局默认，`render.views.<route>.engine` 可按命令覆盖（建议 `message` 保持 `awt`，它是唯一高频路径）；每个功能是否出图由 `render.outputs.<功能>` 控制。
 
 ### Playwright 引擎的安装
 
@@ -88,7 +88,7 @@ java -cp "<插件数据目录>/libraries/com/microsoft/playwright/playwright/1.4
      com.microsoft.playwright.CLI install --only-shell chromium
 ```
 
-未手动预装的服主由 ③ 自动下载兜底。`feature.img.playwright.download_host` 可在插件内直接指定镜像。
+未手动预装的服主由 ③ 自动下载兜底。`render.playwright.download_host` 可在插件内直接指定镜像。
 
 > Playwright 版本变更必须重新下载浏览器且会 GC 旧版本 —— **升级插件后首次出图会重新下载**，属预期行为。
 
@@ -97,7 +97,7 @@ java -cp "<插件数据目录>/libraries/com/microsoft/playwright/playwright/1.4
 头像由**服务端预取并合成**为单张成品图（`data:` URL）后下发给模板，浏览器端不做跨域取图与 canvas 合成：
 
 - 内置来源白名单（Mojang / crafatar / mc-heads / minotar / QQ），仅允许 https，并做**解析后 IP 判定**拒绝内网；
-- 结果写入磁盘缓存（`feature.img.avatar.cache_dir`，默认 168 小时）；
+- 结果写入磁盘缓存（`render.avatar.cache_dir`，默认 168 小时）；
 - Hytale 原生外观由部件化皮肤实时解析合成，**资产不随插件分发**（服务端为专有许可）。
 
 ---
