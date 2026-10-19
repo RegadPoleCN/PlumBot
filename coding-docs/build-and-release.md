@@ -92,7 +92,7 @@
 **`checkRenderProtocol` 规则矩阵**
 
 1. `render/src/main/resources/render-protocol.json` 的 route 集合与 Kotlin `RenderRoute` 枚举**双向一致**；
-2. 每条 route 均声明 `legacyGate` / `defaultEngine` / 非空 `payload`；
+2. 每条 route 均声明 `featureGate` / `defaultEngine` / 非空 `payload`；
 3. 若前端 SDK（`web-t/src/sdk/protocol.ts`）存在，其协议版本与 route 集合必须与清单一致。
 
 > 详见 **[渲染子系统规范](./render.md)**。

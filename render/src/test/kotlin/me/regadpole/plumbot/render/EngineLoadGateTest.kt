@@ -55,20 +55,20 @@ class EngineLoadGateTest {
         }
     }
 
-    private class Config(var engine: String) : PlatformConfig {
-        private val values = mutableMapOf("feature.img.engine" to engine)
+    private class Config(values: Map<String, Any>) : PlatformConfig {
+        private val values = values.toMutableMap()
         private fun k(path: Array<out String?>) = path.filterNotNull().joinToString(".")
         override fun getString(vararg path: String?): String? = values[k(path)] as? String
-        override fun getLong(vararg path: String?): Long = 0L
-        override fun getInteger(vararg path: String?): Int = 0
-        override fun getBoolean(vararg path: String?): Boolean = false
+        override fun getLong(vararg path: String?): Long = (values[k(path)] as? Number)?.toLong() ?: 0L
+        override fun getInteger(vararg path: String?): Int = (values[k(path)] as? Number)?.toInt() ?: 0
+        override fun getBoolean(vararg path: String?): Boolean = values[k(path)] as? Boolean ?: false
         override fun getLongList(vararg path: String?): List<Long> = emptyList()
         override fun getStringList(vararg path: String?): List<String?> = emptyList()
         override fun getSubConfig(vararg path: String?): PlatformConfig = this
     }
 
-    private class Context(engine: String) : PlatformContext {
-        override val config: PlatformConfig = Config(engine)
+    private class Context(values: Map<String, Any>) : PlatformContext {
+        override val config: PlatformConfig = Config(values)
         val logs = mutableListOf<String>()
         override val datasource: PlatformConfig get() = config
         override val dataDirectory: Path = java.nio.file.Files.createTempDirectory("plumbot-gate").also { it.toFile().deleteOnExit() }
@@ -87,10 +87,13 @@ class EngineLoadGateTest {
         override fun isPluginAvailable(name: String): Boolean = false
     }
 
-    private fun portal(engine: String, loader: RenderLibraryLoader?): Pair<ImageRenderManager, Context> {
-        val context = Context(engine)
+    private fun portal(values: Map<String, Any>, loader: RenderLibraryLoader?): Pair<ImageRenderManager, Context> {
+        val context = Context(values)
         return ImageRenderManager(context, libraryLoader = loader, runtimeWebDir = File(context.dataDirectory.toFile(), "web")) to context
     }
+
+    private fun portal(engine: String, loader: RenderLibraryLoader?): Pair<ImageRenderManager, Context> =
+        portal(mapOf("render.engine" to engine), loader)
 
     @Test
     fun `warm up triggers the on demand load for the playwright engine`() {
@@ -129,6 +132,44 @@ class EngineLoadGateTest {
 
         assertEquals(1, loader.calls)
         assertTrue(context.logs.any { it.contains("按需装载异常") }, "异常要被记录：${context.logs}")
+    }
+
+    @Test
+    fun `route level playwright override triggers warm up under global awt`() {
+        val loader = FakeLoader(result = true)
+        val (manager, _) = portal(
+            mapOf(
+                "render.engine" to "awt",
+                "render.views.status.engine" to "playwright",
+                "render.outputs.status" to true
+            ),
+            loader
+        )
+
+        manager.warmUpEngines()
+
+        assertEquals(
+            1,
+            loader.calls,
+            "预热必须扫描实际启用的路由，不能只看 STATUS 的全局引擎"
+        )
+    }
+
+    @Test
+    fun `disabled route override does not trigger warm up`() {
+        val loader = FakeLoader(result = true)
+        val (manager, _) = portal(
+            mapOf(
+                "render.engine" to "awt",
+                "render.views.status.engine" to "playwright",
+                "render.outputs.status" to false
+            ),
+            loader
+        )
+
+        manager.warmUpEngines()
+
+        assertEquals(0, loader.calls, "关闭的功能不应触发 Playwright 下载")
     }
 
     @Test

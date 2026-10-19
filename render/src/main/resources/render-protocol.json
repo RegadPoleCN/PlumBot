@@ -16,7 +16,7 @@
   },
   "routes": {
     "status": {
-      "legacyGate": "status",
+      "featureGate": "status",
       "defaultEngine": "awt",
       "payload": {
         "serverName": "string",
@@ -28,7 +28,7 @@
       }
     },
     "playerList": {
-      "legacyGate": "list",
+      "featureGate": "list",
       "defaultEngine": "awt",
       "payload": {
         "total": "int",
@@ -36,7 +36,7 @@
       }
     },
     "whitelist": {
-      "legacyGate": "bind",
+      "featureGate": "bind",
       "defaultEngine": "awt",
       "payload": {
         "playerName": "string",
@@ -46,7 +46,7 @@
       }
     },
     "bindList": {
-      "legacyGate": "bind",
+      "featureGate": "bind",
       "defaultEngine": "awt",
       "payload": {
         "title": "string",
@@ -55,7 +55,7 @@
       }
     },
     "help": {
-      "legacyGate": "help",
+      "featureGate": "help",
       "defaultEngine": "awt",
       "payload": {
         "prefix": "string",
@@ -63,21 +63,21 @@
       }
     },
     "load": {
-      "legacyGate": "load",
+      "featureGate": "load",
       "defaultEngine": "awt",
       "payload": {
         "text": "string"
       }
     },
     "unload": {
-      "legacyGate": "load",
+      "featureGate": "load",
       "defaultEngine": "awt",
       "payload": {
         "text": "string"
       }
     },
     "message": {
-      "legacyGate": "message",
+      "featureGate": "message",
       "defaultEngine": "awt",
       "payload": {
         "playerName": "string",
@@ -86,7 +86,7 @@
       }
     },
     "joinAndLeave": {
-      "legacyGate": "joinAndLeave",
+      "featureGate": "joinAndLeave",
       "defaultEngine": "awt",
       "payload": {
         "type": "join|leave",
@@ -95,7 +95,7 @@
       }
     },
     "changeServer": {
-      "legacyGate": "joinAndLeave",
+      "featureGate": "joinAndLeave",
       "defaultEngine": "awt",
       "payload": {
         "playerName": "string",
@@ -104,7 +104,7 @@
       }
     },
     "death": {
-      "legacyGate": "death",
+      "featureGate": "death",
       "defaultEngine": "awt",
       "payload": {
         "playerName": "string",
@@ -113,7 +113,7 @@
       }
     },
     "advancement": {
-      "legacyGate": "advancement",
+      "featureGate": "advancement",
       "defaultEngine": "awt",
       "payload": {
         "playerName": "string",
@@ -122,14 +122,14 @@
       }
     },
     "kick": {
-      "legacyGate": "kick",
+      "featureGate": "kick",
       "defaultEngine": "awt",
       "payload": {
         "playerName": "string"
       }
     },
     "console": {
-      "legacyGate": "remote_console",
+      "featureGate": "remote_console",
       "defaultEngine": "awt",
       "payload": {
         "title": "string?",
@@ -138,7 +138,7 @@
       }
     },
     "text": {
-      "legacyGate": null,
+      "featureGate": null,
       "defaultEngine": "awt",
       "payload": {
         "title": "string?",
@@ -147,7 +147,7 @@
       }
     },
     "hytaleAvatar": {
-      "legacyGate": null,
+      "featureGate": "avatar",
       "defaultEngine": "awt",
       "payload": {
         "username": "string",

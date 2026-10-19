@@ -66,15 +66,12 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
     fun isAdmin(userId: Long): Boolean = config.getLongList("admins").contains(userId)
 
     /**
-     * 头像卡片（`avatar` 指令）的出图门控。
+     * 头像指令是否出图（`render.outputs.avatar`）。
      *
-     * **只有它需要调用方判断**：`hytaleAvatar` 路由没有独立门控（`RenderRoute.legacyGate == null`）。
-     * 其余路由（绑定/列表/帮助/状态/控制台/加入离开/死亡/成就/踢出/消息）一律由渲染门户
-     * 按规范键 `feature.img.views.<route>.pic` 单侧判断，调用方只表达"我想要图片"。
-     * 此前调用方各自读旧键 `feature.<x>.pic`，与门户的规范键构成双门控：
-     * 只设规范键时不生效、两键不一致时行为取决于谁先拦下 —— 排查成本高且无提示。
+     * 门户对 `hytaleAvatar` 路由也会判同一开关；这里提前判断是为了在关闭时直接回纯文本，
+     * 省去皮肤抓取与图层合成。
      */
-    fun avatarPicEnabled(): Boolean = config.getBoolean("feature", "avatarCard", "pic")
+    private fun avatarPicEnabled(): Boolean = config.getBoolean("render", "outputs", "avatar")
 
     /** 已提示过"适配器不支持成员校验"（去重，避免每条指令刷屏）。 */
     @Volatile

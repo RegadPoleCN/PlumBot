@@ -70,13 +70,13 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         }
 
     private fun commandKeysFingerprint(): List<List<String?>> {
-        val keys = commandService.config.getSubConfig("keys")
+        val keys = commandService.config.getSubConfig("command", "keys")
         return listOf("list", "addBind", "deleteBind", "queryBind", "status", "remote_console", "avatar")
             .map { keys.getStringList(it) }
     }
 
     private fun buildCommands(): List<CommandRegistration> {
-        val keys = commandService.config.getSubConfig("keys")
+        val keys = commandService.config.getSubConfig("command", "keys")
         return listOf(
             CommandRegistration(
                 keys.getStringList("list"),
@@ -140,7 +140,7 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
     override fun onGroupMessage(message: String, groupId: Long, userId: Long) {
         commandService.bot.requireCapability(BotCapability.GROUP_MESSAGE_RECEIVE)
 
-        val prefix = commandService.config.getString("feature", "cmdPrefix") ?: "/"
+        val prefix = commandService.config.getString("command", "prefix") ?: "/"
         val trimmed = message.trim()
 
         // 1. 前缀快速短路：若不是以命令前缀开头，直通消息转发，跳过无谓的正则遍历匹配
@@ -187,7 +187,7 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
                 $$"%cmdprefix%$remote_console <指令>   - [管理员] 远程执行控制台指令"
             )
         }
-        val keys = commandService.config.getSubConfig("keys")
+        val keys = commandService.config.getSubConfig("command", "keys")
         val listKey = keys.getStringList("list").firstOrNull() ?: "在线人数"
         val addBindKey = keys.getStringList("addBind").firstOrNull() ?: "申请白名单"
         val deleteBindKey = keys.getStringList("deleteBind").firstOrNull() ?: "删除白名单"

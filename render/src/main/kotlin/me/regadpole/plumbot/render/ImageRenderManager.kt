@@ -35,7 +35,7 @@ import java.util.concurrent.ConcurrentHashMap
  * 门户实现（内部类型，外界只能通过 [RenderProvider] 与 [RenderPortal] 使用）。
  *
  * 职责：
- * 1. **路由解析**：route → 门控 → 引擎（`views.<route>.engine` → `img.engine` → 内置默认）；
+ * 1. **路由解析**：route → 门控（`render.outputs.<功能>`）→ 引擎（`render.views.<route>.engine` → `render.engine` → 内置默认）；
  * 2. **并发与顺序**：全局有界容量（超出立即降级纯文本，不排队不丢弃）+ 同一目标串行；
  * 3. **载荷治理**：三层长度治理（§5）；
  * 4. **降级契约**：任何失败都返回 [RenderResult]，**永不抛异常**。
@@ -56,9 +56,6 @@ internal class ImageRenderManager(
 
     /** 同一目标串行渲染，保证出图顺序与消息顺序一致。 */
     private val targetLocks = ConcurrentHashMap<String, Mutex>()
-
-    /** 已提示过"逐路由 scale_factor 被忽略"的 route（去重，避免高频路径刷屏）。 */
-    private val scaleNotices = ConcurrentHashMap.newKeySet<String>()
 
     /** 已提示过的未知引擎取值（去重键是引擎名，不是 route）。 */
     private val engineNotices = ConcurrentHashMap.newKeySet<String>()
@@ -102,11 +99,20 @@ internal class ImageRenderManager(
      * 为什么不能只看 [isImageCapable]：Playwright 的类由 Libby 在**首次需要时**下载装载，
      * 而按需装载此前只发生在"驱动构造"里。于是调用方的门控会在装载被触发**之前**判定
      * "不可出图"，那条装载路径永远走不到 —— 表现为"配了 `engine=playwright` 却一直出纯文本"。
+     *
+     * 必须扫描**所有已启用出图**的路由，而不是只看 [RenderRoute.STATUS]：
+     * 全局 `awt` + `render.views.status.engine: playwright` 时，STATUS 之外的覆盖同样需要预热。
      */
     override fun warmUpEngines(): Boolean {
-        val engine = runCatching { engineFor(RenderRoute.STATUS) }.getOrDefault(ENGINE_AWT)
-        if (engine != ENGINE_PLAYWRIGHT) return isImageCapable
-        return ensurePlaywrightLoaded() || rendererFor(ENGINE_AWT)?.isSupported == true
+        val engines = RenderRoute.entries
+            .filter { picEnabled(it) }
+            .map { runCatching { engineFor(it) }.getOrDefault(ENGINE_AWT) }
+            .toSet()
+        if (ENGINE_PLAYWRIGHT in engines) {
+            // 装载失败仍可由 AWT 兜底；这里只负责把"首次需要"的装载路径提前触发。
+            ensurePlaywrightLoaded()
+        }
+        return isImageCapable
     }
 
     /** 已成功装载过（避免重复触发下载）。 */
@@ -187,7 +193,7 @@ internal class ImageRenderManager(
      * 并解决模板侧中文 / Emoji 的豆腐块（基线 E4）。
      */
     private fun applyRenderFont(fontFile: File?) {
-        val maxBytes = context.config.getInteger("feature", "img", "playwright", "font_max_bytes")
+        val maxBytes = context.config.getInteger("render", "playwright", "font_max_bytes")
             .let { if (it > 0) it else DEFAULT_FONT_MAX_BYTES }
 
         when (val outcome = RenderFontInjector.buildCss(fontFile, maxBytes)) {
@@ -311,7 +317,7 @@ internal class ImageRenderManager(
     }
 
     private fun avatarHeadSize(): Int =
-        context.config.getInteger("feature", "img", "avatar", "head_size")
+        context.config.getInteger("render", "avatar", "head_size")
             .takeIf { it in 16..512 }
             ?: AvatarResolver.DEFAULT_HEAD_SIZE
 
@@ -370,12 +376,12 @@ internal class ImageRenderManager(
     private fun buildAvatarCache(): AvatarCache {
         val config = context.config
         val pluginFolder = context.dataDirectory.toFile().absolutePath
-        val cacheDir = config.getString("feature", "img", "avatar", "cache_dir")
+        val cacheDir = config.getString("render", "avatar", "cache_dir")
             ?.takeIf { it.isNotBlank() }
             ?.replace("%plugin_folder%", pluginFolder)
             ?.let { File(it) }
             ?: File(runtimeWebDir.parentFile ?: runtimeWebDir, "cache/avatars")
-        val ttlHours = config.getInteger("feature", "img", "avatar", "cache_ttl_hours")
+        val ttlHours = config.getInteger("render", "avatar", "cache_ttl_hours")
             .let { if (it <= 0) DEFAULT_AVATAR_TTL_HOURS else it }
         return AvatarCache(cacheDir, ttlHours * 60L * 60L * 1000L)
     }
@@ -407,7 +413,6 @@ internal class ImageRenderManager(
         request: RenderRequest
     ): RenderResult {
         val options = RenderOptions(timeoutMs = request.timeoutMs ?: timeoutFor(route))
-        noticeIgnoredRouteScaleFactor(route)
         val payload = governPayload(request.payload)
 
         val primary = rendererFor(engine)?.takeIf { it.isSupported }
@@ -441,14 +446,14 @@ internal class ImageRenderManager(
     // ---------- 配置解析 ----------
 
     /**
-     * 引擎解析：`views.<route>.engine` → `img.engine` → 内置默认 `awt`。
+     * 引擎解析：`render.views.<route>.engine` → `render.engine` → 内置默认 `awt`。
      *
      * 未知取值会**一次性 WARN** 后落到 AWT 兜底，见 [warnIfUnknownEngine]。
      * 门控见 [picEnabled]。
      */
     private fun engineFor(route: RenderRoute): String {
-        val specific = context.config.getString("feature", "img", "views", route.route, "engine")
-        val global = context.config.getString("feature", "img", "engine")
+        val specific = context.config.getString("render", "views", route.route, "engine")
+        val global = context.config.getString("render", "engine")
         val engine = (specific ?: global ?: ENGINE_AWT).lowercase()
         warnIfUnknownEngine(route, engine)
         return engine
@@ -473,44 +478,23 @@ internal class ImageRenderManager(
         )
     }
 
-    private fun picEnabled(route: RenderRoute): Boolean {
-        // 无独立门控的 route（通用 text / hytaleAvatar）由调用方决定是否出图
-        val legacyGate = route.legacyGate ?: return true
-        // 统一门控：feature.img.views.<route>.pic
-        //
-        // 该键由 ConfigMigrator 在启动时**必定物化**（缺失则从旧键 feature.<gate>.pic 的
-        // 实际取值迁移过来），因此这里的布尔读取语义可靠 —— 否则"键缺失"会被当成 false，
-        // 从而静默关闭所有现存用户的出图功能。
-        if (!context.config.getBoolean("feature", "img", "views", route.route, "pic")) {
-            // 迁移未生效（例如用户手改后未重启）时，仍保留旧键兜底，避免功能凭空消失
-            return context.config.getBoolean("feature", legacyGate, "pic")
-        }
-        return true
-    }
-
     /**
-     * 提示被忽略的**逐路由** `scale_factor`。
+     * 出图门控：`render.outputs.<功能>`。
      *
-     * 设备像素比是浏览器上下文级属性（上下文启动时只创建一次），因此只能全局配置
-     * `feature.img.playwright.scale_factor`。旧实现把它写成 per-render 选项却无人读取，
-     * 属"有声明、无消费者"的假契约；现在改为**移除该字段 + 明确告知**，而不是继续假装支持。
+     * 这是图片开关的唯一真源。`TEXT` 没有功能段（纯文本始终可用），因此直接放行；
+     * `HYTALE_AVATAR` 归 `render.outputs.avatar`，其余路由各自映射到对应功能段。
+     *
+     * 键由内置模板保证存在，`ConfigMigrator` 也会为旧配置补齐，因此这里的布尔读取可靠。
      */
-    private fun noticeIgnoredRouteScaleFactor(route: RenderRoute) {
-        val perRoute = context.config.getDouble("feature", "img", "views", route.route, "scale_factor")
-        val legacyInt = context.config.getInteger("feature", "img", "views", route.route, "scale_factor")
-        if ((!perRoute.isFinite() || perRoute <= 0.0) && legacyInt <= 0) return
-        if (!scaleNotices.add(route.route)) return
-        context.log(
-            LogLevel.WARN,
-            "[PlumBot-Render] 路由 ${route.route} 配置了 scale_factor，但设备像素比是浏览器上下文级设置，" +
-                "无法逐路由生效；请改用全局 feature.img.playwright.scale_factor。该覆盖值已被忽略。"
-        )
+    private fun picEnabled(route: RenderRoute): Boolean {
+        val gate = route.featureGate ?: return true
+        return context.config.getBoolean("render", "outputs", gate)
     }
 
     private fun timeoutFor(route: RenderRoute): Long {
-        val specific = context.config.getInteger("feature", "img", "views", route.route, "timeout_ms")
+        val specific = context.config.getInteger("render", "views", route.route, "timeout_ms")
         if (specific > 0) return specific.toLong()
-        val global = context.config.getInteger("feature", "img", "playwright", "render_timeout_ms")
+        val global = context.config.getInteger("render", "playwright", "render_timeout_ms")
         return if (global > 0) global.toLong() else DEFAULT_TIMEOUT_MS
     }
 
@@ -525,7 +509,7 @@ internal class ImageRenderManager(
     }
 
     private fun buildThemeManager(): ThemeManager {
-        val devDir = context.config.getString("feature", "img", "playwright", "dev_web_dir")
+        val devDir = context.config.getString("render", "playwright", "dev_web_dir")
             ?.takeIf { it.isNotBlank() }
             ?.let { File(it) }
         return ThemeManager(context, runtimeWebDir, devDir, downloadUserAgent ?: DEFAULT_RENDER_USER_AGENT)
@@ -567,7 +551,7 @@ internal class ImageRenderManager(
     }
 
     private fun configuredLimit(config: PlatformConfig, key: String, fallback: Int): Int {
-        val value = config.getInteger("feature", "img", "limits", key)
+        val value = config.getInteger("render", "limits", key)
         return if (value <= 0) fallback else value
     }
 

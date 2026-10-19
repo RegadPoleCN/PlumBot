@@ -127,7 +127,7 @@ interface RenderPortal {
 /**
  * 文本可读性规则（**唯一真源的运行时载体**）。
  *
- * 默认值与 `render-protocol.json` 的 `text` 节点、`config.yml` 的 `feature.img.text` 三者
+ * 默认值与 `render-protocol.json` 的 `text` 节点、`config.yml` 的 `render.text` 三者
  * 由 `checkRenderProtocol` 机械校验一致；门户在 `configure()` 时注入引擎。
  *
  * @param baseColor 底板色（`#RRGGBB`）
@@ -206,13 +206,13 @@ interface RenderLibraryLoader {
 }
 
 /**
- * 路由注册表 —— 取代原先散落在各处的 `feature.<x>.pic` 判断。
+ * 路由注册表 —— 图片开关统一映射到 `render.outputs.<功能>`。
  *
  * @param route 路由名（同时是前端模板的视图路径）
- * @param legacyGate 迁移期的旧配置节点名（`feature.<legacyGate>.pic`），用于兼容既有配置
+ * @param featureGate 该路由对应的功能段名（`render.outputs.<featureGate>`）；null 表示无图卡开关
  */
 @PublicApi
-enum class RenderRoute(val route: String, val legacyGate: String?) {
+enum class RenderRoute(val route: String, val featureGate: String?) {
     STATUS("status", "status"),
     PLAYER_LIST("playerList", "list"),
     WHITELIST("whitelist", "bind"),
@@ -228,7 +228,7 @@ enum class RenderRoute(val route: String, val legacyGate: String?) {
     KICK("kick", "kick"),
     CONSOLE("console", "remote_console"),
     TEXT("text", null),
-    HYTALE_AVATAR("hytaleAvatar", null);
+    HYTALE_AVATAR("hytaleAvatar", "avatar");
 
     companion object {
         fun byName(name: String): RenderRoute? =

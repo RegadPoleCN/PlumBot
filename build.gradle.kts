@@ -37,7 +37,7 @@ fun boundaryLineViolations(
  * 协议清单的**路由一致性判定**（纯函数，便于用负例自检）。
  *
  * 规则：① 清单 route 集合与 `RenderRoute` 枚举双向一致；
- * ② 每条 route 必须声明 `legacyGate` / `defaultEngine` / 非空 `payload`。
+ * ② 每条 route 必须声明 `featureGate` / `defaultEngine` / 非空 `payload`。
  */
 fun protocolRouteViolations(
     manifestRoutes: Map<String, Any?>,
@@ -55,7 +55,7 @@ fun protocolRouteViolations(
             violations += "route '$name' 的配置不是对象"
             return@forEach
         }
-        if (!entry.containsKey("legacyGate")) violations += "route '$name' 缺少 legacyGate"
+        if (!entry.containsKey("featureGate")) violations += "route '$name' 缺少 featureGate"
         if (!entry.containsKey("defaultEngine")) violations += "route '$name' 缺少 defaultEngine"
         val payload = entry["payload"]
         if (payload !is Map<*, *> || payload.isEmpty()) {
@@ -242,7 +242,7 @@ fun yamlBlock(file: File, path: List<String>): Map<String, String>? {
  *
  * 单一真源为 `render/src/main/resources/render-protocol.json`。本任务保证：
  * 1. 清单中的 route 集合与 Kotlin 的 [RenderRoute] 枚举**完全一致**（双向，防止任一侧漂移）；
- * 2. 每条 route 都声明了 `legacyGate` / `defaultEngine` / `payload`；
+ * 2. 每条 route 都声明了 `featureGate` / `defaultEngine` / `payload`；
  * 3. 若前端 SDK 存在（`web-t/src/sdk/protocol.ts`），其协议版本与 route 集合必须与清单一致。
  */
 val checkRenderProtocol = tasks.register("checkRenderProtocol") {
@@ -267,7 +267,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
         if (providers.gradleProperty("renderProtocolSelfTest").map { it.toBoolean() }.getOrElse(false)) {
             val failures = mutableListOf<String>()
             val okEntry = mapOf<String, Any?>(
-                "legacyGate" to "status", "defaultEngine" to "awt", "payload" to mapOf("a" to 1)
+                "featureGate" to "status", "defaultEngine" to "awt", "payload" to mapOf("a" to 1)
             )
 
             val enumExtra = protocolRouteViolations(mapOf("status" to okEntry), setOf("status", "kick"))
@@ -277,7 +277,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             if (manifestExtra.none { it.contains("枚举缺失") }) failures += "漏报：清单多出的 route 未被拦下"
 
             val missingFields = protocolRouteViolations(
-                mapOf("status" to mapOf<String, Any?>("legacyGate" to null, "payload" to emptyMap<String, Any?>())),
+                mapOf("status" to mapOf<String, Any?>("featureGate" to null, "payload" to emptyMap<String, Any?>())),
                 setOf("status")
             )
             if (missingFields.none { it.contains("defaultEngine") }) failures += "漏报：缺少 defaultEngine 未被拦下"
@@ -370,12 +370,12 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             val expectColor = normColor(manifestText["color"])
             val expectThreshold = normNum(manifestText["threshold"])
 
-            // 5.1 config.yml（无第三方依赖的缩进感知解析：feature → img → text）
+            // 5.1 config.yml（无第三方依赖的缩进感知解析：render → text）
             val configYml = File(rootDir, "common/src/main/resources/config.yml")
             if (configYml.isFile) {
-                val textNode = yamlBlock(configYml, listOf("feature", "img", "text"))
+                val textNode = yamlBlock(configYml, listOf("render", "text"))
                 if (textNode == null) {
-                    violations += "config.yml 缺少 feature.img.text 节点（文本可读性规则无处可配）"
+                    violations += "config.yml 缺少 render.text 节点（文本可读性规则无处可配）"
                 } else {
                     if (normColor(textNode["base"]) != expectBase) {
                         violations += "文本底板色不一致：清单=$expectBase 配置=${normColor(textNode["base"])}"

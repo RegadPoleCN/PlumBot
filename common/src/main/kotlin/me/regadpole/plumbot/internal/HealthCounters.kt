@@ -39,8 +39,8 @@ object HealthCounters {
         RENDER_FALLBACK,
 
         /**
-         * 按配置主动关闭图片、直接发纯文本的次数（`feature.img.views.<route>.pic=false`
-         * 或 `feature.img.engine=none`）。
+         * 按配置主动关闭图片、直接发纯文本的次数（`render.outputs.<功能>=false`
+         * 或 `render.engine=none`）。
          *
          * 与 [RENDER_FALLBACK] 分开计：两者都表现为"没图"，但前者是预期行为、后者是故障。
          * 混在一起会让降级计数长期虚高，真故障被淹没。
