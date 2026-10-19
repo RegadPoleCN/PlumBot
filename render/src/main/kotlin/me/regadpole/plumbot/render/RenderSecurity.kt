@@ -71,7 +71,7 @@ internal object RenderSecurity {
 
     /** 读取配置中的出口白名单；未配置时回落到内置列表。 */
     internal fun allowedHostsFrom(config: me.regadpole.plumbot.api.platform.PlatformConfig): Set<String> {
-        val configured = config.getStringList("feature", "img", "avatar", "domains")
+        val configured = config.getStringList("render", "avatar", "domains")
             ?.filterNotNull()
             ?.map { it.trim() }
             ?.filter { it.isNotEmpty() }

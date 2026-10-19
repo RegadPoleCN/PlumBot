@@ -114,7 +114,7 @@ internal class PlaywrightImageRenderer(
 
         // R25 / D6：沙箱**默认开启**。此前这里无条件传 `--no-sandbox`，等于这条防线从未生效。
         // 键名取反向语义（disable_sandbox）：键缺失时等于沙箱开启，属安全侧默认。
-        val sandboxDisabled = context.config.getBoolean("feature", "img", "playwright", "disable_sandbox")
+        val sandboxDisabled = context.config.getBoolean("render", "playwright", "disable_sandbox")
         if (sandboxDisabled) {
             context.log(LogLevel.WARN, PlaywrightSandbox.disabledWarning())
         }
@@ -231,7 +231,7 @@ internal class PlaywrightImageRenderer(
         val budget = RenderBudget(options.timeoutMs)
         fun remaining(): Double = budget.remaining()
 
-        val theme = context.config.getString("feature", "img", "playwright", "theme") ?: "default"
+        val theme = context.config.getString("render", "playwright", "theme") ?: "default"
         val entryFile = themeManager.resolveThemeEntry(theme, viewRoute)
         if (entryFile == null || !entryFile.isFile || entryFile.length() == 0L) {
             context.log(LogLevel.WARN, "[PlumBot-Render] 主题入口不可用，跳过本次 Playwright 渲染。")
@@ -296,7 +296,7 @@ internal class PlaywrightImageRenderer(
             // 注意 JPEG **没有 alpha 通道**，因此 omitBackground 必须保持 false，
             // 否则透明区域会被填成黑色（模板留白处会变黑块）。
             val format = ScreenshotFormat.normalize(
-                context.config.getString("feature", "img", "playwright", "image_format")
+                context.config.getString("render", "playwright", "image_format")
             )
             val screenshotOptions = Locator.ScreenshotOptions()
                 .setType(if (format == ScreenshotFormat.JPEG) ScreenshotType.JPEG else ScreenshotType.PNG)
@@ -304,7 +304,7 @@ internal class PlaywrightImageRenderer(
                 .setTimeout(remaining())
 
             if (format == ScreenshotFormat.JPEG) {
-                val configured = context.config.getInteger("feature", "img", "playwright", "jpeg_quality")
+                val configured = context.config.getInteger("render", "playwright", "jpeg_quality")
                 screenshotOptions.setQuality(ScreenshotFormat.quality(configured))
             }
 
@@ -377,12 +377,12 @@ internal class PlaywrightImageRenderer(
         val pluginFolder = context.dataDirectory.toFile().absolutePath
         val env = mutableMapOf(
             "PLAYWRIGHT_BROWSERS_PATH" to BrowserStrategy.resolveBrowsersPath(
-                config.getString("feature", "img", "playwright", "browsers_path"),
+                config.getString("render", "playwright", "browsers_path"),
                 pluginFolder
             )
         )
         BrowserStrategy.resolveDownloadHost(
-            config.getString("feature", "img", "playwright", "download_host")
+            config.getString("render", "playwright", "download_host")
         )?.let { env["PLAYWRIGHT_DOWNLOAD_HOST"] = it }
         return env
     }
@@ -391,8 +391,8 @@ internal class PlaywrightImageRenderer(
     private fun applyBrowserDecision(launchOptions: BrowserType.LaunchOptions) {
         val config = context.config
         val decision = BrowserStrategy.decide(
-            customPath = config.getString("feature", "img", "playwright", "custom_chrome_path"),
-            explicitChannel = config.getString("feature", "img", "playwright", "browser_channel"),
+            customPath = config.getString("render", "playwright", "custom_chrome_path"),
+            explicitChannel = config.getString("render", "playwright", "browser_channel"),
             detectedChannel = BrowserStrategy.detectSystemBrowser()
         )
 
@@ -431,7 +431,7 @@ internal class PlaywrightImageRenderer(
 
         val declaredProtocol = (manifest["protocol"] as? Number)?.toInt()
         val expectedProtocol = context.config
-            .getInteger("feature", "img", "playwright", "template_protocol")
+            .getInteger("render", "playwright", "template_protocol")
             .let { if (it <= 0) EXPECTED_PROTOCOL else it }
 
         if (declaredProtocol != null && declaredProtocol != expectedProtocol) {
@@ -494,10 +494,10 @@ internal class PlaywrightImageRenderer(
      * 全局设备像素比（Retina 2x）。
      *
      * 它在**浏览器上下文创建时**生效，因此只能全局配置：
-     * `feature.img.playwright.scale_factor`（1.0 ~ 4.0，支持 1.5 这类小数）。
+     * `render.playwright.scale_factor`（1.0 ~ 4.0，支持 1.5 这类小数）。
      */
     private fun globalScaleFactor(): Double {
-        val configured = context.config.getDouble("feature", "img", "playwright", "scale_factor")
+        val configured = context.config.getDouble("render", "playwright", "scale_factor")
         if (configured.isFinite() && configured in MIN_SCALE_FACTOR..MAX_SCALE_FACTOR) return configured
         if (configured.isFinite() && configured > 0.0) {
             context.log(

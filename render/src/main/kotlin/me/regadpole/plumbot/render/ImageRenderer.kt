@@ -33,7 +33,7 @@ internal data class RenderOptions(
      * `img.playwright.render_timeout_ms` 决定。
      *
      * 注意：这里**没有** `scaleFactor`。设备像素比是**浏览器上下文级**属性，
-     * 而上下文在启动时只创建一次，因此它由 `feature.img.playwright.scale_factor`
+     * 而上下文在启动时只创建一次，因此它由 `render.playwright.scale_factor`
      * 全局配置，无法逐次渲染变化 —— 把它放进 per-render options 只会制造假契约。
      */
     val timeoutMs: Long = 5000L

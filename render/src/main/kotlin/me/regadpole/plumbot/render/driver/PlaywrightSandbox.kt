@@ -29,7 +29,7 @@ package me.regadpole.plumbot.render.driver
  * - **默认开启沙箱**：不传 `--no-sandbox`，交给 Chromium 自身的隔离机制；
  * - **容器例外必须显式**：容器里 Chromium 常因缺少 `CAP_SYS_ADMIN`/user namespace 而启动失败。
  *   此时**不会静默降级**（那等于悄悄关掉防线），而是给出明确告警与配置指引，
- *   由管理员显式设置 `feature.img.playwright.disable_sandbox: true`；
+ *   由管理员显式设置 `render.playwright.disable_sandbox: true`；
  * - 配置键取"反向命名"（`disable_sandbox`）：**键缺失时等于沙箱开启**，
  *   这是安全侧默认 —— 若用 `sandbox: true` 这种正向键，键被误删就会静默变成无沙箱。
  *
@@ -67,11 +67,11 @@ internal object PlaywrightSandbox {
     /** 沙箱不可用时给管理员的操作指引（明确"显式"二字，避免被当成自动降级）。 */
     fun sandboxFailureHint(): String =
         "Chromium 沙箱启动失败（常见于容器：缺少 CAP_SYS_ADMIN / user namespace）。" +
-            "如确认进程隔离由容器提供，可**显式**设置 feature.img.playwright.disable_sandbox: true 关闭沙箱；" +
+            "如确认进程隔离由容器提供，可**显式**设置 render.playwright.disable_sandbox: true 关闭沙箱；" +
             "否则本次渲染会降级为纯文本（不会静默出图）。"
 
     /** 显式关闭沙箱时的告警文案。 */
     fun disabledWarning(): String =
-        "[PlumBot-Render] Chromium 沙箱已被显式关闭（feature.img.playwright.disable_sandbox=true）：" +
+        "[PlumBot-Render] Chromium 沙箱已被显式关闭（render.playwright.disable_sandbox=true）：" +
             "请确认模板来源可信，且进程隔离由容器/编排层提供。"
 }

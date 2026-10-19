@@ -119,7 +119,7 @@ internal class ThemeManager(
      * 下载单文件模板并原子落盘。任何一步失败都返回 false（不留下 `.tmp`、不返回半成品）。
      */
     private suspend fun downloadTemplate(destinationFile: File): Boolean = withContext(Dispatchers.IO) {
-        val rawUrl = context.config.getString("feature", "img", "playwright", "template_url")
+        val rawUrl = context.config.getString("render", "playwright", "template_url")
         if (rawUrl.isNullOrBlank()) return@withContext false
 
         val uri = runCatching { URI(rawUrl) }.getOrNull()
@@ -128,15 +128,15 @@ internal class ThemeManager(
             return@withContext false
         }
 
-        val configuredTimeout = context.config.getInteger("feature", "img", "playwright", "download_timeout_ms")
+        val configuredTimeout = context.config.getInteger("render", "playwright", "download_timeout_ms")
         val timeoutMs = if (configuredTimeout <= 0) DEFAULT_TIMEOUT_MS else configuredTimeout
-        val configuredMax = context.config.getInteger("feature", "img", "playwright", "template_max_bytes")
+        val configuredMax = context.config.getInteger("render", "playwright", "template_max_bytes")
         val maxBytes = if (configuredMax <= 0) DEFAULT_MAX_BYTES else configuredMax
 
         // R28：校验和配置先解析 —— **格式非法必须失败关闭**（静默跳过会把安全开关变成安慰剂）
         val expected = when (
             val parsed = TemplateIntegrity.parse(
-                context.config.getString("feature", "img", "playwright", "template_sha256")
+                context.config.getString("render", "playwright", "template_sha256")
             )
         ) {
             is TemplateIntegrity.Expected.Malformed -> {

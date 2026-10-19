@@ -29,7 +29,7 @@ import java.util.Base64
  * 模板走 `vite-plugin-singlefile` 打包成**单文件**并在运行时下载。
  * 把中文字体内嵌进去会让模板体积从几十 KB 涨到数 MB —— 每次首装都要多下一次。
  *
- * 而服主为 AWT 引擎**已经配置过** `feature.img.file`，把同一个字体注入页面：
+ * 而服主为 AWT 引擎**已经配置过** `render.font`，把同一个字体注入页面：
  * 1. 不增加模板体积；
  * 2. **两条渲染途径字形完全一致** —— 这正是基线"共用同一套规则"的要求，
  *    否则同一条消息走 awt 与走 playwright 会呈现不同的字。
@@ -55,13 +55,13 @@ internal object RenderFontInjector {
      * @param maxBytes 体积上限：防止把几十 MB 的字体塞进每一页
      */
     fun buildCss(fontFile: File?, maxBytes: Int): Outcome {
-        if (fontFile == null) return Outcome.Skipped("未配置 feature.img.file，浏览器将使用系统字体")
+        if (fontFile == null) return Outcome.Skipped("未配置 render.font，浏览器将使用系统字体")
         if (!fontFile.isFile) return Outcome.Skipped("字体文件不存在：${fontFile.path}")
 
         val size = fontFile.length()
         if (maxBytes > 0 && size > maxBytes) {
             return Outcome.Skipped(
-                "字体体积 ${size / 1024 / 1024}MB 超过上限 ${maxBytes / 1024 / 1024}MB，已跳过注入（可调大 feature.img.playwright.font_max_bytes）"
+                "字体体积 ${size / 1024 / 1024}MB 超过上限 ${maxBytes / 1024 / 1024}MB，已跳过注入（可调大 render.playwright.font_max_bytes）"
             )
         }
 

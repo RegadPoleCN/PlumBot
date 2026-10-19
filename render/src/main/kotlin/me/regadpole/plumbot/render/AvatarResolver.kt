@@ -96,7 +96,7 @@ internal class AvatarResolver(
      * 那样会让未迁移的配置**静默关闭**这层保护。用负数可同时做到"可禁用"与"缺失时 fail-closed"。
      */
     private fun cooldownMillis(): Long {
-        val minutes = context.config.getInteger("feature", "img", "avatar", "failure_cooldown_minutes")
+        val minutes = context.config.getInteger("render", "avatar", "failure_cooldown_minutes")
         return when {
             minutes > 0 -> minutes * 60_000L
             minutes < 0 -> 0L
@@ -106,12 +106,12 @@ internal class AvatarResolver(
 
     /** 逐级超时可配；非法值回落常量默认。 */
     private fun levelTimeoutMs(): Long =
-        context.config.getLong("feature", "img", "avatar", "level_timeout_ms")
+        context.config.getLong("render", "avatar", "level_timeout_ms")
             .takeIf { it > 0 } ?: LEVEL_TIMEOUT_MS
 
     /** 总预算可配；非法值回落常量默认。 */
     private fun totalBudgetMs(): Long =
-        context.config.getLong("feature", "img", "avatar", "total_budget_ms")
+        context.config.getLong("render", "avatar", "total_budget_ms")
             .takeIf { it > 0 } ?: TOTAL_BUDGET_MS
 
     // ---------------- 三级来源 ----------------
@@ -145,7 +145,7 @@ internal class AvatarResolver(
 
     /** 会话服务地址可配（国内镜像 / 自建反代）。 */
     private fun sessionServer(): String =
-        context.config.getString("feature", "img", "avatar", "session_server")
+        context.config.getString("render", "avatar", "session_server")
             ?.trim()
             ?.takeIf { it.startsWith("https://", ignoreCase = true) }
             ?: DEFAULT_SESSION_SERVER

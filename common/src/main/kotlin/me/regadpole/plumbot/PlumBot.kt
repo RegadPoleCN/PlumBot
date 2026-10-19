@@ -114,25 +114,25 @@ interface PlumBot {
     /**
      * 装配/刷新渲染门户配置。
      *
-     * 由本方法集中读取 `feature.img.file` 与文本可读性规则并注入门户，
+     * 由本方法集中读取 `render.font` 与文本可读性规则并注入门户，
      * 替代原先各模块各自写渲染引擎全局状态的做法。
      */
     fun applyRenderConfig() {
-        val fontPath = config.getString("feature", "img", "file")
+        val fontPath = config.getString("render", "font")
             ?.replace("%plugin_folder%", dataDirectory.pathString)
 
         // 文本可读性规则：配置 → 门户 → AWT 引擎。
         // 任一键缺失时回落到 RenderTextStyle 的默认值（与协议清单一致）。
         val defaults = RenderTextStyle()
-        val configuredThreshold = config.getDouble("feature", "img", "text", "contrast_threshold")
+        val configuredThreshold = config.getDouble("render", "text", "contrast_threshold")
         val textStyle = RenderTextStyle(
-            baseColor = config.getString("feature", "img", "text", "base")?.takeIf { it.isNotBlank() }
+            baseColor = config.getString("render", "text", "base")?.takeIf { it.isNotBlank() }
                 ?: defaults.baseColor,
-            textColor = config.getString("feature", "img", "text", "color")?.takeIf { it.isNotBlank() }
+            textColor = config.getString("render", "text", "color")?.takeIf { it.isNotBlank() }
                 ?: defaults.textColor,
             contrastThreshold = configuredThreshold.takeIf { it.isFinite() && it > 0.0 }
                 ?: defaults.contrastThreshold,
-            autoOutline = config.getBoolean("feature", "img", "text", "auto_outline")
+            autoOutline = config.getBoolean("render", "text", "auto_outline")
         )
 
         val portal = RenderProvider.bootstrap(platform)
@@ -150,7 +150,7 @@ interface PlumBot {
         if (configFile.exists()) {
             val updated = me.regadpole.plumbot.internal.config.ConfigMigrator.completeMissingDefaults(configFile, "/config.yml")
             if (updated) {
-                log(LogLevel.INFO, "检测到 config.yml 存在新增功能配置，已自动补齐默认项！")
+                log(LogLevel.INFO, "检测到 config.yml 需要更新，已自动迁移/补齐默认项并写回；注释以插件内最新模板为准。")
             }
         }
         val messagesFile = dataDirectory.resolve("messages.yml").toFile()
