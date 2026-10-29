@@ -10,11 +10,8 @@ build/
 .tmp/
 
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-.idea/AndroidProjectSystem.xml
+# 个人 IDE 配置整体忽略：仓库只保留编辑器无关的设置
+.idea/
 *.iws
 *.iml
 *.ipr
