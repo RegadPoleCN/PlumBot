@@ -55,8 +55,14 @@ fun protocolRouteViolations(
             violations += "route '$name' 的配置不是对象"
             return@forEach
         }
-        if (!entry.containsKey("featureGate")) violations += "route '$name' 缺少 featureGate"
-        if (!entry.containsKey("defaultEngine")) violations += "route '$name' 缺少 defaultEngine"
+        val gate = entry["featureGate"]
+        if (gate !is String || gate.isBlank()) {
+            violations += "route '$name' 的 featureGate 必须是非空字符串"
+        }
+        val engine = entry["defaultEngine"]
+        if (engine !is String || engine.isBlank()) {
+            violations += "route '$name' 的 defaultEngine 必须是非空字符串"
+        }
         val payload = entry["payload"]
         if (payload !is Map<*, *> || payload.isEmpty()) {
             violations += "route '$name' 缺少非空 payload 声明"
@@ -66,7 +72,54 @@ fun protocolRouteViolations(
     return violations
 }
 
-val copyDist = tasks.register<Copy>("dist") {    group = "distribution"
+/**
+ * RenderCard 载荷形状的**逐路由判定**（纯函数，便于负例自检）。
+ *
+ * 所有 route 必须共用同一形状：`{ text:string, title:string?, data:{} }`。
+ * 这里只校验清单里的声明，不校验运行期数据；目的是让"AWT 只读 text、浏览器只读 data"
+ * 这两套投影永远建立在同一张卡片上，而不是各自维护一份字段表。
+ */
+fun renderCardPayloadViolations(manifestRoutes: Map<String, Any?>): List<String> {
+    val violations = mutableListOf<String>()
+
+    manifestRoutes.forEach { (name, raw) ->
+        val entry = raw as? Map<*, *> ?: run {
+            violations += "route '$name' 的配置不是对象"
+            return@forEach
+        }
+        val payload = entry["payload"] as? Map<*, *> ?: run {
+            violations += "route '$name' 的 payload 不是对象"
+            return@forEach
+        }
+
+        if (payload["text"] != "string") {
+            violations += "route '$name' 的 payload.text 必须声明为 string"
+        }
+        if (payload["title"] != "string?") {
+            violations += "route '$name' 的 payload.title 必须声明为 string?"
+        }
+        val data = payload["data"]
+        if (data !is Map<*, *>) {
+            violations += "route '$name' 的 payload.data 必须声明为对象（无字段时写 {}）"
+        } else {
+            data.forEach { (key, type) ->
+                if (key !is String || key.isBlank()) {
+                    violations += "route '$name' 的 payload.data 含空字段名"
+                } else if (type !is String || type.isBlank()) {
+                    violations += "route '$name' 的 payload.data.$key 缺少类型声明"
+                }
+            }
+        }
+        (payload.keys.map { it.toString() } - setOf("text", "title", "data")).forEach { extra ->
+            violations += "route '$name' 的 payload 含未声明字段 '$extra'（只允许 text/title/data）"
+        }
+    }
+
+    return violations
+}
+
+val copyDist = tasks.register<Copy>("dist") {
+    group = "distribution"
     description = "Collects distribution ShadowJars from all platform modules into /dist"
     destinationDir = file("dist")
 }
@@ -201,13 +254,17 @@ fun yamlBlock(file: File, path: List<String>): Map<String, String>? {
     for (segment in path) {
         var found = -1
         var foundIndent = -1
+        var childIndent = -1
         while (index < lines.size) {
             val raw = lines[index]
             val trimmed = raw.trim()
             if (trimmed.isEmpty() || trimmed.startsWith("#")) { index++; continue }
             val currentIndent = raw.indexOfFirst { it != ' ' }
             if (indent >= 0 && currentIndent <= indent) break // 跳出当前块
-            if (trimmed == "$segment:" || trimmed.startsWith("$segment:")) {
+            // 只认**当前层的第一个子缩进**：否则 render.outputs.text 会抢先命中
+            // 后面的 render.text，导致 text 节点取到 output 的布尔值。
+            if (childIndent < 0) childIndent = currentIndent
+            if (currentIndent == childIndent && (trimmed == "$segment:" || trimmed.startsWith("$segment:"))) {
                 found = index
                 foundIndent = currentIndent
                 break
@@ -242,16 +299,16 @@ fun yamlBlock(file: File, path: List<String>): Map<String, String>? {
  *
  * 单一真源为 `render/src/main/resources/render-protocol.json`。本任务保证：
  * 1. 清单中的 route 集合与 Kotlin 的 [RenderRoute] 枚举**完全一致**（双向，防止任一侧漂移）；
- * 2. 每条 route 都声明了 `featureGate` / `defaultEngine` / `payload`；
- * 3. 若本地检出了独立前端 SDK（`web/packages/plumbot-web-sdk/src/protocol.ts`，该目录不入库），
- *    其协议版本与 route 集合必须与清单一致。
- * 4. 在同样前提下，模板路由（`web/packages/plumbot-web-templates/src/router.ts`）
- *    必须覆盖全部协议 route 且逐字一致；额外路径仅允许开发画廊 `preview`。
- * 5. 文本可读性规则需在协议清单、config.yml、AWT 引擎默认值与运行时载体之间四方一致。
+ * 2. 每条 route 都声明了 `featureGate` / `defaultEngine` / `payload`，且 payload 统一为
+ *    `{ text:string, title:string?, data:object }` 的 RenderCard 形状；
+ * 3. 前端一致性**不在构建期读取前端源码**：协议号与 route 集合由运行时 manifest 握手保证
+ *    （模板注入的 `__PLUMBOT_MANIFEST__` 的 protocol/routes 与 `render.playwright.template_protocol`
+ *    不匹配即报 `PW_TEMPLATE_INVALID`），字段漂移由运行时字段自检兜底。
+ * 4. 文本可读性规则需在协议清单、config.yml、AWT 引擎默认值与运行时载体之间四方一致。
  */
 val checkRenderProtocol = tasks.register("checkRenderProtocol") {
     group = "verification"
-    description = "Validates render-protocol.json against the Kotlin route registry and optional local frontend sources."
+    description = "Validates render-protocol.json against the Kotlin route registry, config.yml and the text-style carriers."
 
     val rootDir = rootProject.projectDir
     doLast {
@@ -270,8 +327,11 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
         // 运行方式：gradlew checkRenderProtocol -PrenderProtocolSelfTest=true
         if (providers.gradleProperty("renderProtocolSelfTest").map { it.toBoolean() }.getOrElse(false)) {
             val failures = mutableListOf<String>()
+            val okPayload = mapOf<String, Any?>(
+                "text" to "string", "title" to "string?", "data" to emptyMap<String, Any?>()
+            )
             val okEntry = mapOf<String, Any?>(
-                "featureGate" to "status", "defaultEngine" to "awt", "payload" to mapOf("a" to 1)
+                "featureGate" to "status", "defaultEngine" to "awt", "payload" to okPayload
             )
 
             val enumExtra = protocolRouteViolations(mapOf("status" to okEntry), setOf("status", "kick"))
@@ -287,6 +347,19 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             if (missingFields.none { it.contains("defaultEngine") }) failures += "漏报：缺少 defaultEngine 未被拦下"
             if (missingFields.none { it.contains("非空 payload") }) failures += "漏报：空 payload 未被拦下"
 
+            val cardMissingText = renderCardPayloadViolations(
+                mapOf("status" to mapOf<String, Any?>("payload" to mapOf("title" to "string?", "data" to emptyMap<String, Any?>())))
+            )
+            if (cardMissingText.none { it.contains("payload.text") }) failures += "漏报：payload 缺少 text 未被拦下"
+
+            val cardMissingData = renderCardPayloadViolations(
+                mapOf("status" to mapOf<String, Any?>("payload" to mapOf("text" to "string", "title" to "string?")))
+            )
+            if (cardMissingData.none { it.contains("payload.data") }) failures += "漏报：payload 缺少 data 未被拦下"
+
+            val cardConsistent = renderCardPayloadViolations(mapOf("status" to okEntry))
+            if (cardConsistent.isNotEmpty()) failures += "误报：RenderCard 形状被判违规：$cardConsistent"
+
             val consistent = protocolRouteViolations(mapOf("status" to okEntry), setOf("status"))
             if (consistent.isNotEmpty()) failures += "误报：一致输入被判违规：$consistent"
 
@@ -295,7 +368,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
                     "checkRenderProtocol 自检失败（${failures.size} 项）：\n" + failures.joinToString("\n") { "  - $it" }
                 )
             }
-            println("checkRenderProtocol: 自检通过（负例 3 项全部检出，正例 1 项无误报）。")
+            println("checkRenderProtocol: 自检通过（负例 5 项全部检出，正例 2 项无误报）。")
             return@doLast
         }
 
@@ -310,55 +383,29 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             .toSet()
 
         violations += protocolRouteViolations(routeEntries, enumRoutes)
+        violations += renderCardPayloadViolations(routeEntries)
 
-        // 3. 前端 SDK 一致性（仅本地检出 web/ 时生效，该目录不入库）
-        val sdkProtocol = File(rootDir, "web/packages/plumbot-web-sdk/src/protocol.ts")
-        if (sdkProtocol.isFile) {
-            val ts = sdkProtocol.readText()
-            val tsProtocol = Regex("""PROTOCOL\s*=\s*(\d+)""").find(ts)?.groupValues?.get(1)
-            val expected = manifest["protocol"].toString()
-            if (tsProtocol != expected) {
-                violations += "前端 SDK 协议版本 ($tsProtocol) 与清单 ($expected) 不一致"
-            }
-            routeEntries.keys.forEach { route ->
-                // 同时接受单引号与双引号字面量
-                if (!ts.contains("\"$route\"") && !ts.contains("'$route'")) {
-                    violations += "前端 SDK 未声明 route '$route'"
+        // 2.1 每个 featureGate 都必须在 config.yml 的 render.outputs 中真实存在，
+        // 且不能留下无人使用的孤儿开关 —— 否则"配置里关不掉/开了没效果"会静默发生。
+        val configYml = File(rootDir, "common/src/main/resources/config.yml")
+        if (configYml.isFile) {
+            val outputs = yamlBlock(configYml, listOf("render", "outputs"))
+            if (outputs == null) {
+                violations += "config.yml 缺少 render.outputs 节点"
+            } else {
+                val declaredGates = routeEntries.values.mapNotNull { entry ->
+                    (entry as? Map<*, *>)?.get("featureGate") as? String
+                }.toSet()
+                (declaredGates - outputs.keys).forEach {
+                    violations += "route 使用了 render.outputs.$it，但 config.yml 未声明该开关"
+                }
+                (outputs.keys - declaredGates).forEach {
+                    violations += "config.yml 的 render.outputs.$it 没有任何 route 使用"
                 }
             }
         }
 
-        // 4. 前端路由路径必须与协议 route 名**逐字一致**（若模板存在）
-        //
-        // 这一条是补上的：此前路由写作 `/list` 而协议名是 `playerList`，
-        // 插件导航到 `#/playerList` 会命中 404 → 握手判为 RouteUnsupported →
-        // 该 route 的 Playwright 路径**永远静默降级**，且构建期毫无提示。
-        //
-        // 模板位于 web/packages/plumbot-web-templates/src/router.ts（仅本地可选）。
-        // `preview` 是开发画廊，不属于协议路由，校验时显式放行。
-        val routerFile = File(rootDir, "web/packages/plumbot-web-templates/src/router.ts")
-        if (routerFile.isFile) {
-            val routerSource = routerFile.readText()
-            val declaredPaths = Regex("""path:\s*['"]([^'"]+)['"]""")
-                .findAll(routerSource)
-                .map { it.groupValues[1].removePrefix("/") }
-                .filter { it.isNotEmpty() }
-                .toSet()
-
-            val routeNames = routeEntries.keys
-            (routeNames - declaredPaths).forEach {
-                violations += "前端路由表缺失 route '$it' 的视图路径（会静默降级为 awt）"
-            }
-            (declaredPaths - routeNames - setOf("preview")).forEach {
-                violations += "前端路由表存在协议未声明的路径 '/$it'"
-            }
-            // 明确禁止改名的历史写法，避免再次回退
-            if (declaredPaths.contains("list")) {
-                violations += "前端路由表出现 '/list'：协议 route 名为 'playerList'，必须逐字一致"
-            }
-        }
-
-        // 5. 文本可读性规则**四方一致**：协议清单 ↔ config.yml ↔ 引擎默认值 ↔ 运行时载体
+        // 4. 文本可读性规则**四方一致**：协议清单 ↔ config.yml ↔ 引擎默认值 ↔ 运行时载体
         //
         // 这一条是补上的：此前清单与前端 SDK 都声明了底板色/描边阈值，但 AWT 引擎用的是
         // 写死的 Style.DEFAULT，配置里根本没有 text 节点 —— 三方数值只是"恰好一致"，
@@ -377,7 +424,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             val expectColor = normColor(manifestText["color"])
             val expectThreshold = normNum(manifestText["threshold"])
 
-            // 5.1 config.yml（无第三方依赖的缩进感知解析：render → text）
+            // 4.1 config.yml（无第三方依赖的缩进感知解析：render → text）
             val configYml = File(rootDir, "common/src/main/resources/config.yml")
             if (configYml.isFile) {
                 val textNode = yamlBlock(configYml, listOf("render", "text"))
@@ -396,7 +443,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
                 }
             }
 
-            // 5.2 引擎默认值（TextToImg.Style.DEFAULT）
+            // 4.2 引擎默认值（TextToImg.Style.DEFAULT）
             val engineSource = File(
                 rootDir,
                 "render/src/main/kotlin/me/regadpole/plumbot/render/TextToImg.kt"
@@ -418,7 +465,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
                 violations += "引擎描边阈值默认值不一致：清单=$expectThreshold TextToImg=$engineThreshold"
             }
 
-            // 5.3 运行时载体（RenderTextStyle 默认值，配置缺失时由它兜底）
+            // 4.3 运行时载体（RenderTextStyle 默认值，配置缺失时由它兜底）
             val portalSource = File(
                 rootDir,
                 "render/src/main/kotlin/me/regadpole/plumbot/render/RenderPortal.kt"
@@ -452,7 +499,7 @@ subprojects {
 }
 
 /**
- * 产物重定位断言（A24 / D7 验收；发布前必跑）。
+ * 产物重定位断言（发布前必跑）。
  *
  * 需要 `dist` 产物，因此**不挂进 `check`**（否则每次 check 都要跑一遍 shadowJar）；
  * 单独运行：`gradlew checkRelocation`。
@@ -463,7 +510,7 @@ subprojects {
  *    一旦打包，插件里的 `Component` 与宿主就不是同一个类，跨 API 传递必炸
  *    （Velocity `/plumbot status` 的 `NoClassDefFoundError` 即此因）。
  * 2. 不得出现 `top/` 命名空间（历史方案的回归防线）；
- * 3. `com/google/gson` **允许**保留原前缀（D7 明确豁免 —— 接受宿主自带 Gson）。
+ * 3. `com/google/gson` **允许**保留原前缀（接受宿主自带 Gson，避免版本冲突）。
  */
 val checkRelocation = tasks.register("checkRelocation") {
     group = "verification"
@@ -495,7 +542,7 @@ val checkRelocation = tasks.register("checkRelocation") {
                 "checkRelocation failed with ${violations.size} violation(s):\n" + violations.joinToString("\n") { "  - $it" }
             )
         }
-        println("checkRelocation: 产物重定位断言通过（${jars.size} 个包；无 kyori 类；com/google/gson 按 D7 豁免）。")
+        println("checkRelocation: 产物重定位断言通过（${jars.size} 个包；无 kyori 类；com/google/gson 豁免）。")
     }
 }
 

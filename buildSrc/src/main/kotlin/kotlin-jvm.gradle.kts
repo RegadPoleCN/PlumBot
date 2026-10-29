@@ -77,6 +77,23 @@ tasks.withType<Test>().configureEach {
     // Configure all test Gradle tasks to use JUnitPlatform.
     useJUnitPlatform()
 
+    // 测试临时目录落地到 build/ 内，不再写系统 %TEMP%。
+    //
+    // 背景：测试里裸用 `Files.createTempDirectory(...)` 且从不删除（`deleteOnExit`
+    // 对非空目录无效），每次 `gradlew build` 都在 %TEMP% 里长一批 `plumbot-*`
+    // —— 实测累积到 1300 个目录。逐处改成 @TempDir 需要改动 18 个测试类、
+    // 且没有共享的 testFixtures，容易漏；在本文件改一次即可覆盖全部现有与新增测试。
+    //
+    // java.io.tmpdir 必须显式指定：Gradle 不会替测试 JVM 覆盖它（正因如此原先漏到 %TEMP%）。
+    val testTempDir = layout.buildDirectory.dir("tmp/test-jvm").get().asFile
+    systemProperty("java.io.tmpdir", testTempDir.absolutePath)
+
+    // 目录必须先存在：java.io.tmpdir 不存在时 Files.createTempDirectory 直接抛 NoSuchFileException。
+    doFirst { testTempDir.mkdirs() }
+    // 跑完就清掉。删不掉不算失败（Windows 上可能有句柄未释放），目录已在 build/ 内，
+    // 下一次 clean 或构建都会重来。
+    doLast { runCatching { testTempDir.deleteRecursively() } }
+
     // Log information about all test results, not only the failed ones.
     testLogging {
         events(

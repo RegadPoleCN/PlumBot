@@ -10,6 +10,9 @@ dependencies {
     implementation(project(":adapter:onebot"))
     implementation(project(":adapter:miraimc"))
     testImplementation(kotlin("test"))
+    // 单测在无服务端 JVM 中运行，需要 Adventure 运行时类（生产仍由宿主/Libby 提供）
+    testImplementation(libs.adventureApi)
+    testImplementation(libs.adventureTextSerializerLegacy)
 
     // bukkit
     compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")

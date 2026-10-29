@@ -28,6 +28,8 @@ dependencies {
     testImplementation(libs.adventureApi)
     // 消息转发路径会渲染 MiniMessage（生产为 compileOnly）
     testImplementation(libs.adventureTextMinimessage)
+    // ComponentProjector 的 § / & 出口需要真实 legacy serializer
+    testImplementation(libs.adventureTextSerializerLegacy)
     // 数据库测试需要真实建表/查询：sqlite 驱动、连接池与 taboolib 表 DSL 在生产是 compileOnly
     testImplementation(libs.sqlite)
     testImplementation(libs.hikaricp)
