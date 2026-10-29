@@ -26,7 +26,7 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * R28 验收：模板**校验和**。
+ * 模板**校验和**。
  *
  * 关键不是"能算哈希"，而是三种配置状态的行为差异 —— 尤其是**格式非法必须失败关闭**：
  * 静默跳过会把安全开关变成安慰剂（服主以为在校验，其实没有）。
@@ -82,6 +82,11 @@ class TemplateIntegrityTest {
         val mismatch = TemplateIntegrity.mismatchMessage("expect", "actual")
         assertTrue(mismatch.contains("expect") && mismatch.contains("actual"), "要给出期望值与实际值以便对照：$mismatch")
         assertTrue(mismatch.contains("template_sha256"), "要指出配置键：$mismatch")
+
+        val withSource = TemplateIntegrity.mismatchMessage("expect", "actual", "https://ghproxy.net/x.html")
+        assertTrue(withSource.contains("https://ghproxy.net/x.html"), "要指出是哪个候选给出的文件：$withSource")
+        assertTrue(withSource.contains("可能原因"), "要说清可能原因，避免管理员第一反应是清空 sha256：$withSource")
+        assertTrue(withSource.contains("不会换镜像重试"), "要说明不会换镜像重试：$withSource")
 
         val malformed = TemplateIntegrity.malformedMessage("not-a-hash")
         assertTrue(malformed.contains("64 位十六进制"), "要说明正确格式：$malformed")
