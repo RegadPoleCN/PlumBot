@@ -25,15 +25,13 @@ import kotlin.test.assertTrue
 /**
  * 运行期类库清单的护栏测试。
  *
- * 背景：三端曾各自维护装载清单，结果 Velocity/Hytale 只装了数据库驱动 —— 代理端连
- * `config.yml` 都解析不了；Hikari/aedile/Caffeine 又因为**产物里引用已被重定位**
- * 而必须带 relocate 装载。这些约束都在编译期看不出来，只能靠断言钉住。
+ * 这些约束编译期看不出来，只能靠断言钉住：清单缺项时 Velocity/Hytale 只装数据库驱动，
+ * 代理端连 `config.yml` 都解析不了；Hikari/aedile/Caffeine 的引用在产物里已被重定位，
+ * 装载时必须带同一套 relocate。
  *
- * 本测试同时钉住两组历史事故：
- * 1. [RuntimeLibraries] 的 `transitive` 一旦打开，Libby 会连 POM 的 `<optional>` 一起解析，
- *    一次启动多拉 40+ 个无关 jar（见待办 H1 的启动日志）。
- * 2. `relocate` 的 `from` 写成 Maven groupId（如 `com.google.code.gson`）会**静默失效**，
- *    所以每条规则都必须对应一个真实引用它的 jar。
+ * 另两组历史事故：`transitive` 一打开，Libby 会连 POM 的 `<optional>` 一起解析，启动时
+ * 多拉 40+ 个无关 jar；`relocate` 的 `from` 写成 Maven groupId 会**静默失效**，所以每条
+ * 规则都必须对应一个真实引用它的 jar。
  */
 class RuntimeLibrariesTest {
 
@@ -77,6 +75,32 @@ class RuntimeLibrariesTest {
     @Test
     fun `coordinates are unique`() {
         assertEquals(specs.size, specs.map { it.coordinate }.toSet().size, "同一坐标只能出现一次")
+    }
+
+    @Test
+    fun `playwright runtime is three explicit non-transitive jars`() {
+        val version = RuntimeLibraryVersions.PLAYWRIGHT
+        // Leaf/Paper 上的真实故障：doctor 只找 jar 却没有人触发 Libby，于是永远 `driver-bundle=未找到`。
+        // 这里钉住"三件套缺一不可"以及"不得打开传递解析"（否则 junit 会被装进服务端）。
+        assertEquals(
+            listOf(
+                "com{}microsoft{}playwright:driver:$version",
+                "com{}microsoft{}playwright:driver-bundle:$version",
+                "com{}microsoft{}playwright:playwright:$version",
+            ),
+            RuntimeLibraries.PLAYWRIGHT.map { it.coordinate },
+        )
+        RuntimeLibraries.PLAYWRIGHT.forEach { spec ->
+            assertTrue(
+                !spec.transitive,
+                "${spec.artifactId} 必须 transitive=false：playwright 的 POM 会把 junit-jupiter 拖进服务端",
+            )
+        }
+        val allCoordinates = specs.map { it.coordinate }.toSet()
+        assertTrue(
+            RuntimeLibraries.PLAYWRIGHT.none { it.coordinate in allCoordinates },
+            "Playwright 只在渲染时按需装载，不得混进启动清单 ALL（一次启动就会多下载 190 MB）",
+        )
     }
 
     @Test
@@ -141,7 +165,7 @@ class RuntimeLibrariesTest {
             "configurate-yaml",
             "Java-WebSocket",
             "AOneBot",
-            "gson", // D7：接受宿主自带 gson
+            "gson", // 接受宿主自带 gson
         )
         specs.filter { it.artifactId in mustStayPlain }.forEach { spec ->
             assertTrue(spec.relocates.isEmpty(), "${spec.artifactId} 的字节码按原包名引用依赖，运行期不能重定位")

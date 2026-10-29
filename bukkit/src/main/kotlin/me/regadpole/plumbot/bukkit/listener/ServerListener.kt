@@ -22,6 +22,7 @@ import me.regadpole.plumbot.PlumBot
 import me.regadpole.plumbot.api.platform.PlatformCapability
 import me.regadpole.plumbot.server.GameEventBridge
 import me.regadpole.plumbot.server.PlayerLoginService
+import me.regadpole.plumbot.server.PreLoginDenial
 import me.regadpole.plumbot.utils.getPlainTextFromComponent
 import me.regadpole.plumbot.utils.stripMinecraftFormatting
 import org.bukkit.Bukkit
@@ -63,10 +64,14 @@ class ServerListener(private val plugin: PlumBot) : Listener {
         if (result.allowed) {
             event.allow()
         } else {
-            event.disallow(
-                AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST,
-                result.kickMessage
-            )
+            // 查清「没绑定」= 白名单未通过；「没查清」（超时/库未就绪）= 校验通道故障，
+            // 用 KICK_OTHER 区分，免得运维把数据库故障误读成玩家没申请白名单。
+            val reason = if (result.denial == PreLoginDenial.LOOKUP_UNAVAILABLE) {
+                AsyncPlayerPreLoginEvent.Result.KICK_OTHER
+            } else {
+                AsyncPlayerPreLoginEvent.Result.KICK_WHITELIST
+            }
+            event.disallow(reason, result.kickMessage)
         }
     }
 
@@ -106,10 +111,10 @@ class ServerListener(private val plugin: PlumBot) : Listener {
 
         val advancement = event.advancement
         val key = advancement.key.key
-        // 1. 过滤配方解锁
+        // 配方解锁随进度大量刷出，不是成就播报内容。
         if (key.startsWith("recipes/")) return
 
-        // 2. 尝试通过反射获取 display（Paper 1.13+ 或更高版本提供）
+        // display 只有 Paper 提供，用反射兼容不带该 API 的宿主。
         val titleText: String = try {
             val displayMethod = advancement.javaClass.methods.firstOrNull { it.name == "getDisplay" || it.name == "display" }
             val displayObj = displayMethod?.invoke(advancement)

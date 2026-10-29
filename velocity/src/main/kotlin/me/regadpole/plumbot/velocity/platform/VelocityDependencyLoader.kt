@@ -23,7 +23,6 @@ import com.alessiodp.libby.Library
 import com.velocitypowered.api.plugin.PluginManager
 import me.regadpole.plumbot.internal.KyoriSupport
 import me.regadpole.plumbot.internal.RuntimeLibraries
-import me.regadpole.plumbot.internal.RuntimeLibraryVersions
 import me.regadpole.plumbot.api.platform.PlatformConfig
 import me.regadpole.plumbot.render.RenderLibraryLoader
 import org.slf4j.Logger
@@ -43,33 +42,52 @@ class VelocityDependencyLoader(
     @Volatile
     private var playwrightReady = false
 
+    /** 最近一次 Playwright 装载失败的原因（供 `/plumbot render doctor` 展示）；成功后清空。 */
+    @Volatile
+    private var playwrightFailure: String? = null
+
     /**
-     * 按需下载并装载 Playwright（仅 `engine=playwright` 且真正出图时才会被调用）。
+     * 按需下载并装载 Playwright 运行时（接口 / 原生 node 驱动 / API 三件，
+     * 清单见 [RuntimeLibraries.PLAYWRIGHT]）。
+     *
+     * 调用方必须是异步线程：`driver-bundle` 约 190 MB，首次调用即一次真实下载。
      * **禁止 relocate** —— Playwright 依赖其原生 node driver 的路径结构。
+     *
+     * 与 Bukkit / Hytale 不同，这里**没有主线程守卫**：Velocity 没有"主线程 tick"概念，
+     * 事件与命令都跑在独立线程池上，不存在"卡住服务端 tick"这条失败模式；单飞与
+     * 冷却由门户的 [me.regadpole.plumbot.render.PlaywrightInstallGate] 负责。
      */
     override fun ensurePlaywright(): Boolean {
         if (playwrightReady) return true
         return synchronized(this) {
             if (playwrightReady) return true
-            val ok = runCatching {
-                libraryManager.loadLibrary(
-                    Library.builder()
-                        .groupId("com{}microsoft{}playwright")
-                        .artifactId("playwright")
-                        .version(RuntimeLibraryVersions.PLAYWRIGHT)
-                        .resolveTransitiveDependencies(true)
-                        .build()
-                )
-            }.isSuccess
+            var failure: String? = null
+            val ok = RuntimeLibraries.PLAYWRIGHT.all { spec ->
+                runCatching {
+                    libraryManager.loadLibrary(
+                        Library.builder()
+                            .groupId(spec.groupId)
+                            .artifactId(spec.artifactId)
+                            .version(spec.version)
+                            .resolveTransitiveDependencies(spec.transitive)
+                            .build()
+                    )
+                }.onFailure {
+                    failure = "${spec.artifactId}: ${it.message ?: it.javaClass.simpleName}"
+                }.isSuccess
+            }
             playwrightReady = ok
+            playwrightFailure = if (ok) null else failure ?: "未知原因（Libby 未返回异常）"
             ok
         }
     }
 
+    override fun lastFailure(): String? = playwrightFailure
+
     fun loadDependencies() {
         val config = configProvider()
 
-        // 1. 自定义仓库
+        // 自定义仓库：服主显式配置，优先级最高
         config?.getStringList("libraries", "custom_repositories")
             ?.filterNotNull()
             ?.map { it.trim().removeSuffix("/") }
@@ -78,33 +96,32 @@ class VelocityDependencyLoader(
                 libraryManager.addRepository(customRepo)
             }
 
-        // 2. 阿里云镜像
+        // 阿里云镜像，国内机房拉取快
         val useAliyun = config?.getBoolean("libraries", "use_aliyun_mirror") ?: true
         if (useAliyun) {
             libraryManager.addRepository("https://maven.aliyun.com/repository/public")
         }
 
-        // 3. MavenCentral 核心兜底
+        // Maven Central 核心兜底
         libraryManager.addMavenCentral()
 
-        // 4. JitPack 专属源
+        // JitPack：AOneBot 与 taboolib-database 托管于此
         libraryManager.addJitPack()
 
-        // 5. PaperMC 官方源
+        // PaperMC 公共仓库（默认开启）
         val usePaperRepo = config?.getBoolean("libraries", "use_papermc_repo") ?: true
         if (usePaperRepo) {
             libraryManager.addRepository("https://repo.papermc.io/repository/maven-public")
         }
 
-        // 加载基础依赖组件
         loadCommonLibraries()
     }
 
     /**
      * 按 [RuntimeLibraries] 清单装载（与 Bukkit/Hytale 使用同一份清单）。
      *
-     * 此前这里只装数据库驱动，导致代理端连 `config.yml` 都解析不了（configurate 缺失），
-     * 且产物中已被重定位的 Hikari/aedile/Caffeine 引用无对应类。
+     * 只装数据库驱动时代理端连 `config.yml` 都解析不了（configurate 缺失），产物中已被
+     * 重定位的 Hikari/aedile/Caffeine 引用也没有对应类。
      *
      * Adventure 例外：Velocity 自带 kyori，KyoriSupport 会跳过回退副本，直接共享宿主类。
      */

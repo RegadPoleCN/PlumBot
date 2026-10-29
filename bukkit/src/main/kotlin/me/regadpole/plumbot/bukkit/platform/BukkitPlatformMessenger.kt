@@ -34,9 +34,15 @@ class BukkitPlatformMessenger(
 ) {
     private val legacy: LegacyComponentSerializer = LegacyComponentSerializer.legacySection()
 
-    fun sendMessage(message: Component) {
+    /**
+     * 落地一条消息：控制台 + 在线玩家。
+     *
+     * @param echoToConsole 是否同时写入控制台（配置项 `feature.message.console_echo`）。
+     *   默认 `true` 保持旧行为；关闭后只发给在线玩家，控制台不再刷群消息。
+     */
+    fun sendMessage(message: Component, echoToConsole: Boolean = true) {
         val text = legacy.serialize(message)
-        plugin.server.consoleSender.sendMessage(text)
+        if (echoToConsole) plugin.server.consoleSender.sendMessage(text)
         plugin.server.onlinePlayers.forEach { it.sendMessage(text) }
     }
 }
