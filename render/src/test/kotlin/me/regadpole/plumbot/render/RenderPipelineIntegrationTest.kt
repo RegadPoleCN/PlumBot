@@ -43,18 +43,13 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * **端到端集成测试**（台账 U-13）。
+ * **端到端集成测试**：其它单测只覆盖纯逻辑（颜色、守卫、治理、JSON、裁头、缓存），
+ * "载荷 → 引擎 → PNG 字节"这条主链路由本用例补上——用真实的 AWT 引擎跑完整渲染，
+ * 断言产出是**可解码的有效 PNG**、尺寸合理，且超大载荷经治理后仍能出图而不是崩溃。
  *
- * 此前的 100+ 项单测全部集中在纯逻辑（颜色、守卫、治理、JSON、裁头、缓存），
- * "载荷 → 引擎 → PNG 字节"这条主链路**零覆盖**。本测试补上这一段：
- * 用真实的 AWT 引擎跑完整渲染，断言产出是**可解码的有效 PNG**、尺寸合理、
- * 且超大载荷经过治理后仍能出图而不是崩溃。
- *
- * 未覆盖的部分（需真实 QQ / 浏览器 / Hytale 服务端）见台账 U-11 / U-12。
+ * 需真实 QQ / 浏览器 / Hytale 服务端的部分不在此覆盖。
  */
 class RenderPipelineIntegrationTest {
-
-    // ---------------- 测试替身 ----------------
 
     private class FakeConfig(private val values: Map<String, Any>) : PlatformConfig {
         private fun key(path: Array<out String?>): String = path.filterNotNull().joinToString(".")
@@ -154,8 +149,6 @@ class RenderPipelineIntegrationTest {
     private fun tinyPngDataUrl(): String =
         "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(tinyPngBytes())
 
-    // ---------------- 用例 ----------------
-
     @Test
     fun `状态卡端到端产出可解码 PNG`() {
         val result = render(
@@ -176,8 +169,8 @@ class RenderPipelineIntegrationTest {
 
     @Test
     fun `reload rebuilds engines and rendering still works afterwards`() {
-        // A14：reload 会**关闭并丢弃**引擎与头像管线（让它们按新配置重建）。
-        // 这条用例守的正是那次改动的风险：重建后必须仍能出图，而不是变成 Failed/Unavailable。
+        // reload 会**关闭并丢弃**引擎与头像管线（让它们按新配置重建）。
+        // 这条用例守的正是该改动的风险：重建后必须仍能出图，而不是变成 Failed/Unavailable。
         val portal = portal(mapOf("render.outputs.status" to true))
         val payload = mapOf("serverName" to "lobby", "tps" to listOf("20.0"), "mspt" to "1", "usedMem" to 1, "maxMem" to 2, "online" to 1)
 
@@ -217,7 +210,11 @@ class RenderPipelineIntegrationTest {
     fun `超出额度的载荷经治理后仍能出图而不是崩溃`() {
         // 远超 displayTextMax（1024）的正文
         val huge = "夜".repeat(50_000)
-        val result = render(portal(emptyMap()), RenderRoute.TEXT.route, TextPayload(body = huge))
+        val result = render(
+            portal(mapOf("render.outputs.text" to true)),
+            RenderRoute.TEXT.route,
+            TextPayload(body = huge)
+        )
 
         val png = assertIs<RenderResult.Image>(result).png
         assertTrue(decode(png).width > 0, "治理后必须仍能出图")
@@ -286,13 +283,9 @@ class RenderPipelineIntegrationTest {
         results.forEach { assertIs<RenderResult.Image>(it) }
     }
 
-    // ---------------- 漏斗三入口的门户级测试（此前零覆盖） ----------------
-
     /**
-     * **U-6 回归守卫**：熔断必须跨调用存活。
-     *
-     * 修复前 `resolveSkinAvatar` 每次调用都新建 `AvatarResolver`，连带新建空的冷却表，
-     * 于是第二次解析仍会跑满整条漏斗 —— 本断言就会失败（pluginCalls 会变成 2）。
+     * 熔断必须跨调用存活：修复前 `resolveSkinAvatar` 每次调用都新建 `AvatarResolver`，
+     * 连带新建空的冷却表，于是第二次解析仍会跑满整条漏斗（pluginCalls 变成 2）。
      */
     @Test
     fun `漏斗全灭后进入冷却 第二次解析不再调用任何平台来源`() = runBlocking {
@@ -377,13 +370,14 @@ class RenderPipelineIntegrationTest {
      * ③ 多个路由共用一个功能开关时（如 whitelist/bindList 共用 `render.outputs.bind`），
      *    该开关对每条路由都生效。
      *
-     * ②③ 只在代表性路由上断言，避免 15 条路由各跑一次完整渲染；① 的断言在门控处短路，代价极低。
+     * ②③ 只在代表性路由上断言，避免 17 条路由各跑一次完整渲染；① 的断言在门控处短路，代价极低。
      */
     @Test
     fun `门控真值表覆盖全部路由`() {
         val gated = RenderRoute.entries.filter { it.featureGate != null }
+        // TEXT 也纳入 render.outputs.text 门控，路由表不再有"无门控"成员。
         val gateless = RenderRoute.entries.filter { it.featureGate == null }
-        assertTrue(gated.size == 15 && gateless.size == 1, "路由表形态变化时本用例需要同步更新")
+        assertTrue(gated.size == 17 && gateless.isEmpty(), "路由表形态变化时本用例需要同步更新")
 
         gated.forEach { route ->
             val off = render(
@@ -410,14 +404,12 @@ class RenderPipelineIntegrationTest {
         )
         assertNotEquals(RenderResult.Unavailable, sharedGate, "共用 render.outputs.bind 的路由必须一起放行")
 
-        gateless.forEach { route ->
-            val result = render(portal(emptyMap()), route.route, TextPayload(body = "x"))
-            assertNotEquals(RenderResult.Unavailable, result, "${route.route} 没有独立门控，不该被门控拦下")
-        }
+        // 原"无门控路由由调用方放行"分支随 TEXT 接入门控而删除；
+        // 该行为现在由 RenderPortalTest 的"text 路由门控打开时..."用例覆盖。
     }
 
     /**
-     * 计数分离的前提（A23）：`isImageEnabled` 只回答"配置有没有启用图片"。
+     * 计数分离的前提：`isImageEnabled` 只回答"配置有没有启用图片"。
      *
      * 若把 `Unavailable` 的其他原因（队列溢出、引擎不可用）也算成"关闭"，
      * `/plumbot status` 里的"配置关闭"会虚高，而真正的降级故障被掩盖。
@@ -437,7 +429,12 @@ class RenderPipelineIntegrationTest {
             )
         }
         assertEquals(false, portal(mapOf("render.engine" to "none")).isImageEnabled("status"), "engine=none 等于主动关闭")
-        assertEquals(true, portal(emptyMap()).isImageEnabled("text"), "无门控路由默认启用")
+        assertEquals(false, portal(emptyMap()).isImageEnabled("text"), "text 门控默认关闭")
+        assertEquals(
+            true,
+            portal(mapOf("render.outputs.text" to true)).isImageEnabled("text"),
+            "text 门控打开后应报告启用"
+        )
         assertEquals(false, portal(emptyMap()).isImageEnabled("noSuchRoute"), "未知路由无法出图")
     }
 }

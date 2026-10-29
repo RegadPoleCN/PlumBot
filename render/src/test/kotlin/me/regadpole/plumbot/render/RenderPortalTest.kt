@@ -37,11 +37,11 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * 渲染门户的契约测试（基线 §3.3 / §3.6 / §6）。
+ * 渲染门户的契约测试。
  *
  * 覆盖：
  * - 引擎解析 `render.views.<route>.engine` → `render.engine` → 内置默认；
- * - 路由门控（`render.outputs.<功能>`）；无门控 route 由调用方决定；
+ * - 路由门控（`render.outputs.<功能>`）；text 路由由 `render.outputs.text` 控制；
  * - `engine: none` 全局短路；
  * - **永不抛异常**：未知路由、引擎缺失、驱动异常都必须以 [RenderResult] 返回。
  */
@@ -82,8 +82,11 @@ class RenderPortalTest {
         logs: MutableList<String> = mutableListOf()
     ): RenderPortal {
         val base = File(System.getProperty("java.io.tmpdir"), "plumbot-portal-test").apply { mkdirs() }
+        // text 路由也有独立门控（默认 false）。本文件多数用例验证 text 的引擎解析/出图契约，
+        // 故默认打开；验证门控本身的用例显式覆盖该键。
+        val effective = mapOf("render.outputs.text" to true) + values
         return ImageRenderManager(
-            context = FakeContext(FakeConfig(values), base.toPath(), logs),
+            context = FakeContext(FakeConfig(effective), base.toPath(), logs),
             libraryLoader = null,
             runtimeWebDir = base
         )
@@ -204,12 +207,12 @@ class RenderPortalTest {
     }
 
     @Test
-    fun `无门控的 route 由调用方决定是否出图`() {
-        val portal = portal(emptyMap())
+    fun `text 路由门控打开时由调用方决定是否出图`() {
+        val portal = portal(mapOf("render.outputs.text" to true))
         val result = render(portal, RenderRoute.TEXT.route, TextPayload(body = "控制台回显 §aOK"))
         assertTrue(
             result is RenderResult.Image || result is RenderResult.Failed,
-            "text 路由不应被门控拦成 Unavailable，实际: $result"
+            "text 路由门控打开后不应被拦成 Unavailable，实际: $result"
         )
     }
 
@@ -261,6 +264,7 @@ class RenderPortalTest {
     fun `路由枚举可按名称解析且忽略大小写`() {
         assertEquals(RenderRoute.STATUS, RenderRoute.byName("status"))
         assertEquals(RenderRoute.STATUS, RenderRoute.byName("STATUS"))
+        assertEquals(RenderRoute.AVATAR, RenderRoute.byName("avatar"))
         assertEquals(RenderRoute.HYTALE_AVATAR, RenderRoute.byName("hytaleAvatar"))
         assertEquals(null, RenderRoute.byName("nope"))
     }

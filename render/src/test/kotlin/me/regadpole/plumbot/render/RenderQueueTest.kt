@@ -36,14 +36,13 @@ import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicInteger
 import javax.imageio.ImageIO
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * A12 验收：**队列容量**与**同目标串行**。
- *
- * 两件事必须成立：
+ * **队列容量**与**同目标串行**。两件事必须成立：
  * 1. 容量 = 并发 2 + 排队 6（共 8）；
  *    超出立即降级为 `Unavailable`（而不是无限排队把内存吃光）；
  * 2. **同一目标**（群/用户）的出图必须串行 —— 修复前 `targetLocks.clear()` 会把别人正在持有的
@@ -120,6 +119,12 @@ class RenderQueueTest {
     private fun portalWith(renderer: SlowRenderer): RenderPortal =
         ImageRenderManager(TestContext()).also { it.registerEngineForTest(renderer) }
 
+    @BeforeTest
+    fun resetMetrics() {
+        // RenderMetrics 是进程级单例：同一个 JVM 里其它用例的拒绝数会污染这里的等式断言。
+        RenderMetrics.reset()
+    }
+
     private fun request(targetKey: String?) = RenderRequest(
         route = RenderRoute.STATUS.route,
         payload = mapOf("serverName" to "test"),
@@ -149,6 +154,11 @@ class RenderQueueTest {
             rejected.toLong(),
             portal.metrics()["render.queueRejected"],
             "拒绝次数必须被计数（否则线上看不出'一直在丢请求'）"
+        )
+        assertEquals(
+            rejected.toLong(),
+            portal.renderHealth().queueRejected,
+            "队列拒绝必须同时进健康口径（/plumbot status 读的是 renderHealth）"
         )
     }
 

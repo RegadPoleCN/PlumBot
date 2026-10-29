@@ -19,15 +19,14 @@
 package me.regadpole.plumbot.render
 
 /**
- * Payload 长度治理（基线 §5 的三层策略）。
+ * Payload 长度治理，三层策略：
  *
- * 取代旧实现的「对顶层 Map 的每个 String 一刀切截断到 500 字符且完全静默」：
  * 1. **展示文本**：按上限截断并**追加省略号 + 事后告警**，同时收敛组合符（防 Zalgo/ReDoS）；
  * 2. **二进制 / 图层**（`data:` URL）：**不做字符截断**，按单层字节上限与二进制总预算判定，
- *    超限**丢弃该层**（"丢坏层、保好层"），绝不产出坏图；
+ *    超限**丢弃该层**（丢坏层、保好层），绝不产出坏图；
  * 3. **整体预算**：文本字符总量超过告警阈值时提示，便于排查。
  *
- * 递归穿透 Map / List / Array —— 旧实现只处理顶层，嵌套结构完全绕过，防护不对称。
+ * 递归穿透 Map / List / Array：只治理顶层时嵌套结构会完全绕过，防护不对称。
  */
 internal class PayloadGovernor(
     private val displayTextMax: Int,
@@ -35,6 +34,7 @@ internal class PayloadGovernor(
     private val binaryTotalMaxBytes: Int,
     private val layersMax: Int,
     private val textTotalWarn: Int,
+    private val cardTextMax: Int = 0,
     private val warn: (String) -> Unit
 ) {
     private var binaryBytes = 0
@@ -42,6 +42,10 @@ internal class PayloadGovernor(
     private var droppedLayers = 0
     private var truncatedFields = 0
     private var totalChars = 0
+
+    /** 卡片 `text` 超过 [cardTextMax]：调用方应放弃出图、直接发纯文本。 */
+    var cardTextOverflow: Boolean = false
+        private set
 
     fun govern(payload: Any?): Any? = walk(payload, 0)
 
@@ -56,6 +60,12 @@ internal class PayloadGovernor(
         if (truncatedFields > 0) {
             warn("[PlumBot-Render] $truncatedFields 个文本字段超过 $displayTextMax 字符，已截断并标记省略号")
         }
+        if (cardTextOverflow) {
+            warn(
+                "[PlumBot-Render] 卡片正文超过 card_text_max=$cardTextMax 字符，已放弃出图并改为发送纯文本" +
+                    "（截断正文会让图片与文字变成两套内容，因此这里 fail-closed）"
+            )
+        }
         if (textTotalWarn > 0 && totalChars > textTotalWarn) {
             warn("[PlumBot-Render] payload 文本总量 $totalChars 字符，超过告警阈值 $textTotalWarn")
         }
@@ -66,12 +76,33 @@ internal class PayloadGovernor(
         return when (value) {
             null -> null
             is String -> governString(value)
+            is RenderCard -> governCard(value, depth)
             is Map<*, *> -> value.entries.associate { (key, item) -> key to walk(item, depth + 1) }
             is List<*> -> value.map { walk(it, depth + 1) }
             is Set<*> -> value.map { walk(it, depth + 1) }
             is Array<*> -> value.map { walk(it, depth + 1) }
             else -> value
         }
+    }
+
+    /**
+     * 统一卡片：`text` 是正文真源，**不截断**（截断会让图片与纯文本降级产生两套内容）；
+     * 只计入总量告警。`title` 与 `data` 仍按普通字段治理，避免头像 data URL 等绕过预算。
+     */
+    private fun governCard(card: RenderCard, depth: Int): RenderCard {
+        totalChars += card.text.length
+        // 正文不截断（截断会与纯文本降级分叉），但超大正文仍要 fail-closed：否则一条异常
+        // 消息就能把整段文本塞进无头浏览器，渲染超时后同样只剩降级。
+        if (cardTextMax > 0 && card.text.length > cardTextMax) cardTextOverflow = true
+        val governedData = (walk(card.data, depth + 1) as? Map<*, *>)
+            ?.entries
+            ?.associate { it.key.toString() to it.value }
+            ?: emptyMap()
+        return RenderCard(
+            text = card.text,
+            title = card.title?.let { governString(it) as? String },
+            data = governedData
+        )
     }
 
     private fun governString(value: String): Any? {

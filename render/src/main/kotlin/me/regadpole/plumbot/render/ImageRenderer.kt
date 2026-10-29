@@ -24,17 +24,25 @@ internal interface ImageRenderer {
 
     suspend fun render(viewRoute: String, payload: Any, options: RenderOptions = RenderOptions.DEFAULT): ByteArray?
 
+    /**
+     * 驱动是否确信模板实现了 [route]（`null` = 未知 / 该驱动不按路由渲染）。
+     *
+     * AWT 把任何路由都当纯文本画，保持默认 `null`；Playwright 用模板 manifest 的
+     * `routes` 声明回答，供调用方在首次渲染前选路由。
+     */
+    fun supportsRoute(route: String): Boolean? = null
+
     fun shutdown() {}
 }
 
 internal data class RenderOptions(
     /**
-     * 单次渲染超时（原生超时，非协程超时）。由 `views.<route>.timeout_ms` 或
-     * `img.playwright.render_timeout_ms` 决定。
+     * 单次渲染超时（原生超时，非协程超时），由 `views.<route>.timeout_ms` 或
+     * `render.playwright.render_timeout_ms` 决定。
      *
-     * 注意：这里**没有** `scaleFactor`。设备像素比是**浏览器上下文级**属性，
-     * 而上下文在启动时只创建一次，因此它由 `render.playwright.scale_factor`
-     * 全局配置，无法逐次渲染变化 —— 把它放进 per-render options 只会制造假契约。
+     * 这里**没有** `scaleFactor`：设备像素比是**浏览器上下文级**属性，上下文在启动时只
+     * 创建一次，因此它只能由 `render.playwright.scale_factor` 全局配置 —— 放进 per-render
+     * options 只会制造假契约。
      */
     val timeoutMs: Long = 5000L
 ) {

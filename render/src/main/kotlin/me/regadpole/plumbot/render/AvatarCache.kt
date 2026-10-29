@@ -30,13 +30,14 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 头像磁盘缓存。
  *
- * **为什么必需**：头像原先由无头浏览器在渲染时逐张去取。一旦列表类 route 出图，
- * 一张卡片就要取 N 个玩家头像，全部落在渲染超时窗口内。服务端预取 + 磁盘缓存后，
- * 浏览器只收到成品 `data:` URL —— 渲染耗时与外部服务抖动被彻底解耦。
+ * 列表类 route 一张卡片要 N 个玩家头像，若由无头浏览器在渲染时逐张去取，全部耗时都落在
+ * 渲染超时窗口内。服务端预取 + 磁盘缓存后浏览器只收到成品 `data:` URL，渲染耗时与外部
+ * 服务抖动被解耦。
  */
 internal class AvatarCache(
     private val dir: File,
@@ -45,7 +46,7 @@ internal class AvatarCache(
     private val maxFiles: Int = DEFAULT_MAX_FILES
 ) {
 
-    /** 上次清理时间：写操作高频，清理做节流，避免每次都列目录。 */
+    /** 上次清理时间：写操作高频，清理需节流，避免每次都列目录。 */
     @Volatile
     private var lastPruneAt = 0L
 
@@ -61,8 +62,7 @@ internal class AvatarCache(
         runCatching {
             dir.mkdirs()
             val target = fileFor(cacheKey)
-            // 临时名必须**每次唯一**：旧实现固定用 "<name>.tmp"，
-            // 并发写同一个 key 时两个线程会往同一个文件里交错写，
+            // 临时名必须**每次唯一**：固定用 "<name>.tmp" 时并发写同一个 key 会交错写同一文件，
             // ATOMIC_MOVE 会把半个文件换进正式位置（表现为损坏的 PNG）。
             val temp = File.createTempFile("${target.name}.", ".tmp", dir)
             try {
@@ -85,8 +85,7 @@ internal class AvatarCache(
     /**
      * 清理过期条目并在超出 [maxFiles] 时按最旧优先删除。
      *
-     * 背景：`ttlMillis` 过去**只让读取落空**，陈旧文件永远不会被删除，
-     * 缓存目录随着每个新头像/皮肤地址无限增长（一次列表出图就能产生 N 个文件）。
+     * `ttlMillis` 只能让读取落空，不删除则过期文件永久堆积（一次列表出图就产生 N 个文件）。
      *
      * @return 本次删除的文件数
      */
@@ -133,9 +132,28 @@ internal class AvatarCache(
 }
 
 /**
+ * 同类失败的日志节流。
+ *
+ * 头像抓取是**逐玩家**的：某个头像源整体不可用时每次渲染都会对每个玩家各打一行 WARN，
+ * 现场就是刷屏。这里保留「第一次看得见」，之后同类明细降为 DEBUG（`debug.enable=true`
+ * 时才出现），与模板下载「开始/完成一行 INFO、逐跳 DEBUG」同一套口径。
+ */
+internal class FirstFailureWarn(private val log: (LogLevel, String) -> Unit) {
+    private val warned = AtomicBoolean(false)
+
+    fun report(message: String) {
+        if (warned.compareAndSet(false, true)) {
+            log(LogLevel.WARN, "$message（后续同类明细降为 DEBUG）")
+        } else {
+            log(LogLevel.DEBUG, message)
+        }
+    }
+}
+
+/**
  * 头像抓取器：校验来源 → 命中缓存直接返回 → 否则下载并落盘，最终以 `data:` URL 交付。
  *
- * 与浏览器侧取图相比，这里能做浏览器做不到的事：**出口白名单 + 解析后 IP 判定 + 体积上限 + 磁盘缓存**。
+ * 相比浏览器侧取图，这里能做浏览器做不到的事：**出口白名单 + 解析后 IP 判定 + 体积上限 + 磁盘缓存**。
  */
 internal class AvatarFetcher(
     private val context: PlatformContext,
@@ -145,6 +163,9 @@ internal class AvatarFetcher(
     private val userAgent: String
 ) {
 
+    /** 逐玩家失败只让**第一次**以 WARN 出现，其余走 DEBUG。 */
+    private val failures = FirstFailureWarn { level, message -> context.log(level, message) }
+
     suspend fun fetchAsDataUrl(cacheKey: String, url: String): String? {
         cache.read(cacheKey)?.let { return toDataUrl(it) }
         val bytes = download(url) ?: return null
@@ -153,9 +174,7 @@ internal class AvatarFetcher(
     }
 
     /**
-     * 取原始字节（不做 data URL 编码）。
-     *
-     * 皮肤漏斗需要原始 PNG 去裁头，因此不能复用 [fetchAsDataUrl]。
+     * 取原始字节（不做 data URL 编码）：皮肤漏斗需要原始 PNG 去裁头，不能复用 [fetchAsDataUrl]。
      * [cacheKey] 为空则不读写缓存（用于会话服务那类一次性、非图片的响应）。
      */
     suspend fun fetchBytes(cacheKey: String?, url: String): ByteArray? {
@@ -165,28 +184,28 @@ internal class AvatarFetcher(
         return bytes
     }
 
-    /** 只读缓存（供漏斗存放**已裁切**的头像，命中时连抓取与裁切都省掉）。 */
+    /** 只读缓存：漏斗把**已裁切**的头像也存在这里，命中时连抓取与裁切都省掉。 */
     fun readCached(cacheKey: String): ByteArray? = cache.read(cacheKey)
 
     /** 写入缓存。 */
     fun writeCache(cacheKey: String, bytes: ByteArray) = cache.write(cacheKey, bytes)
 
     private suspend fun download(url: String): ByteArray? = withContext(Dispatchers.IO) {
-        // 逐跳校验的重定向跟随：自动跳转会让白名单校验只作用于初始 URL，
-        // 被放行的主机再 302 到内网地址即可绕过（SSRF）。
+        // 逐跳校验的重定向跟随：自动跳转会让白名单只作用于初始 URL，被放行的主机
+        // 再 302 到内网地址即可绕过（SSRF）。
         val conn = SafeHttp.openValidated(
             url = url,
             allowedHosts = allowedHosts,
             userAgent = userAgent,
             connectTimeoutMs = CONNECT_TIMEOUT_MS,
             readTimeoutMs = READ_TIMEOUT_MS,
-            log = { context.log(LogLevel.WARN, it) }
+            log = { level, message -> context.log(level, message) }
         ) ?: return@withContext null
 
         try {
             val declared = conn.contentLengthLong
             if (declared > maxBytes) {
-                context.log(LogLevel.WARN, "[PlumBot-Render] 头像体积 ${declared}B 超过上限 ${maxBytes}B，已拒绝。")
+                failures.report("[PlumBot-Render] 头像体积 ${declared}B 超过上限 ${maxBytes}B，已拒绝。")
                 return@withContext null
             }
 
@@ -202,22 +221,22 @@ internal class AvatarFetcher(
             }
             val bytes = buffer.toByteArray()
             if (bytes.isEmpty()) return@withContext null
-            // 内容校验：拿 200 返回一张 HTML 错误页/占位页也必须拒绝，
-            // 否则坏内容会以 PNG 名义写进缓存并被浏览器当作图片使用。
+            // 内容校验：200 也可能是 HTML 错误页/占位页，必须拒绝 —— 否则坏内容会以 PNG
+            // 名义写进缓存并被浏览器当作图片使用。
             if (!SafeHttp.looksLikeImage(bytes)) {
-                context.log(LogLevel.WARN, "[PlumBot-Render] 响应内容不是图片，已拒绝：$url")
+                failures.report("[PlumBot-Render] 响应内容不是图片，已拒绝：$url")
                 return@withContext null
             }
             bytes
         } catch (e: Exception) {
-            context.log(LogLevel.WARN, "[PlumBot-Render] 头像下载失败 ($url): ${e.message}")
+            failures.report("[PlumBot-Render] 头像下载失败 ($url): ${e.message}")
             null
         } finally {
             runCatching { conn.disconnect() }
         }
     }
 
-    /** data URL 前缀按**实际内容**给出（此前硬编码 image/png，与嗅探允许的 JPEG/GIF/WEBP 不符）。 */
+    /** data URL 前缀按**实际内容**给出的 MIME 决定（嗅探允许 JPEG/GIF/WEBP，不能一律写 image/png）。 */
     private fun toDataUrl(bytes: ByteArray): String =
         "data:" + (SafeHttp.mimeOf(bytes) ?: "image/png") + ";base64," +
             Base64.getEncoder().encodeToString(bytes)

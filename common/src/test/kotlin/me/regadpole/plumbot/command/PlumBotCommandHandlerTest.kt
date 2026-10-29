@@ -27,8 +27,8 @@ import kotlin.test.assertTrue
 /**
  * `/plumbot` 三端统一实现的语义测试。
  *
- * 统一前 Bukkit / Velocity / Hytale 各写一份 help/status/bind，文案与边界已经开始漂移
- * （例如 Hytale 的 `bind add` 参数校验顺序与另外两端不同）。这里把公共语义钉死在 common。
+ * 各端自写一份 help/status/bind 时文案与边界会漂移（例如 Hytale 的 `bind add` 参数校验
+ * 顺序与另外两端不同）。公共语义钉死在 common，本类就是那份契约。
  */
 class PlumBotCommandHandlerTest {
 
@@ -79,7 +79,11 @@ class PlumBotCommandHandlerTest {
         assertTrue(text.contains("/plumbot reload"), text)
         assertTrue(text.contains("/plumbot status"), text)
         assertTrue(text.contains("/plumbot bind query"), text)
-        assertEquals(6, output.plain().size, "帮助应为 1 行标题 + 5 行指令")
+        assertTrue(text.contains("/plumbot render doctor"), text)
+        assertTrue(text.contains("/plumbot doctor echo"), text)
+        assertTrue(text.contains("/plumbot render stats"), text)
+        assertTrue(text.contains("/plumbot render reset"), text)
+        assertEquals(11, output.plain().size, "帮助应为 1 行标题 + 10 行指令")
     }
 
     @Test
@@ -106,6 +110,29 @@ class PlumBotCommandHandlerTest {
     }
 
     @Test
+    fun `render without a platform service reports the gap instead of failing`() {
+        val output = run(FakeHost(), "render", "doctor")
+        assertTrue(output.joined().contains("未接入渲染诊断"), output.joined())
+    }
+
+    @Test
+    fun `doctor echo prints platform diagnostics without dispatching commands`() {
+        val output = RecordingOutput()
+        PlumBotCommandHandler(FakeHost(), null) { listOf("候选通道: paper_feedback -> console", "最近一次: 本会话尚未执行") }
+            .execute(output, listOf("doctor", "echo"))
+        val text = output.joined()
+        assertTrue(text.contains("远程控制台回显诊断"), text)
+        assertTrue(text.contains("候选通道: paper_feedback -> console"), text)
+        assertTrue(text.contains("探测只读"), text)
+    }
+
+    @Test
+    fun `doctor defaults to render diagnosis`() {
+        val output = run(FakeHost(), "doctor")
+        assertTrue(output.joined().contains("未接入渲染诊断"), output.joined())
+    }
+
+    @Test
     fun `unknown subcommand is rejected with guidance`() {
         val output = run(FakeHost(), "nope")
         assertTrue(output.joined().contains("未知子命令"), output.joined())
@@ -120,9 +147,13 @@ class PlumBotCommandHandlerTest {
     @Test
     fun `suggestions cover top level and bind subcommands`() {
         val handler = PlumBotCommandHandler(FakeHost())
-        assertEquals(listOf("reload", "status", "bind"), handler.suggest(emptyList()))
+        assertEquals(listOf("reload", "status", "bind", "render", "doctor"), handler.suggest(emptyList()))
         assertEquals(listOf("status"), handler.suggest(listOf("st")))
         assertEquals(listOf("query", "add", "remove"), handler.suggest(listOf("bind", "")))
+        assertEquals(listOf("doctor", "install", "stats", "reset"), handler.suggest(listOf("render", "")))
+        assertEquals(listOf("install"), handler.suggest(listOf("render", "ins")))
+        assertEquals(listOf("render", "echo"), handler.suggest(listOf("doctor", "")))
+        assertEquals(listOf("echo"), handler.suggest(listOf("doctor", "ec")))
         assertEquals(emptyList(), handler.suggest(listOf("status", "")))
     }
 }

@@ -25,8 +25,7 @@ import kotlin.test.assertTrue
 /**
  * [JsonEncoder] 契约测试。
  *
- * 该编码器取代 Gson，用于把渲染载荷注入无头页面 —— 自持实现消除了
- * 「`:render` 在 `engine=awt` 时仍要求运行期存在 gson」的失败模式。
+ * 自持实现取代 Gson：消除「`:render` 在 `engine=awt` 时仍要求运行期存在 gson」的失败模式。
  */
 class JsonEncoderTest {
 
@@ -55,6 +54,19 @@ class JsonEncoderTest {
         assertEquals("\"a\\nb\"", JsonEncoder.encode("a\nb"))
         assertEquals("\"a\\tb\"", JsonEncoder.encode("a\tb"))
         assertEquals("\"\\u0001\"", JsonEncoder.encode("\u0001"))
+    }
+
+    @Test
+    fun `RenderCard 编码为对象而不是 toString`() {
+        val card = RenderCard(
+            text = "第一行\n第二行",
+            title = "标题",
+            data = linkedMapOf("state" to "CAPTURED", "durationMs" to 12L)
+        )
+        assertEquals(
+            """{"text":"第一行\n第二行","title":"标题","data":{"state":"CAPTURED","durationMs":12}}""",
+            JsonEncoder.encode(card)
+        )
     }
 
     @Test
@@ -98,4 +110,31 @@ class JsonEncoderTest {
         val json = JsonEncoder.encode(mapOf("avatarUrl" to url))
         assertTrue(json.contains(url), "data URL 不应被改写：$json")
     }
+
+    @Test
+    fun `二进制编码为 base64 而不是对象标识`() {
+        val json = JsonEncoder.encode(mapOf("bytes" to byteArrayOf(1, 2, 3)))
+        assertEquals("""{"bytes":"AQID"}""", json)
+        assertTrue(!json.contains("[B@"), "ByteArray 不应退化成 toString：$json")
+    }
+
+    @Test
+    fun `枚举编码为常量名`() {
+        val json = JsonEncoder.encode(mapOf("engine" to TestEngine.PLAYWRIGHT))
+        assertEquals("""{"engine":"PLAYWRIGHT"}""", json)
+    }
+
+    @Test
+    fun `原生数组编码为 JSON 数组`() {
+        val json = JsonEncoder.encode(
+            linkedMapOf(
+                "ints" to intArrayOf(1, 2),
+                "longs" to longArrayOf(3),
+                "bools" to booleanArrayOf(true, false)
+            )
+        )
+        assertEquals("""{"ints":[1,2],"longs":[3],"bools":[true,false]}""", json)
+    }
+
+    private enum class TestEngine { AWT, PLAYWRIGHT }
 }

@@ -19,12 +19,11 @@
 package me.regadpole.plumbot.render
 
 /**
- * 极简 JSON 编码器（仅覆盖渲染载荷用到的 JSON 子集：对象/数组/字符串/数字/布尔/null）。
+ * 极简 JSON 编码器，只覆盖渲染载荷用到的 JSON 子集（对象/数组/字符串/数字/布尔/null）。
  *
- * **为什么不用 Gson**：`:render` 原先 `compileOnly(libs.gson)`，但 JVM 在**校验**驱动类时即需要
- * `com.google.gson.Gson`，于是 `engine=awt` 的用户也会因缺少 gson 而 `NoClassDefFoundError`
- * （Libby 只在 Bukkit 端加载 gson，Velocity/Hytale 未加载）。自持一个编码器后，
- * `:render` 不再依赖任何 JSON 库，该失败模式被彻底消除。
+ * **不用 Gson 的原因**：JVM 在**校验**驱动类时即需要 `com.google.gson.Gson`，而 Libby 只在
+ * Bukkit 端加载 gson，于是 `engine=awt` 的用户在 Velocity/Hytale 也会 `NoClassDefFoundError`。
+ * 自持编码器后 `:render` 不依赖任何 JSON 库，该失败模式被消除。
  */
 internal object JsonEncoder {
 
@@ -42,11 +41,37 @@ internal object JsonEncoder {
             is Int, is Long, is Short, is Byte -> sb.append(value)
             is Float -> if (value.isFinite()) sb.append(value) else sb.append("null")
             is Double -> if (value.isFinite()) sb.append(value) else sb.append("null")
+            is RenderCard -> writeObject(
+                sb,
+                linkedMapOf(
+                    "text" to value.text,
+                    "title" to value.title,
+                    "data" to value.data
+                )
+            )
             is Map<*, *> -> writeObject(sb, value)
             is Iterable<*> -> writeArray(sb, value)
             is Array<*> -> writeArray(sb, value.asIterable())
+            is TextPayload -> writeObject(
+                sb,
+                linkedMapOf(
+                    "body" to value.body,
+                    "title" to value.title,
+                    "ampersandCodes" to value.ampersandCodes
+                )
+            )
             is CharArray -> writeString(sb, String(value))
             is Char -> writeString(sb, value.toString())
+            // 二进制与枚举若掉进 toString()，ByteArray 会变成 "[B@1a2b3c"，模板拿到无意义
+            // 字符串。这里给出确定形状，避免「看起来有值其实不可用」。
+            is ByteArray -> writeString(sb, java.util.Base64.getEncoder().encodeToString(value))
+            is Enum<*> -> writeString(sb, value.name)
+            is IntArray -> writeArray(sb, value.asIterable())
+            is LongArray -> writeArray(sb, value.asIterable())
+            is ShortArray -> writeArray(sb, value.asIterable())
+            is DoubleArray -> writeArray(sb, value.asIterable())
+            is FloatArray -> writeArray(sb, value.asIterable())
+            is BooleanArray -> writeArray(sb, value.asIterable())
             else -> writeString(sb, value.toString())
         }
     }

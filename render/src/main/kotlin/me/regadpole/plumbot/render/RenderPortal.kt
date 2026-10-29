@@ -30,15 +30,16 @@ import java.io.File
 internal const val DEFAULT_RENDER_USER_AGENT =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
+/** 停服/重载时等待引擎拆除完成的默认上限（毫秒）。 */
+internal const val DEFAULT_TEARDOWN_TIMEOUT_MS = 3_000L
+
 /**
  * 渲染门户 —— `:render` 模块**对外唯一入口**。
  *
- * 设计约定（基线 §3.6 / D-13）：
- * - 其他模块**只与门户对话**，不得直接引用 `TextToImg`、`ThemeManager`、驱动等内部类型；
- * - 门户同时保证**唯一实例**与**唯一生命周期**（由平台在插件启用时 `bootstrap` 一次，
- *   在禁用/重载时 `reload()` / `shutdown()`）；
- * - [render] **永不抛异常**：任何失败都以 [RenderResult.Unavailable] / [RenderResult.Failed]
- *   返回，由调用方安全降级为纯文本。
+ * 其他模块**只与门户对话**，不得直接引用 `TextToImg`、`ThemeManager`、驱动等内部类型。
+ * 门户保证**唯一实例**与**唯一生命周期**（平台在插件启用时 `bootstrap` 一次，禁用 / 重载时
+ * `reload()` / `shutdown()`）。[render] **永不抛异常**：失败一律以 [RenderResult.Unavailable] /
+ * [RenderResult.Failed] 返回，由调用方安全降级为纯文本。
  */
 @PublicApi
 interface RenderPortal {
@@ -47,27 +48,47 @@ interface RenderPortal {
     val isImageCapable: Boolean
 
     /**
-     * **预加载入口**（R17）：把"按需装载的引擎依赖"准备好，再报告能否出图。
+     * **预加载入口**：把"按需装载的引擎依赖"准备好，再报告能否出图。
      *
-     * 与 [isImageCapable] 的区别是**顺序**：后者只是"此刻是否可用"的快照，
-     * 于是当引擎依赖尚未装载（Playwright 由 Libby 按需下载）时，调用方可能**在装载被触发之前**
-     * 就判定"不能出图"，从而永远走不到那条按需装载路径 —— 表现为"配了 playwright 却一直出纯文本"。
-     *
-     * 默认实现退化为 [isImageCapable]（保持既有实现者不变）；内置实现会先尝试装载再判定，
-     * 并对失败加冷却，避免每条消息都触发一次下载尝试。
+     * 与 [isImageCapable] 的区别是**顺序**：后者只是"此刻是否可用"的快照，Playwright 由
+     * Libby 按需下载时，调用方可能在装载被触发之前就判定"不能出图"，永远走不到按需装载
+     * 路径 —— 表现为"配了 playwright 却一直出纯文本"。内置实现先尝试装载再判定，并对失败
+     * 加冷却，避免每条消息都触发一次下载尝试。
      */
     fun warmUpEngines(): Boolean = isImageCapable
 
     /**
+     * **阻塞**准备 Playwright 运行库，返回失败原因（null = 已就绪）。
+     *
+     * 与 [warmUpEngines] 的分工：后者只调度、立即返回；本方法供 `/plumbot render doctor|install`
+     * 使用 —— 它们必须拿到"jar 到底装没装上"的真实结论，否则会在 Libby 尚未被触发时误报
+     * `PW_DEPENDENCY_MISSING`。**只允许在平台异步线程调用**：`driver-bundle` 约 190 MB，
+     * 首次调用会触发 Libby 下载。默认实现视为不可用，不谎报"已就绪"。
+     */
+    fun ensurePlaywrightLibrary(): String? = "当前渲染门户不支持 Playwright 运行库预装载"
+
+    /**
      * 该路由**是否按配置启用了图片**（门控 + 引擎不为 `none`）。
      *
-     * 与 `render()` 返回 [RenderResult.Unavailable] 的区别：后者还包含"队列溢出、
-     * 主引擎失败且 AWT 不可用"等**启用后**的失败。调用方据此把"用户主动关闭"
-     * 与"启用但降级"分开计数 —— 否则降级指标会长期虚高。
-     *
-     * 默认 `true`（未知路由/既有实现者按原行为处理）。
+     * 与 `render()` 返回 [RenderResult.Unavailable] 的区别：后者还包含"队列溢出、主引擎
+     * 失败且 AWT 不可用"等**启用后**的失败。调用方据此把"用户主动关闭"与"启用但降级"
+     * 分开计数，否则降级指标会长期虚高。
      */
     fun isImageEnabled(route: String): Boolean = true
+
+    /**
+     * 模板是否**声明实现了**该路由（`null` = 尚无依据判断）。
+     *
+     * 与 [isImageEnabled] 的分工：后者是**配置门控**，本方法是**模板能力**。旧版模板的
+     * manifest 只声明了 `hytaleAvatar`，若继续下发新的 `avatar` 路由，Playwright 会在
+     * handshake 阶段以 PW_TEMPLATE_INVALID 拒绝，而 `fallback_to_awt=true` 又会让 AWT 画一张
+     * **没有头像**的文字图接住 —— 比纯文本更难察觉。调用方据此在第一次渲染前就选对路由。
+     *
+     * `null`：尚未读到 manifest（引擎未装载 / 未握手过）→ 按原顺序尝试；`true`：manifest
+     * 明确声明，或模板不限制路由（缺 `routes` 的旧 SDK）；`false`：明确未声明 → 改走兼容路由。
+     * 默认 `null`：AWT 根本不看路由，不该给出否定结论。
+     */
+    fun supportsRoute(route: RenderRoute): Boolean? = null
 
     /** 注入渲染配置（字体、下载 UA 等）。可在启动期与重载期调用。 */
     fun configure(config: RenderConfig)
@@ -75,16 +96,47 @@ interface RenderPortal {
     /** 重载主题与渲染配置（会同步传播到各驱动）。 */
     fun reload()
 
-    /**
-     * 运行时指标快照（渲染降级 / 队列拒绝 / 成功出图次数等）。
-     *
-     * 默认空实现，便于既有驱动不实现它；**渲染指标必须自持**（`:render` 不依赖 `:common`），
-     * 由业务层汇总展示（如 `/plumbot status`）。
-     */
+    /** 运行时指标快照（降级 / 队列拒绝 / 成功出图次数等），由业务层汇总展示。 */
     fun metrics(): Map<String, Long> = emptyMap()
+
+    /**
+     * 渲染健康计数（**分类口径的唯一真源**）。字段含义见 [RenderHealth]。
+     *
+     * 与 [metrics] 的区别：本方法是给 `/plumbot status` 的稳定结构，字段名不随内部键改名
+     * 而变；**只有门户能准确回答**「这次失败是降级还是拒绝」「AWT 是否补图成功」，
+     * 因此业务层不再自行计数。
+     */
+    fun renderHealth(): RenderHealth = RenderHealth.EMPTY
+
+    /** 清零渲染健康计数（供 `/plumbot render reset`）。默认无操作。 */
+    fun resetRenderHealth() {}
+
+    /**
+     * 协议字段自检摘要（`/plumbot render doctor` 用），形如
+     * `protocol fields: 16 routes, mismatches: 0`。
+     *
+     * 前端迁出为独立仓库后，协议一致性只剩两条运行时抓手：manifest 的 protocol/routes
+     * 握手，以及这里的 data 字段键集比对。
+     */
+    fun describeProtocolFields(): String? = null
 
     /** 回收全部渲染资源。 */
     fun shutdown()
+
+    /**
+     * 关闭并**等待**回收完成（有界），返回是否在超时前排空。
+     *
+     * 停服路径**必须**用本方法而不是 [shutdown]：[shutdown] 是 fire-and-forget（引擎拆除被
+     * 丢到 Reaper 线程），若插件 disable() 立刻返回，平台随即关闭插件类加载器，而回收线程
+     * 这时仍在调用 PlaywrightImpl.close() —— 线上实测抛
+     * "The plugin classloader for PlumBot has thrown a zip file error."。
+     *
+     * @param timeoutMs 最长等待毫秒数；<= 0 表示不等待（等价于 [shutdown]）。
+     */
+    fun shutdownAndAwait(timeoutMs: Long = DEFAULT_TEARDOWN_TIMEOUT_MS): Boolean {
+        shutdown()
+        return true
+    }
 
     /**
      * 执行一次渲染。
@@ -127,29 +179,19 @@ interface RenderPortal {
 /**
  * 文本可读性规则（**唯一真源的运行时载体**）。
  *
- * 默认值与 `render-protocol.json` 的 `text` 节点、`config.yml` 的 `render.text` 三者
- * 由 `checkRenderProtocol` 机械校验一致；门户在 `configure()` 时注入引擎。
- *
- * @param baseColor 底板色（`#RRGGBB`）
- * @param textColor 默认文字色（`#RRGGBB`）
- * @param contrastThreshold 低于该对比度时自动描边（WCAG 对比度）
- * @param autoOutline 是否启用自动描边
+ * 默认值与 `render-protocol.json` 的 `text` 节点、`config.yml` 的 `render.text` 由
+ * `checkRenderProtocol` 机械校验一致；门户在 `configure()` 时注入引擎。
  */
 @PublicApi
 data class RenderTextStyle(
     val baseColor: String = "#1E2430",
     val textColor: String = "#E6E6E6",
     val contrastThreshold: Double = 4.5,
-    val autoOutline: Boolean = true
+    val autoOutline: Boolean = true,
+    val maxLineWidth: Int = 960
 )
 
-/**
- * 渲染配置。
- *
- * @param fontFile AWT 引擎使用的 TTF 字体文件（为空则使用系统默认无衬线字体）
- * @param userAgent 模板下载使用的 User-Agent
- * @param textStyle 文本可读性规则（由门户注入引擎，缺省用清单默认值）
- */
+/** 渲染配置；`fontFile` 为空时 AWT 使用系统默认无衬线字体。 */
 @PublicApi
 data class RenderConfig(
     val fontFile: File? = null,
@@ -182,6 +224,34 @@ data class TextPayload(
     val ampersandCodes: Boolean = false
 )
 
+/**
+ * 统一渲染卡片：所有路由共用同一份"文本 + 可选标题 + 结构化数据"载荷。
+ *
+ * [text] 是**唯一**的纯文本真源（`§` 色码），图片不可用 / 引擎关闭 / 发送失败时直接
+ * 发给用户，保证文字版与图片版内容一致。[data] 只携带模板需要但正文里没有的结构化字段
+ * （玩家列表、TPS 数组等），前端视图不得硬编码中文文案；[title] 由业务层按当前语言给出。
+ */
+@PublicApi
+data class RenderCard(
+    val text: String,
+    val title: String? = null,
+    val data: Map<String, Any?> = emptyMap()
+) {
+    /**
+     * 标题与正文的合成正文，供**纯文本降级**与 AWT 出图共用。
+     *
+     * 模板会把 [title] 单独排版，AWT 没有这套版式：只画 [text] 时 status 的服务器名、
+     * kick/advancement 的标题就只存在于图片侧。标题已作为正文首行出现时不重复拼接。
+     */
+    val displayText: String
+        get() {
+            val heading = title?.takeIf { it.isNotBlank() } ?: return text
+            val firstLine = text.lineSequence().firstOrNull()?.trim().orEmpty()
+            if (firstLine == heading.trim() || firstLine.startsWith(heading.trim())) return text
+            return heading + "\n" + text
+        }
+}
+
 @PublicApi
 sealed interface RenderResult {
     /** 渲染成功，产物为 PNG 字节。 */
@@ -194,25 +264,40 @@ sealed interface RenderResult {
     data class Failed(val reason: String) : RenderResult
 }
 
-/**
- * 平台层实现：按需下载并装载 Playwright（Libby）。
- *
- * `:render` 只声明该 SPI，不依赖任何平台或 Libby 类型；由平台插件注入实现。
- */
+/** 平台层实现：按需下载并装载 Playwright（Libby）。`:render` 只声明 SPI，由平台插件注入实现。 */
 @PublicApi
 interface RenderLibraryLoader {
-    /** 首次调用时下载并装载 Playwright；成功返回 true。 */
+    /**
+     * 首次调用时下载并装载 Playwright；成功返回 true。
+     *
+     * 必须装载**三件套**（`driver` / `driver-bundle` / `playwright`，均为 `transitive=false`）：
+     * 只装 `playwright` 会在 `Playwright.create()` 时找不到 `DriverJar` 与原生 node；
+     * 打开传递解析则会把 JUnit 拖进服务端。
+     */
     fun ensurePlaywright(): Boolean
+
+    /** 最近一次 [ensurePlaywright] 失败的原因；成功或尚未尝试时为 null（doctor 原样展示）。 */
+    fun lastFailure(): String? = null
 }
 
 /**
  * 路由注册表 —— 图片开关统一映射到 `render.outputs.<功能>`。
  *
  * @param route 路由名（同时是前端模板的视图路径）
- * @param featureGate 该路由对应的功能段名（`render.outputs.<featureGate>`）；null 表示无图卡开关
+ * @param featureGate 该路由对应的功能段名；null 表示无图卡开关
+ * @param preferredEngine 用户未显式配置引擎时的首选引擎（显式配置始终优先），头像类路由
+ *   必须走 playwright —— AWT 只画正文，画不出皮肤 / 头像图层。
+ *
+ * 枚举条目必须保持 `NAME("route", "gate")` 两个位置参数的字面形状：
+ * `build.gradle.kts` 的正则从这里提取路由清单并与 `render-protocol.json` 双向比对。
+ * 需要额外属性时用条目体覆写，不要加第三个位置参数。
  */
 @PublicApi
-enum class RenderRoute(val route: String, val featureGate: String?) {
+enum class RenderRoute(
+    val route: String,
+    val featureGate: String?,
+    open val preferredEngine: String? = null,
+) {
     STATUS("status", "status"),
     PLAYER_LIST("playerList", "list"),
     WHITELIST("whitelist", "bind"),
@@ -227,8 +312,17 @@ enum class RenderRoute(val route: String, val featureGate: String?) {
     ADVANCEMENT("advancement", "advancement"),
     KICK("kick", "kick"),
     CONSOLE("console", "remote_console"),
-    TEXT("text", null),
-    HYTALE_AVATAR("hytaleAvatar", "avatar");
+    TEXT("text", "text"),
+
+    /** 头像卡（平台无关）：data 额外带 `platform`，供前端按平台挑皮肤/头像图层。 */
+    AVATAR("avatar", "avatar") {
+        override val preferredEngine: String? get() = "playwright"
+    },
+
+    /** 旧头像卡路由，保留兼容旧前端模板；插件已改发 [AVATAR]，不再主动下发。 */
+    HYTALE_AVATAR("hytaleAvatar", "avatar") {
+        override val preferredEngine: String? get() = "playwright"
+    };
 
     companion object {
         fun byName(name: String): RenderRoute? =

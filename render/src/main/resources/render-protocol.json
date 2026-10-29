@@ -1,6 +1,6 @@
 {
   "protocol": 1,
-  "description": "PlumBot 渲染协议清单 —— route、载荷字段、长度额度与文本可读性规则的唯一真源。Kotlin 侧由 checkRenderProtocol 校验一致性；前端 SDK 据此生成类型与运行时 manifest。",
+  "description": "PlumBot 渲染协议清单 —— route、RenderCard 载荷字段、长度额度与文本可读性规则的唯一真源。所有 route 共用 { text, title?, data }：text 是图片与纯文本共用的正文真源，data 只放正文无法可靠反解的结构化字段。Kotlin 侧由 checkRenderProtocol 校验；前端 SDK 据此生成类型与运行时 manifest。",
   "text": {
     "contrast": "auto-outline",
     "threshold": 4.5,
@@ -19,140 +19,222 @@
       "featureGate": "status",
       "defaultEngine": "awt",
       "payload": {
-        "serverName": "string",
-        "tps": "string[]",
-        "mspt": "string",
-        "usedMem": "int",
-        "maxMem": "int",
-        "online": "int"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "serverName": "string",
+          "tps": "string[]",
+          "mspt": "string",
+          "usedMem": "int",
+          "maxMem": "int",
+          "online": "int",
+          "health": "string"
+        }
       }
     },
     "playerList": {
       "featureGate": "list",
       "defaultEngine": "awt",
       "payload": {
-        "total": "int",
-        "players": "{name:string, boundQq:string?, avatarUrl:string?}[]"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "total": "int",
+          "players": "{name:string, boundQq:string?, avatarUrl:string?}[]"
+        }
       }
     },
     "whitelist": {
       "featureGate": "bind",
       "defaultEngine": "awt",
       "payload": {
-        "playerName": "string",
-        "qq": "string",
-        "avatarUrl": "string?",
-        "bindTime": "string?"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "playerName": "string",
+          "qq": "string",
+          "bindTime": "string?",
+          "avatarUrl": "string?",
+          "originId": "string?",
+          "originName": "string?",
+          "bindCount": "int",
+          "current": "string[]"
+        }
       }
     },
     "bindList": {
       "featureGate": "bind",
       "defaultEngine": "awt",
       "payload": {
-        "title": "string",
-        "players": "string[]",
-        "total": "int"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "title": "string",
+          "userId": "string",
+          "players": "string[]",
+          "total": "int",
+          "limit": "int"
+        }
       }
     },
     "help": {
       "featureGate": "help",
       "defaultEngine": "awt",
       "payload": {
-        "prefix": "string",
-        "lines": "string[]"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "prefix": "string",
+          "commands": "{usage:string, description:string}[]"
+        }
       }
     },
     "load": {
       "featureGate": "load",
       "defaultEngine": "awt",
       "payload": {
-        "text": "string"
+        "text": "string",
+        "title": "string?",
+        "data": {}
       }
     },
     "unload": {
       "featureGate": "load",
       "defaultEngine": "awt",
       "payload": {
-        "text": "string"
+        "text": "string",
+        "title": "string?",
+        "data": {}
       }
     },
     "message": {
       "featureGate": "message",
       "defaultEngine": "awt",
       "payload": {
-        "playerName": "string",
-        "serverName": "string",
-        "message": "string"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "playerName": "string",
+          "serverName": "string",
+          "message": "string"
+        }
       }
     },
     "joinAndLeave": {
       "featureGate": "joinAndLeave",
       "defaultEngine": "awt",
       "payload": {
-        "type": "join|leave",
-        "playerName": "string",
-        "serverName": "string?"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "type": "join|leave",
+          "playerName": "string",
+          "serverName": "string?"
+        }
       }
     },
     "changeServer": {
       "featureGate": "joinAndLeave",
       "defaultEngine": "awt",
       "payload": {
-        "playerName": "string",
-        "originServer": "string",
-        "targetServer": "string"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "playerName": "string",
+          "originServer": "string",
+          "targetServer": "string"
+        }
       }
     },
     "death": {
       "featureGate": "death",
       "defaultEngine": "awt",
       "payload": {
-        "playerName": "string",
-        "serverName": "string",
-        "deathMessage": "string"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "playerName": "string",
+          "serverName": "string",
+          "deathMessage": "string"
+        }
       }
     },
     "advancement": {
       "featureGate": "advancement",
       "defaultEngine": "awt",
       "payload": {
-        "playerName": "string",
-        "serverName": "string",
-        "advancementTitle": "string"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "playerName": "string",
+          "serverName": "string",
+          "advancementTitle": "string"
+        }
       }
     },
     "kick": {
       "featureGate": "kick",
       "defaultEngine": "awt",
       "payload": {
-        "playerName": "string"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "playerName": "string",
+          "reason": "string",
+          "guide": "string"
+        }
       }
     },
     "console": {
       "featureGate": "remote_console",
       "defaultEngine": "awt",
       "payload": {
+        "text": "string",
         "title": "string?",
-        "body": "string",
-        "ampersandCodes": "boolean"
+        "data": {
+          "state": "string",
+          "channel": "string?",
+          "code": "string?",
+          "durationMs": "int?"
+        }
       }
     },
     "text": {
-      "featureGate": null,
+      "featureGate": "text",
       "defaultEngine": "awt",
       "payload": {
+        "text": "string",
         "title": "string?",
-        "body": "string",
-        "ampersandCodes": "boolean"
+        "data": {}
+      }
+    },
+    "avatar": {
+      "featureGate": "avatar",
+      "defaultEngine": "playwright",
+      "payload": {
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "username": "string",
+          "avatarUrl": "string?",
+          "fallbackQq": "string?",
+          "source": "string",
+          "platform": "string"
+        }
       }
     },
     "hytaleAvatar": {
       "featureGate": "avatar",
-      "defaultEngine": "awt",
+      "defaultEngine": "playwright",
       "payload": {
-        "username": "string",
-        "avatarUrl": "string?",
-        "fallbackQq": "string?"
+        "text": "string",
+        "title": "string?",
+        "data": {
+          "username": "string",
+          "avatarUrl": "string?",
+          "fallbackQq": "string?",
+          "source": "string"
+        }
       }
     }
   }
