@@ -18,6 +18,8 @@
 
 package me.regadpole.plumbot.bot.command
 
+import me.regadpole.plumbot.api.platform.EchoResult
+import me.regadpole.plumbot.api.platform.EchoState
 import me.regadpole.plumbot.api.platform.PlatformCapability
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.internal.ConsoleText
@@ -25,8 +27,11 @@ import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.internal.RemoteConsoleGuard
 import me.regadpole.plumbot.render.RenderRoute
 import me.regadpole.plumbot.utils.OutputCapturingBuffer
-import me.regadpole.plumbot.render.TextPayload
 
+/**
+ * 远程控制台指令：管理员鉴权、限流与并发闸门、回显归一化与截断。
+ * 图片与文字共用同一份 card.text，图挂了直接发文字，不会出现两套内容。
+ */
 class RemoteConsoleCommandService(private val service: BotCommandService) {
     private companion object {
         /** 未配置时的默认回显上限。 */
@@ -61,8 +66,11 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
             return
         }
 
-        // R05：两道闸门。只看"是不是管理员"不够 —— 管理员账号被盗或误操作同样能打满服务端。
-        when (guard().tryAcquire(userId)) {
+        // 两道闸门：只看"是不是管理员"不够——账号被盗或误操作同样能打满服务端。
+        // 固定住本次使用的实例：release 必须落在同一个实例上，否则 reload 后在新实例释放、
+        // 旧实例的 inFlight 永远不归零，并发上限被逐步锁死。
+        val activeGuard = guard()
+        when (activeGuard.tryAcquire(userId)) {
             RemoteConsoleGuard.Decision.RateLimited -> {
                 service.sendRawMessage(groupId, "操作过于频繁，请稍后再试。")
                 return
@@ -78,7 +86,7 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
 
         val configured = service.context.config.getInteger("feature", "remote_console", "max_output_length")
             .let { if (it <= 0) DEFAULT_MAX_OUTPUT else it }
-        // 两级截断联动（R05）：平台侧捕获缓冲有硬上限。配置写超过它时**必须显式告知**，
+        // 两级截断联动：平台侧捕获缓冲有硬上限，配置写超过它时**必须显式告知**，
         // 否则使用者会看到"没到配置上限却已截断"，无从判断是配置没生效还是输出被吞了。
         val maxLength = if (configured > OutputCapturingBuffer.DEFAULT_MAX_LENGTH) {
             warnOnce(
@@ -90,40 +98,74 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
             configured
         }
 
-        service.context.dispatchConsoleCommand(trimmedCmd)
-            .whenComplete { rawOutput, error -> if (error != null || rawOutput != null) guard().release() }
-            .thenAccept { rawOutput ->
-            // 归一化必须在截断**之前**：控制序列若先占用额度，真正的内容会被挤掉
-            val cleaned = ConsoleText.sanitize(rawOutput)
-            val truncatedOutput = if (cleaned.length > maxLength) {
-                cleaned.substring(0, maxLength) + "\n... (输出已截断)"
-            } else {
-                cleaned
-            }
-
-            val rendered = service.render(
-                Messages.remoteCommandExecuted,
-                "%output%" to truncatedOutput
-            )
-            // 控制台回显走 console 路由，并启用 & 色码（OutputCapturingBuffer 默认输出 &-legacy 文本）
-            service.sendRendered(
-                groupId = groupId,
-                route = RenderRoute.CONSOLE,
-                payload = TextPayload(body = rendered, ampersandCodes = true),
-                fallbackText = rendered,
-                pic = true
-            )
-        }.exceptionally { err ->
+        val echoFuture = try {
+            service.context.dispatchConsoleCommandEcho(trimmedCmd)
+        } catch (err: Throwable) {
+            // 同步抛异常时没有任何 future 回调，必须在这里释放，否则并发额度直接泄漏。
+            activeGuard.release()
             service.sendRawMessage(groupId, "执行指令时异常: ${err.message}")
-            null
+            return
+        }
+
+        echoFuture
+            .whenComplete { _, _ -> activeGuard.release() }
+            .thenAccept { echo ->
+                // 归一化必须在截断**之前**：控制序列若先占用额度，真正的内容会被挤掉。
+                // EchoResult.lines 已在平台侧投影为 § 色码，这里只清终端控制序列，不动 §。
+                val cleaned = ConsoleText.sanitize(echo.lines.joinToString("\n"))
+                val truncatedOutput = if (cleaned.length > maxLength) {
+                    cleaned.substring(0, maxLength) + "\n... (输出已截断)"
+                } else {
+                    cleaned
+                }
+
+                val rendered = renderEcho(echo, truncatedOutput)
+                service.sendCard(
+                    groupId = groupId,
+                    route = RenderRoute.CONSOLE,
+                    card = RenderCards.console(
+                        text = rendered,
+                        title = null,
+                        state = echo.state.name,
+                        channel = echo.channel,
+                        code = echo.code,
+                        durationMs = echo.durationMs
+                    )
+                )
+            }.exceptionally { err ->
+                service.sendRawMessage(groupId, "执行指令时异常: ${err.message}")
+                null
+            }
+    }
+
+    /** 按执行状态选择文案：把"已执行但无回显"与"执行失败"分开告知。 */
+    private fun renderEcho(echo: EchoResult, output: String): String {
+        val shown = output.ifBlank { "（无）" }
+        return when (echo.state) {
+            EchoState.CAPTURED -> service.render(Messages.remoteCommandExecuted, "%output%" to output)
+            EchoState.SUCCESS_NO_OUTPUT -> service.render(
+                Messages.remoteCommandNoOutput,
+                "%channel%" to echo.channel,
+                "%duration%" to echo.durationMs.toString()
+            )
+            EchoState.UNKNOWN_OR_REJECTED -> service.render(
+                Messages.remoteCommandUnknown,
+                "%channel%" to echo.channel,
+                "%output%" to shown
+            )
+            EchoState.FAILED -> service.render(
+                Messages.remoteCommandFailed,
+                "%channel%" to echo.channel,
+                "%code%" to (echo.code ?: "UNKNOWN"),
+                "%detail%" to (echo.detail ?: "无详细信息"),
+                "%output%" to shown
+            )
         }
     }
 
     /**
-     * 闸门实例：**按配置在首次使用时构造**（配置可在 reload 后变化）。
-     *
-     * 之所以不是每次调用都新建：那样限流形同虚设（桶每次都是满的）。因此按"配置值"缓存，
-     * 配置变化时重建（旧实例的在途计数随之丢弃 —— 这是可接受的，重载本身已经打断了执行）。
+     * 闸门实例：**按配置在首次使用时构造**（配置可在 reload 后变化）。不能每次调用新建，
+     * 否则限流形同虚设（桶每次都是满的）；配置变化时重建，旧实例的在途计数随之丢弃。
      */
     private fun guard(): RemoteConsoleGuard {
         val perMinute = service.context.config.getInteger("feature", "remote_console", "rate_limit_per_minute")

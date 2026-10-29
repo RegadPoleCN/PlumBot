@@ -28,9 +28,8 @@ import kotlin.test.assertTrue
 /**
  * 内置配置模板的"键必须存在"护栏。
  *
- * 背景：`PlatformConfig.getBoolean` 返回**非空 Boolean**，键缺失一律读成 `false`。
- * 于是"模板里少写一个 `enable` 键"= 该功能在用户侧静默失效，且没有任何日志。
- * 实测踩到过：`feature.avatar.enable` 缺失使 `%cmdprefix%avatar` 存在但毫无反应。
+ * `PlatformConfig.getBoolean` 返回**非空 Boolean**，键缺失一律读成 `false`：模板少写一个
+ * `enable` 键，该功能就在用户侧静默失效且没有任何日志（`%cmdprefix%avatar` 曾因此点了没反应）。
  */
 class BundledConfigDefaultsTest {
 
@@ -96,10 +95,8 @@ class BundledConfigDefaultsTest {
     }
 
     /**
-     * 出图开关集中且只保留在 `render.outputs.<功能>`，旧结构不得回流。
-     *
-     * 旧版同时存在 `feature.<功能>.pic` 与 `feature.img.views.<route>.pic`，
-     * 后者会覆盖前者，排查时两处值不一致极易误判。
+     * 出图开关集中且只保留在 `render.outputs.<功能>`，旧结构不得回流：旧版
+     * `feature.<功能>.pic` 与 `feature.img.views.<route>.pic` 并存且后者覆盖前者，排查时极易误判。
      */
     @Test
     fun `出图开关集中定义且旧结构不回流`() {
@@ -109,12 +106,15 @@ class BundledConfigDefaultsTest {
         assertEquals(
             setOf(
                 "load", "message", "list", "bind", "joinAndLeave", "death",
-                "advancement", "status", "remote_console", "help", "kick", "avatar"
+                "advancement", "status", "remote_console", "help", "kick", "avatar", "text"
             ),
             outputs.childrenMap().keys.map { it.toString() }.toSet(),
             "render.outputs 必须与 RenderRoute.featureGate 一一对应，不能多也不能少"
         )
 
+        // status / remote_console / help 默认开图（"管理员要看的结论"，关图会被当成渲染坏了）；
+        // message 与 death/advancement/joinAndLeave 属高频路径，默认关图；load/kick 出现即事故，
+        // 纯文本更易检索。Velocity/Hytale 也没有死亡/成就事件。
         val expected = mapOf(
             "load" to false,
             "message" to false,
@@ -123,11 +123,12 @@ class BundledConfigDefaultsTest {
             "joinAndLeave" to false,
             "death" to false,
             "advancement" to false,
-            "status" to false,
-            "remote_console" to false,
-            "help" to false,
+            "status" to true,
+            "remote_console" to true,
+            "help" to true,
             "kick" to false,
-            "avatar" to true
+            "avatar" to true,
+            "text" to false
         )
         assertEquals(
             expected,

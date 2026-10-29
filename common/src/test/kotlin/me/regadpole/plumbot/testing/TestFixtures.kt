@@ -42,13 +42,11 @@ import java.util.concurrent.CompletableFuture
 import javax.sql.DataSource
 
 /**
- * 共享测试夹具 —— **U03 的前置**。
+ * 共享测试夹具：只提供替身，不隐藏断言。
  *
- * 为什么集中：此前每个测试各自复制一份 `FakeContext`/`FakeBot`（各约 60 行，且都是 `private`），
- * 于是"给某个改动补测试"的成本高到会被跳过 —— 这正是 A06–A10、A12–A14、A17 长期只有实现没有验收的原因。
- * 把夹具抽到一处后，新增一个回归用例只需十几行。
- *
- * 约定：**只提供替身，不隐藏断言** —— 每个夹具都把观察点（日志、发送内容、调用次数）暴露为公开属性。
+ * 集中是为了让新增回归用例只需十几行（此前每个测试各自复制约 60 行的 `FakeContext` /
+ * `FakeBot`，补测试成本高到会被跳过）；每个夹具都把观察点（日志、发送内容、调用次数）
+ * 暴露为公开属性。
  */
 class FakePlatformConfig(initial: Map<String, Any> = emptyMap()) : PlatformConfig {
 
@@ -64,6 +62,11 @@ class FakePlatformConfig(initial: Map<String, Any> = emptyMap()) : PlatformConfi
     override fun getLong(vararg path: String?): Long = (values[key(path)] as? Number)?.toLong() ?: 0L
     override fun getInteger(vararg path: String?): Int = (values[key(path)] as? Number)?.toInt() ?: 0
     override fun getBoolean(vararg path: String?): Boolean = values[key(path)] as? Boolean ?: false
+
+    /** 与 `AbstractConfigurator.rawTypeOf` 同口径：缺失回 `missing`，否则给原始类型名。
+     *  `ConsoleEchoSetting` 这类「缺失≠false」的读取方靠它区分「没配」与「配成 false」。 */
+    override fun rawTypeOf(vararg path: String?): String? =
+        values[key(path)]?.javaClass?.simpleName ?: "missing"
 
     override fun getLongList(vararg path: String?): List<Long> =
         @Suppress("UNCHECKED_CAST")
@@ -111,8 +114,6 @@ class FakePlatformContext(initial: Map<String, Any> = emptyMap()) : PlatformCont
     }
 
     override fun isPluginAvailable(name: String): Boolean = false
-
-    // ---------- 远程控制台（R05）----------
 
     /** 已交给平台执行的远程指令（按调用顺序）。 */
     val consoleCommands = mutableListOf<String>()
@@ -206,21 +207,16 @@ open class FakeBot(
         failOnShutdown?.let { throw it }
     }
 
-    // ---- 状态机测试钩子（R02）：protected 的 mark* 只能由子类调用 ----
+    // 状态机测试钩子：protected 的 mark* 只能由子类调用
 
-    /** 模拟"连接成功"。 */
     fun markOnlineForTest() = markOnline()
 
-    /** 模拟"断线进入重连"。 */
     fun markRetryingForTest(reason: String? = null) = markRetrying(reason)
 
-    /** 模拟"不可恢复失败"。 */
     fun markFailedForTest(reason: String? = null) = markFailed(reason)
 
-    /** 让 doStart 抛错（验证失败会落到 FAILED）。 */
     var failOnStart: Throwable? = null
 
-    /** 让 doShutdown 抛错。 */
     var failOnShutdown: Throwable? = null
 
     /** doStart 成功后是否自动置为 ONLINE（同步适配器的行为）。 */
@@ -247,7 +243,6 @@ open class FakeBot(
     }
 }
 
-/** 供 `BotProvider.loadBot(...)` 使用的工厂替身。 */
 class FakeBotFactory(private val bot: FakeBot = FakeBot()) : BotFactory {
 
     override val metadata: BotAdapterMetadata get() = bot.metadata
@@ -258,7 +253,7 @@ class FakeBotFactory(private val bot: FakeBot = FakeBot()) : BotFactory {
 /**
  * 内存版绑定库替身（真实语义：写小写、按名唯一、UUID 可空）。
  *
- * 与真实实现的关键差异：**不做 SQL 校验**（那也是 A03/A04 用真实 SQLite 测的原因），
+ * 与真实实现的关键差异：**不做 SQL 校验**（真实 SQL 路径由 SQLite 测试覆盖），
  * 这里只用于覆盖业务层分支。
  */
 class RecordingDatabase : IDatabase {

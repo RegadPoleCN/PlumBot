@@ -27,13 +27,12 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * R05 端到端：远程控制台的**闸门、输出归一化与截断联动**。
+ * 远程控制台的端到端契约：闸门、输出归一化与截断联动。
  *
- * 覆盖点（前三点此前完全无测试）：
  * 1. 非管理员被拦截（且不触碰平台调度）；
  * 2. 超频被限流（按 QQ）；
- * 3. 控制序列被清理后才进聊天（否则聊天里是乱码，且会吃掉截断额度）；
- * 4. `max_output_length` 超过平台捕获上限时**钳制并显式告知**（不再是静默不一致）。
+ * 3. 控制序列在进聊天前清理（否则聊天里是乱码，且会吃掉截断额度）；
+ * 4. `max_output_length` 超过平台捕获上限时**钳制并显式告知**，不静默不一致。
  */
 class RemoteConsoleServiceTest {
 
@@ -85,9 +84,8 @@ class RemoteConsoleServiceTest {
         val output = allOutput(context, bot)
         assertFalse(output.contains('\u001B'), "控制序列必须在进聊天前被清理：$output")
         assertTrue(output.isNotBlank(), "执行后必须给出回显：$output")
-        // 说明：本项目单测**不加载 messages.yml**（见 `BindApplyCommandGroupGateTest` / `CommandGateForwardingTest` 的同类注释），
-        // 因此 `Messages.remoteCommandExecuted` 会渲染成 `<missing:…>`，正文内容在此不可观测。
-        // "内容本身被保留（只去掉控制序列）"由 `ConsoleTextTest` 直接覆盖。
+        // 本项目单测**不加载 messages.yml**，`Messages.remoteCommandExecuted` 会渲染成
+        // `<missing:…>`，正文内容在此不可观测；"内容保留、只去控制序列"由 `ConsoleTextTest` 覆盖。
     }
 
     @Test
@@ -100,6 +98,32 @@ class RemoteConsoleServiceTest {
 
         assertEquals(1, context.consoleCommands.size, "第二次必须被限流，不得执行")
         assertTrue(allOutput(context, bot).contains("频繁"), "限流应给出可理解的提示：${allOutput(context, bot)}")
+    }
+
+    @Test
+    fun `a synchronous dispatch failure releases the concurrency slot`() {
+        val context = context(
+            mapOf(
+                "feature.remote_console.rate_limit_per_minute" to 0,
+                "feature.remote_console.max_concurrent" to 1,
+            )
+        )
+        var failNext = true
+        context.consoleCommandResult = { command ->
+            if (failNext) {
+                failNext = false
+                throw IllegalStateException("测试：平台同步失败")
+            }
+            CompletableFuture.completedFuture("已执行: $command")
+        }
+        val (service, bot) = service(context)
+
+        service.execute("list", groupId, adminQq)
+        // 第一次同步抛异常；若没有释放并发额度，第二次会被 TooManyConcurrent 拦下。
+        service.execute("list", groupId, adminQq)
+
+        assertEquals(2, context.consoleCommands.size, "同步异常后并发额度必须释放：${allOutput(context, bot)}")
+        assertTrue(allOutput(context, bot).contains("异常"), "第一次异常应告知用户：${allOutput(context, bot)}")
     }
 
     @Test

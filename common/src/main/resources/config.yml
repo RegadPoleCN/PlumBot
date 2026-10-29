@@ -19,10 +19,9 @@ bot:
         # 访问令牌，留空表示不鉴权
         token: ""
     miraimc:
-        # 机器人 QQ 号
         botId: 10000
 
-# 机器人响应的 QQ 群
+# groups（机器人响应的群）:
 groups:
     - 10000
 
@@ -32,7 +31,6 @@ admins:
 
 # 群指令
 command:
-    # 指令前缀
     prefix: "/"
     # 各指令的触发词（不含前缀）
     keys:
@@ -54,15 +52,15 @@ feature:
     # mode: 0 转发全部，1 只转发 prefix 开头的消息，其他值不转发
     message:
         enable: true
-        # 游戏消息转发到 QQ 群
         to_group: true
-        # QQ 群消息转发到游戏服
         to_server: true
         mode: 0
         # mode=1 时要求的消息前缀
         prefix: "#"
+        # 转发到游戏时是否同时写入服务端控制台。
+        # Hytale 的群体广播不会出现在宿主控制台上，这一项决定群消息在控制台里看不看得到。
+        console_echo: true
 
-    # 在线人数
     list:
         enable: true
 
@@ -71,6 +69,11 @@ feature:
         enable: true
         # 进服时强制校验白名单，未绑定玩家会被踢出
         whitelist: true
+        # 登录校验结果的进程内缓存时长（秒）。命中缓存不查数据库；
+        # 过期后最长再复用 60 秒陈旧结果（数据库抖动时已绑定玩家不会被锁在门外）
+        login_cache_ttl_seconds: 300
+        # 单次登录查询的等待上限（毫秒，50-5000）。超时按「校验不可用」拒绝（fail-closed）
+        login_lookup_timeout_ms: 500
         # 每个 QQ 可绑定的游戏 ID 数
         maxNum: 1
         # 管理员绑定时跳过每 QQ 的绑定额度上限
@@ -81,22 +84,17 @@ feature:
     # 进服 / 退服 / 切服通知
     joinAndLeave:
         enable: true
-        # 进服通知
         joinProxy: true
-        # 退服通知
         leaveProxy: true
-        # 切服通知（需要平台支持）
+        # 切服（需要平台支持）
         changeServer: false
 
-    # 死亡消息
     death:
         enable: true
 
-    # 成就消息
     advancement:
         enable: true
 
-    # 服务器状态
     status:
         enable: true
 
@@ -112,32 +110,80 @@ feature:
         # 回传输出截断长度
         max_output_length: 1500
 
-    # 玩家头像
+        # 指令回显捕获。Bukkit 侧会按顺序尝试可用通道，拿到第一份非空回显即停止。
+        # 通道名：paper_feedback（Paper 反馈转发器）/ plugin_command（插件指令直连）/
+        #         console（控制台派发 + log4j2/JUL/latest.log 旁路）/ rcon / nms / proxy_sender
+        echo:
+            # 自动模式下按此顺序探测；不可用的通道会跳过并记录原因
+            channels: ["paper_feedback", "plugin_command", "console"]
+            # 非空时只使用列出的通道（排障用）；未知通道名会被忽略并告警
+            forced: []
+            # dispatchCommand / 插件指令执行的等待上限
+            dispatch_timeout_ms: 1500
+            # 从派发时刻起继续等待异步日志的窗口（不是"拿到回显后"再等这么久）；
+            # 调用方总等待上限 = dispatch_timeout_ms + min(capture_window_ms, max_capture_ms)
+            capture_window_ms: 400
+            # 单次远程执行的总捕获上限，超过即返回已有内容
+            max_capture_ms: 2000
+            # 是否保留日志行原有的时间戳/级别前缀
+            include_log_prefix: false
+            # 命中这些片段且 dispatch 返回 false 时，判定为"未识别/被拒绝"
+            failure_patterns:
+                - "Unknown or incomplete command"
+                - "Unknown command"
+                - "未知的命令"
+                - "未知命令"
+                - "You do not have permission"
+                - "你没有权限"
+            paper_feedback: true
+            # 控制台派发时同时挂载的旁路日志源；通过 log4j2 根 Appender / JUL Handler /
+            # latest.log 尾读补拿异步输出。三者可独立关闭。
+            log:
+                log4j2: true
+                jul: true
+                latest_log: true
+            # RCON 通道默认关闭：需要服务端启用 rcon 且填写密码
+            rcon:
+                enabled: false
+                host: "127.0.0.1"
+                port: 25575
+                password: ""
+                timeout_ms: 3000
+            # NMS 直连默认关闭（版本差异大，失败会记 WARN 并跳过）
+            nms:
+                enabled: false
+            # 代理端 sender 注入默认关闭；仅在明确知道服务端会原样透传 sender 时开启
+            proxy_sender:
+                enabled: false
+
     avatar:
-        # avatar 指令
         enable: true
 
 # 图片渲染与输出
 render:
-    # 引擎：awt（轻量）/ playwright（浏览器高清）/ none（关闭出图）
-    engine: "awt"
+    # 引擎：auto（按路由自动选择，推荐）/ awt（轻量）/ playwright（浏览器高清）/ none（关闭出图）
+    # auto 下各路由用自身首选引擎（头像走 playwright，其余 awt）；显式写 awt/playwright/none 时以其为准。
+    engine: "auto"
     # AWT 与浏览器页面共用的字体文件
     font: "%plugin_folder%/MiSans-Normal.ttf"
 
-    # 各功能是否输出图片；false 时回退纯文本
+    # 各功能是否输出图片；false 时回退纯文本（每次降级都会写日志并计入 render stats）
     outputs:
         load: false
         message: false
         list: true
         bind: true
         joinAndLeave: false
+        # 死亡/成就事件：Bukkit 有对应事件；Velocity/Hytale 没有，开启也不生效。
         death: false
         advancement: false
-        status: false
-        remote_console: false
-        help: false
+        status: true
+        remote_console: true
+        help: true
         kick: false
         avatar: true
+        # 通用文本卡片（聊天转发 / 控制台回显 / 提示）是否也出图：默认直接发文字，避免占浏览器队列。
+        text: false
 
     # 文本可读性：底板色、文字色、自动描边与对比度阈值
     text:
@@ -145,19 +191,27 @@ render:
         color: "#E6E6E6"
         auto_outline: true
         contrast_threshold: 4.5
+        # AWT 单行最大像素宽度；0 表示不限制（保持旧行为）。
+        max_line_width: 960
 
-    # 可按路由覆盖 engine / timeout_ms，未写的路由继承全局值。
-    # 路由：status playerList whitelist bindList help load unload message
-    #       joinAndLeave changeServer death advancement kick console text hytaleAvatar
+    # 可按路由覆盖 engine / timeout_ms，未写的路由继承全局值（engine=auto 时继承路由首选引擎）。
+    # 例：status 强制走浏览器：status: { engine: "playwright" }
     views: {}
 
     # 渲染载荷上限，防止恶意请求耗尽内存
     limits:
+        # 单个文本字段上限（字符）
         display_text_max: 1024
+        # 单层二进制上限（字节）
         per_layer_max: 262144
+        # 二进制总量上限（字节）
         binary_total_max: 1048576
+        # 图层数上限（层）
         layers_max: 16
+        # 文本总量告警阈值（字符）
         total_text_warn: 262144
+        # 卡片正文上限（字符）。超限不出图、直接发纯文本：截断会让图与文字变成两套内容。
+        card_text_max: 8000
 
     # 头像抓取与皮肤合成
     avatar:
@@ -175,17 +229,22 @@ render:
 
     # 仅 playwright 引擎生效
     playwright:
-        # 前端模板目录名
         theme: "default"
-        # 模板下载、协议版本与完整性校验
-        # template_url 需是可访问的 HTTPS 单文件地址；发布前请确认地址有效。
-        # 留空或下载失败时回退 awt。
-        template_url: "https://raw.githubusercontent.com/RegadPoleCN/PlumBot-Web-Templates/main/dist/index.html"
+        # 模板下载、协议版本与完整性校验：候选按序尝试，任一可用即停止；全部失败报
+        # PW_TEMPLATE_MISSING，内容校验不过报 PW_TEMPLATE_INVALID（不换镜像重试）。
+        # template_urls 非空时**完全覆盖**候选序列；为空时才用下面的 template_url。
+        template_urls: []
+        # 单地址兼容项（template_urls 为空时生效），需是可访问的 HTTPS 单文件地址；置空即用内置
+        # 官方默认（PlumBot-Web 正式版 release）；起点是 github.com 时按顺序追加 3 个公共加速站
+        # （ghproxy.net / gh-proxy.com / ghfast.top）：官方优先，国内失败自动换下一站。
+        template_url: "https://github.com/RegadPoleCN/PlumBot-Web/releases/latest/download/index.html"
         template_protocol: 1
+        # 主引擎失败时是否允许改用 AWT 兜底出图：true 照常出图但每次降级写 ERROR（5 分钟去重）
+        # 并计入指标；false 不悄悄出 AWT 图，直接降级纯文本并返回 PW 错误码。
+        fallback_to_awt: true
         template_sha256: ""
         template_max_bytes: 8388608
         download_timeout_ms: 10000
-        # 单次渲染超时
         render_timeout_ms: 3500
         # 页面缩放（1.0 ~ 4.0）
         scale_factor: 1.5
@@ -194,17 +253,18 @@ render:
         # 输出格式 png / jpeg（也接受 jpg / jpe）；jpeg_quality 仅 jpeg 生效
         image_format: "png"
         jpeg_quality: 85
-        # 注入页面的字体体积上限
         font_max_bytes: 16777216
-        # 前端开发目录（开发期直读，需包含 index.html；绝对路径或相对进程工作目录）。
-        # 留空则使用缓存或 template_url。
+        # 前端开发目录（含 index.html，绝对或相对进程工作目录）；留空用缓存或 template_url(s)。
         dev_web_dir: ""
         # 自定义 Chromium 可执行文件；browser_channel 如 chrome / msedge
         custom_chrome_path: ""
         browser_channel: ""
-        # Playwright 浏览器安装目录与下载镜像
         browsers_path: "%plugin_folder%/playwright-browsers"
-        download_host: ""
+        download_host: "https://cdn.npmmirror.com/binaries/playwright"
+        # 安装超时（秒）与安装器参数：no-shell 只装完整 Chromium，only-shell 只装 headless shell
+        # （默认镜像无 1148 的 shell，会 404）。
+        install_timeout_seconds: 600
+        install_shell: "no-shell"
 
 # 敏感词过滤
 filter:
@@ -215,7 +275,6 @@ filter:
     # 管理员发言不经过滤
     admin_bypass: true
     log_matches: true
-    # 云端词库
     cloud:
         enable: true
         urls: ["https://raw.githubusercontent.com/Yurinann/Filter-Thesaurus-Cloud/main/database.json"]
@@ -236,9 +295,9 @@ database:
         port: 3306
         database: plumbot
         user: plumbot
+        # 明文口令；建议使用独立低权限账号，并限制配置文件权限
         password: plumbot
 
-# 运行库下载
 libraries:
     # 使用阿里云镜像加速 Maven 依赖
     use_aliyun_mirror: true

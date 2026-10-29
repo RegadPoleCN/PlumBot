@@ -29,9 +29,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
-/**
- * 群成员缓存抽象，结合 aedile 提供协程异步与 CompletableFuture 契约。
- */
+/** 群成员缓存：协程与 CompletableFuture 两套入口。 */
 interface GroupMemberCache {
 
     suspend fun getAsync(groupId: Long, userId: Long): MemberInfo?
@@ -49,22 +47,19 @@ interface GroupMemberCache {
     fun invalidateAll()
 }
 
-/**
- * [GroupMemberCache] 的实现，基于 [com.sksamuel.aedile.core.LoadingCache]。
- *
- * @param fetchMember Adapter 提供的异步加载器
- */
+/** 基于 [com.sksamuel.aedile.core.LoadingCache] 的实现；加载器由适配层注入。 */
 open class DefaultGroupMemberCache(
     private val fetchMember: (groupId: Long, userId: Long) -> CompletableFuture<MemberInfo?>
 ) : GroupMemberCache {
 
-    private val cache: LoadingCache<Pair<Long, Long>, MemberInfo> = Caffeine.newBuilder()
+    /** 缓存值允许为 null（成员不在群内 / 群不存在）：Caffeine 当作未命中，不写缓存、不记录
+     *  异步加载异常，避免日志刷 "Exception thrown during asynchronous load"。 */
+    private val cache: LoadingCache<Pair<Long, Long>, MemberInfo?> = Caffeine.newBuilder()
         .refreshAfterWrite(10.minutes.toJavaDuration())
         .expireAfterWrite(30.minutes.toJavaDuration())
-        .asLoadingCache { (groupId, userId) ->
+        .asLoadingCache<Pair<Long, Long>, MemberInfo?> { (groupId, userId) ->
             try {
-                val result = fetchMember(groupId, userId).await()
-                result ?: throw NoSuchElementException("Member not found")
+                fetchMember(groupId, userId).await()
             } catch (e: Throwable) {
                 invalidate(groupId, userId)
                 throw e

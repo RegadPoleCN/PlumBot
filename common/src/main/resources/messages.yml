@@ -5,7 +5,7 @@ prefix: "<white>[<aqua>PlumBot<white>]<reset> "
 load: "PlumBot enabled"
 unload: "PlumBot disabled"
 
-# group_name, group_id, user_nick, message, user_id, user_name
+# group_name, user_name, message
 ob2server: "[%group_name%] %user_name%: %message%"
 # server, player_name, message
 server2ob: "[%server%] %player_name%: %message%"
@@ -24,10 +24,9 @@ notInGroup: "无法为 QQ %user_id% 添加白名单：该账号不在本群，�
 
 # player_name
 joinProxy: "%player_name% join the proxy"
-# player_name, server
+# player_name
 leaveProxy: "%player_name% leave the proxy"
-# player_name, origin_server, target_server
-# JUST FOR VELOCITY !!!
+# player_name, origin_server, target_server（仅 Velocity）
 changeServer: "%player_name% has change the server from %origin_server% to %target_server%"
 
 # server, player_name, death_message
@@ -35,22 +34,32 @@ death: "[%server%] 玩家 %player_name% 遇难了：%death_message%"
 # server, player_name, advancement_title
 advancement: "[%server%] 恭喜 %player_name% 达成了进度 [%advancement_title%]！"
 
-# groups
+# xxx 为占位文字，请改成实际的群号 / 加群方式（不参与变量替换）
 kickServer: "请加入qq群:xxx申请白名单"
 # player_name
 kickPlatform: "%player_name%未在白名单内而被踢出服务器"
+# 白名单校验暂时不可用（查询超时 / 数据库未就绪）时报给被拒玩家
+kickUnavailable: "服务器暂时无法校验白名单（数据库繁忙或尚未就绪），请稍后重试；若持续失败请联系管理员。"
 
-# user_nick, user_name, user_id, target_player, num, current
+# user_id, target_player, num, current
 playerAddBind: "%user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
 playerDeleteBind: "%user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
-# user_nick, user_name, user_id, num, current
+# user_id, num, current
 playerQueryBind: "%user_id% now has %num% bind: %current%"
 
-# player_name, current, user_id, whitelist_limit, user_name, user_nick
+# whitelist_limit
 fullBind: "你能申请的白名单数额已满: %whitelist_limit%"
-# user_id, user_name, user_nick
+# bind_time：绑定卡片（whitelist 路由）在正文里补出的绑定时间
+bindTimeLine: "绑定时间: %bind_time%"
+# limit：绑定列表卡片在正文里补出的上限
+bindLimitLine: "可绑定上限: %limit%"
+# players：列表卡片在正文里补出的名单（正文未包含名单时追加）
+bindPlayersLine: "当前绑定: %players%"
+# state, channel：远程控制台回显的状态/通道行
+consoleMetaLine: "状态: %state% · 通道: %channel%"
+# 无参数
 qqEmptyBind: "您尚未申请白名单"
-# player
+# 无参数
 idEmptyBind: "id尚未申请白名单"
 # player_name
 existsBind: "%player_name% 已被他人绑定!"
@@ -59,12 +68,12 @@ notBelongToYou: "%player_name% 不是由你绑定的!"
 wrongUsage: "请正确输入命令"
 internalError: "内部错误，请稍后再试或联系管理员"
 
-# origin_id, origin_name, user_id, user_name, user_nick, target_player, num, current
+# origin_id, user_id, target_player, num, current
 adminAddBind: "%origin_id% has sudo %user_id% added %target_player% for the bind\n%user_id% now has %num% bind: %current%"
 adminDeleteBind: "%origin_id% has sudo %user_id% deleted %target_player% for the bind\n%user_id% now has %num% bind: %current%"
-# origin_id, origin_name, user_id, user_name, user_nick, num, current
+# user_id, num, current
 adminQueryQQBind: "%user_id% now has %num% bind: %current%"
-# origin_id, origin_name, user_id, user_name, user_nick, player
+# player, user_id
 adminQueryIdBind: "%player% now has been bind by %user_id%"
 
 # cmdprefix
@@ -78,11 +87,14 @@ help:
   - "%cmdprefix%$avatar <游戏名>   - 查看玩家头像"
   - "%cmdprefix%$remote_console <指令>   - [管理员] 远程执行控制台指令"
 
-# tps_1m, tps_5m, tps_15m, mspt, used_mem, max_mem, online
+# tps_1m, tps_5m, tps_15m, mspt, used_mem, max_mem, online, health
 serverStatus: "服务器运行状态:\nTPS: %tps_1m%, %tps_5m%, %tps_15m%\nMSPT: %mspt% ms\n内存: %used_mem%MB / %max_mem%MB\n在线人数: %online%\n健康: %health%"
 statusUnavailable: "当前服务端平台不支持性能指标监控或尚未就绪。"
 
 # remote command
 remoteCommandDenied: "权限不足：您未在管理员名单内，无权远程执行控制台指令。"
 remoteCommandDisabled: "远程控制台通道当前处于关闭状态（可在配置中开启）。"
+remoteCommandNoOutput: "指令已由服务器执行（通道: %channel%，耗时 %duration%ms），但未捕获到控制台回显。\n可能该指令没有输出，或输出只写入了异步日志。可执行 /plumbot doctor echo 检查捕获通道。"
+remoteCommandUnknown: "服务器未识别或拒绝了该指令（通道: %channel%）。\n服务器返回:\n%output%\n请确认指令名称与参数；若指令确实存在，请执行 /plumbot doctor echo 检查捕获通道。"
+remoteCommandFailed: "远程指令执行失败（通道: %channel%，错误码: %code%）：%detail%\n服务器返回:\n%output%\n可执行 /plumbot doctor echo 查看通道状态。"
 remoteCommandExecuted: "控制台执行回显:\n%output%"

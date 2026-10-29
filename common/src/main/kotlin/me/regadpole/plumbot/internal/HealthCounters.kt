@@ -22,33 +22,29 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * 运行时健康计数 —— 供 `/plumbot status`、bStats 与故障排查使用。
- *
- * ## 为什么需要
- * 出问题时只有"日志里翻"，没有可一眼看出的量化状态：渲染降级了多少次、
- * 过滤命中多少次、队列拒绝多少次、重连多少次。这些都是"静默失败"最容易藏身的地方
- * （例如渲染回退到纯文本时功能仍在工作，只是悄悄没图）。
- *
- * 只增不减的计数器用 [AtomicLong]：读写都在业务热路径上，不能引入锁。
+ * 运行时健康计数（`/plumbot status`、bStats、故障排查）：静默失败在日志里翻不到，
+ * 这里给出降级、过滤命中、队列拒绝、重连的量化状态。只增不减的计数器用 [AtomicLong]，
+ * 读写都在业务热路径上，不能引入锁。
  */
 object HealthCounters {
 
     /** 预定义键，避免各处拼字符串写错。 */
     enum class Key {
-        /** 渲染降级为纯文本（引擎失败/超时/队列溢出等**启用后**的失败）。 */
+        /**
+         * **引擎预热失败**（`warmUpEngines()` 返回 false）导致直接发纯文本的次数。
+         * 渲染结果分类**只由门户**（`RenderPortal.renderHealth()`）回答；本键只保留门户
+         * 看不到的失败——引擎根本没预热起来（旧实现混入发图失败与队列溢出，既漏计又双计）。
+         */
         RENDER_FALLBACK,
 
-        /**
-         * 按配置主动关闭图片、直接发纯文本的次数（`render.outputs.<功能>=false`
-         * 或 `render.engine=none`）。
-         *
-         * 与 [RENDER_FALLBACK] 分开计：两者都表现为"没图"，但前者是预期行为、后者是故障。
-         * 混在一起会让降级计数长期虚高，真故障被淹没。
-         */
+        /** 按配置主动关闭图片（`render.outputs.<功能>=false` 或 `render.engine=none`）的次数。
+         *  与 [RENDER_FALLBACK] 分开：两者都表现为"没图"，但前者是预期行为、后者是故障，
+         *  混在一起会让降级计数虚高，真故障被淹没。 */
         RENDER_DISABLED,
 
-        /** 因队列容量耗尽被拒绝的渲染请求。 */
-        RENDER_QUEUE_REJECTED,
+        /** 图片已生成但**发送失败**（平台限流/连接断开）而回退纯文本的次数。
+         *  与 [RENDER_FALLBACK] 分开：图是好的，问题在发送通道，排查方向完全不同。 */
+        RENDER_SEND_FAILED,
 
         /** 敏感词命中（拦截或替换）。 */
         FILTER_HITS,
@@ -67,6 +63,13 @@ object HealthCounters {
 
         /** 数据库初始化失败次数。 */
         DB_INIT_FAILURES,
+
+        /**
+         * **登录白名单查询不可用**（超时 / 数据库未就绪 / 查询异常）导致 fail-closed 拒绝的次数。
+         * 与 [DB_INIT_FAILURES] 分开：初始化成功后数据库仍可能卡住（连接池耗尽、主库只读），
+         * 这类故障只体现在登录拒绝上，混在一起会把排查方向从「登录路径」带到「启动路径」。
+         */
+        LOGIN_LOOKUP_UNAVAILABLE,
     }
 
     private val counters = ConcurrentHashMap<Key, AtomicLong>()
@@ -81,7 +84,10 @@ object HealthCounters {
     fun snapshot(): Map<String, Long> =
         Key.entries.associate { it.name to get(it) }
 
-    /** 重置（测试用；生产不调用）。 */
+    /**
+     * 清零全部计数（`/plumbot render reset` 与测试）。渲染侧计数在门户里，两处都要调才不会
+     * 出现"清了一半"的假象——由 `RenderCommandService` 负责成对调用。
+     */
     fun reset() {
         counters.clear()
     }

@@ -27,6 +27,12 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectory
 import kotlin.io.path.exists
 
+/**
+ * configurate 配置读取基类，实现平台无关的 `PlatformConfig`。
+ *
+ * 所有读取保持**纯读**：不把默认值写回节点，也不把缺失键实体化，
+ * 否则「没配」与「配成 false」无法区分，还会就地改写用户写的值。
+ */
 abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected constructor(
     protected val config: ConfigurationNode
 ) : me.regadpole.plumbot.api.platform.PlatformConfig {
@@ -47,6 +53,34 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         return resolveNode(*nodePath)
     }
 
+    /** 配置节点是否存在（未缺失）。适配层（如 :bukkit）不依赖 configurate，不能直接调
+     *  [getNode]，否则会报 "Cannot access class ConfigurationNode" 编译错误。 */
+    override fun contains(vararg nodePath: String?): Boolean {
+        return !resolveNode(*nodePath).virtual()
+    }
+
+    /** 原始标量类型名（诊断用）：缺失与显式 null 分开报告，doctor 可直出「类型错位」。
+     *  读的是 `raw()`，不会像 `boolean`/`int`/`double` 属性那样把默认值写回节点。 */
+    override fun rawTypeOf(vararg nodePath: String?): String? {
+        val node = resolveNode(*nodePath)
+        if (node.virtual()) return "missing"
+        val raw = node.raw() ?: return "null"
+        return raw.javaClass.simpleName
+    }
+
+    /**
+     * 读取数值节点；缺失或写成非数字时返回 null。
+     * 不能用 [getInteger]/[getDouble]：configurate 对两者一律返回 0/0.0，调用方无法区分
+     * "用户显式写 0"和"根本没配"，会把漏配静默当成显式关闭。
+     */
+    fun getNumberOrNull(vararg nodePath: String?): Number? {
+        val node = resolveNode(*nodePath)
+        if (node.virtual()) {
+            return null
+        }
+        return node.raw() as? Number
+    }
+
     fun getConfigMaker(vararg nodePath: String?): C {
         return createConfigurator(getNode(*nodePath))
     }
@@ -63,8 +97,24 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         return resolveNode(*path).childrenList().map { it.long }
     }
 
+    /**
+     * 读取布尔节点；缺失返回 false。
+     * **禁止**改用 `node.boolean`（及 `int` / `double`）：那是**带默认值拷贝**的读法，值类型
+     * 对不上时把默认值**写回节点**——`render.engine: playwright` 读一次就变成 `false`，缺失键
+     * 也被实体化成 `Boolean false`，`getString` 随即返回 `"false"` 而非 `null`，所有 `?: 默认值`
+     * 回落同时失效（三端曾因此齐报「未知渲染引擎 'false'」并全量回落 AWT）。这里只按 `raw()`
+     * 自行判定，与 [getNumberOrNull] 一样保持**纯读**。
+     */
     override fun getBoolean(vararg path: String?): Boolean {
-        return resolveNode(*path).boolean
+        val node = resolveNode(*path)
+        if (node.virtual()) return false
+        return when (val raw = node.raw()) {
+            is Boolean -> raw
+            is Number -> raw.toInt() != 0
+            // 字符串只认明确的 true/false（YAML 的 yes/no 会被解析成字符串，不能猜）
+            is String -> raw.trim().equals("true", ignoreCase = true)
+            else -> false
+        }
     }
 
     override fun getInteger(vararg path: String?): Int {

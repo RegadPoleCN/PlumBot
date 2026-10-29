@@ -19,6 +19,7 @@
 package me.regadpole.plumbot.server
 
 import me.regadpole.plumbot.bot.command.MessageModeResolver
+import me.regadpole.plumbot.bot.command.RenderCards
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.filter.FilterManagerHolder
@@ -58,12 +59,7 @@ class GameEventBridge(
             .replace("%message%", resolved)
         sender.broadcastRendered(
             route = RenderRoute.MESSAGE,
-            payload = mapOf(
-                "playerName" to playerName,
-                "serverName" to serverName,
-                "message" to resolved
-            ),
-            fallbackText = rendered,
+            card = RenderCards.message(rendered, playerName, serverName, resolved),
             pic = true
         )
     }
@@ -78,18 +74,14 @@ class GameEventBridge(
         val rendered = Messages.joinProxy.replace("%player_name%", playerName)
         sender.broadcastRendered(
             route = RenderRoute.JOIN_AND_LEAVE,
-            payload = mapOf("type" to "join", "playerName" to playerName),
-            fallbackText = rendered,
+            card = RenderCards.joinAndLeave(rendered, "join", playerName, null),
             pic = true
         )
     }
 
     /**
-     * 玩家进服时把平台 UUID 补写进绑定表。
-     *
-     * `player_uuid` 列一直存在、`setUUID` 也已实现，但此前**只有第三方 API 会调用它**，
-     * 内部流程从不写入 —— 导致 `getUUIDByName` / `getUUIDByUser` 恒返回 null。
-     * 进服是同时知道"玩家名 + UUID"的时刻，因此在这里补齐。
+     * 玩家进服时把平台 UUID 补写进绑定表：此前只有第三方 API 会写，内部流程从不写，
+     * 导致 `getUUIDByName` / `getUUIDByUser` 恒返回 null；进服是同时知道名字与 UUID 的时刻。
      */
     private fun persistPlayerUuid(playerName: String) {
         runCatching {
@@ -113,8 +105,7 @@ class GameEventBridge(
             .replace("%player_name%", playerName)
         sender.broadcastRendered(
             route = RenderRoute.JOIN_AND_LEAVE,
-            payload = mapOf("type" to "leave", "playerName" to playerName, "serverName" to serverName),
-            fallbackText = rendered,
+            card = RenderCards.joinAndLeave(rendered, "leave", playerName, serverName),
             pic = true
         )
     }
@@ -130,12 +121,7 @@ class GameEventBridge(
             .replace("%target_server%", targetServer)
         sender.broadcastRendered(
             route = RenderRoute.CHANGE_SERVER,
-            payload = mapOf(
-                "playerName" to playerName,
-                "originServer" to originServer,
-                "targetServer" to targetServer
-            ),
-            fallbackText = rendered,
+            card = RenderCards.changeServer(rendered, playerName, originServer, targetServer),
             pic = true
         )
     }
@@ -150,12 +136,7 @@ class GameEventBridge(
             .replace("%death_message%", deathMessage)
         sender.broadcastRendered(
             route = RenderRoute.DEATH,
-            payload = mapOf(
-                "playerName" to playerName,
-                "serverName" to serverName,
-                "deathMessage" to deathMessage
-            ),
-            fallbackText = rendered,
+            card = RenderCards.death(rendered, playerName, serverName, deathMessage),
             pic = true
         )
     }
@@ -170,12 +151,7 @@ class GameEventBridge(
             .replace("%advancement_title%", advancementTitle)
         sender.broadcastRendered(
             route = RenderRoute.ADVANCEMENT,
-            payload = mapOf(
-                "playerName" to playerName,
-                "serverName" to serverName,
-                "advancementTitle" to advancementTitle
-            ),
-            fallbackText = rendered,
+            card = RenderCards.advancement(rendered, playerName, serverName, advancementTitle),
             pic = true
         )
     }

@@ -60,17 +60,20 @@ class HealthCountersTest {
         val threads = 8
         val perThread = 200
         val start = CountDownLatch(1)
+        // 同样用增量断言：单例计数器可能已被同一 JVM 内的其它用例累加过。
+        val key = HealthCounters.Key.RENDER_SEND_FAILED
+        val before = HealthCounters.get(key)
 
         val workers = (1..threads).map {
             Thread {
                 start.await()
-                repeat(perThread) { HealthCounters.increment(HealthCounters.Key.RENDER_QUEUE_REJECTED) }
+                repeat(perThread) { HealthCounters.increment(key) }
             }.also { it.start() }
         }
         start.countDown()
         workers.forEach { it.join() }
 
-        assertEquals((threads * perThread).toLong(), HealthCounters.get(HealthCounters.Key.RENDER_QUEUE_REJECTED))
+        assertEquals(before + (threads * perThread).toLong(), HealthCounters.get(key))
     }
 
     @Test

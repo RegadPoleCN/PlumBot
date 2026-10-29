@@ -40,19 +40,10 @@ import kotlin.test.assertTrue
 /**
  * 退群时**成员缓存失效**的接线测试。
  *
- * ## 背景（这正是一处因"读代码"才发现的不对称）
- *
- * 三个适配器监听器（OneBot、MiraiMC-Bukkit、MiraiMC-Velocity）在收到成员退群事件时
- * 都汇聚到 `BotEventDispatcher.dispatchUserDecrease`，但**只有 OneBot 自己失效了缓存**：
- *
- * ```
- * OneBotListener.kt:47              onebot.groupMemberCache.invalidate(...)   ← 有
- * MiraiMCListener.kt:48-56          （无）
- * VelocityMiraiMCListener.kt:48-56  （无）
- * ```
- *
- * 后果：MiraiMC 下退群者会在 `GroupMemberCache` 的写入过期（默认 30 分钟）内
- * 继续被判定为"仍在群内"。现在失效逻辑收敛到中心分发点，本测试锁住它不再跑偏。
+ * 三个适配器监听器（OneBot、MiraiMC-Bukkit、MiraiMC-Velocity）的退群事件都汇聚到
+ * `BotEventDispatcher.dispatchUserDecrease`，但此前只有 OneBot 自己失效了缓存；
+ * MiraiMC / Velocity 下退群者会在 `GroupMemberCache` 写入过期（默认 30 分钟）前继续被判为
+ * "仍在群内"。现在失效收敛到中心分发点，本测试锁住它不再跑偏。
  */
 class UserDecreaseInvalidationTest {
 
@@ -80,7 +71,7 @@ class UserDecreaseInvalidationTest {
         override fun sendUserPicWithText(targetId: Long, message: String) = Unit
         override fun getGroupUserName(groupId: Long, targetId: Long): String = "user$targetId"
         override fun getGroupUserCard(groupId: Long, targetId: Long): String = "card$targetId"
-        override fun sendGroupImage(targetId: Long, imageFile: File) = Unit
+        override fun sendGroupImage(targetId: Long, imageFile: File) = true
         override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) = Unit
         override fun sendGroupMsgAtAll(targetId: Long, message: String) = Unit
     }
