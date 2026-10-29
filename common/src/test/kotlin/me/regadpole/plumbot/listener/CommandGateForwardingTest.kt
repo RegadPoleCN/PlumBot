@@ -39,9 +39,8 @@ import kotlin.test.assertTrue
 /**
  * 群消息命中命令但功能被关闭时，**不得回落到"当普通聊天转发"**。
  *
- * 背景：`handleCommand` 曾把"正则命中"与"功能开启"写在同一个条件里，
- * 功能关闭时返回 false，`onGroupMessage` 便继续遍历并最终调用消息转发 ——
- * 于是 `/申请白名单`、`/cmd op xxx` 这类文本会被当作聊天送到游戏内。
+ * `handleCommand` 曾把"正则命中"与"功能开启"写在同一个条件里，功能关闭时返回 false，
+ * `onGroupMessage` 便继续遍历并最终转发 —— 命令文本会被当作聊天送到游戏内。
  */
 class CommandGateForwardingTest {
 
@@ -116,8 +115,8 @@ class CommandGateForwardingTest {
         ctx.set("feature.avatar.enable", false)
         val handler = DefaultBotHandler(ctx, FakeBot())
 
-        // A17：`feature.avatar.enable` 缺失时会读成 false，因此模板必须显式给出该键；
-        // 关闭时命令必须被**消费**（而不是掉进聊天转发，把 `/avatar Steve` 送进服务器）
+        // `feature.avatar.enable` 缺失时会读成 false，模板必须显式给出该键；关闭时命令
+        // 必须被**消费**（而不是掉进聊天转发，把 `/avatar Steve` 送进服务器）
         handler.onGroupMessage("/avatar Steve", groupId, userId)
 
         assertTrue(ctx.forwarded.isEmpty(), "头像功能关闭时不得回落为聊天转发，实际转发: ${ctx.forwarded}")
@@ -203,10 +202,12 @@ class CommandGateForwardingTest {
         override fun sendUserMsg(targetId: Long, message: String) = Unit
         override fun sendGroupPicWithText(targetId: Long, message: String) = Unit
         override fun sendUserPicWithText(targetId: Long, message: String) = Unit
-        override fun sendGroupImage(targetId: Long, imageFile: java.io.File) = Unit
-        override fun sendGroupImage(targetId: Long, imageBytes: ByteArray) = Unit
-        override fun sendUserImage(targetId: Long, imageFile: java.io.File) = Unit
-        override fun sendUserImage(targetId: Long, imageBytes: ByteArray) = Unit
+        // 发图契约返回 Boolean；本替身只用于门控转发断言，不走到图片分支，
+        // 统一报 true（"发出去了"）避免误导后续新增断言。
+        override fun sendGroupImage(targetId: Long, imageFile: java.io.File) = true
+        override fun sendGroupImage(targetId: Long, imageBytes: ByteArray) = true
+        override fun sendUserImage(targetId: Long, imageFile: java.io.File) = true
+        override fun sendUserImage(targetId: Long, imageBytes: ByteArray) = true
         override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) = Unit
         override fun sendGroupMsgAtAll(targetId: Long, message: String) = Unit
 

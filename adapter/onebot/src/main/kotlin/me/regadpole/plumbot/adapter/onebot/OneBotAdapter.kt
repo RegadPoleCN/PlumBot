@@ -32,12 +32,17 @@ import top.alazeprt.aonebot.action.GetGroupInfo
 import top.alazeprt.aonebot.action.GetGroupMemberInfo
 import top.alazeprt.aonebot.action.GetGroupMemberList
 import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
-import top.alazeprt.aonebot.result.Group
 import java.io.File
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * OneBot（AOneBot WebSocket）协议适配器。
+ *
+ * 连接是异步建立的：[start] 只发起连接，由监控循环确认在线后 `markOnline()` 补发启动广播
+ * 并预热群缓存；断线按指数退避自动重连。图片发送返回 `Boolean`，失败时由基类回落纯文本。
+ */
 class OneBotAdapter(
     override val context: PlatformContext,
     val client: WebsocketBotClient,
@@ -62,10 +67,9 @@ class OneBotAdapter(
             throw t
         }
 
-        // WebSocket 连接是异步建立的：load 广播不能在这里发 —— 旧实现会在客户端尚未连接时
-        // 调用 action()，抛 WebsocketNotConnectedException（2026-10-18 Velocity/Hytale 实测）。
-        // 广播改由基类 markOnline() 在监控循环确认连接后补发；群缓存同样等连接就绪后再预热，
-        // 不能走基类 start() 里的同步 preloadGroupCaches()。
+        // WebSocket 连接异步建立：此刻发 load 广播会调用 action() 并抛
+        // WebsocketNotConnectedException（2026-10-18 Velocity/Hytale 实测）。广播与群缓存
+        // 预热都等监控循环确认在线后再做，不能走基类 start() 里的同步 preloadGroupCaches()。
         return this
     }
 
@@ -74,7 +78,6 @@ class OneBotAdapter(
         isPreloaded.set(false)
         client.registerEvent(OneBotListener(this))
 
-        // 启动连接与健康监控循环
         startConnectionWorkflow()
     }
 
@@ -114,8 +117,8 @@ class OneBotAdapter(
                 } else {
                     isPreloaded.set(false)
                     markRetrying("WebSocket 断开")
-                    // 重连次数计数（A23-②）：断线重连是"看起来还活着但一直在抖"的典型症状，
-                    // 只有计数才能从 /status 看出它一直在重连而不是偶发一次。
+                    // 断线重连是"看起来还活着但一直在抖"的典型症状，只有计数才能从 /status
+                    // 看出它一直在重连，而不是偶发一次。
                     HealthCounters.increment(HealthCounters.Key.BOT_RECONNECTS)
                     log(LogLevel.WARN, "[OneBot] 检测到 WebSocket 未处于连接状态，${retryDelaySeconds} 秒后尝试自动重连...")
                     delay((retryDelaySeconds * 1000L).milliseconds)
@@ -145,23 +148,34 @@ class OneBotAdapter(
         client.action(SendPrivateMessageSegments(targetId, segments))
     }
 
-    override fun sendGroupImage(targetId: Long, imageFile: File) {
-        val bytes = imageFile.readBytes()
-        sendGroupImage(targetId, bytes)
-    }
+    override fun sendGroupImage(targetId: Long, imageFile: File): Boolean =
+        sendGroupImage(targetId, imageFile.readBytes())
 
-    override fun sendGroupImage(targetId: Long, imageBytes: ByteArray) {
+    override fun sendGroupImage(targetId: Long, imageBytes: ByteArray): Boolean {
         val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(imageBytes))
-        client.action(SendGroupMessageSegments(targetId, segments))
+        // action() 在连接未建立时会抛 WebsocketNotConnectedException（见 [start] 的实测说明）。
+        // 这里把异常收敛成 false 并补带群号的 WARN：基类据此回落纯文本，用户至少能收到文字版。
+        return try {
+            client.action(SendGroupMessageSegments(targetId, segments))
+            true
+        } catch (t: Throwable) {
+            log(LogLevel.WARN, "[OneBot] 群图片发送失败 ($targetId): ${t.message}")
+            false
+        }
     }
 
-    override fun sendUserImage(targetId: Long, imageFile: File) {
+    override fun sendUserImage(targetId: Long, imageFile: File): Boolean =
         sendUserImage(targetId, imageFile.readBytes())
-    }
 
-    override fun sendUserImage(targetId: Long, imageBytes: ByteArray) {
+    override fun sendUserImage(targetId: Long, imageBytes: ByteArray): Boolean {
         val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.image(imageBytes))
-        client.action(SendPrivateMessageSegments(targetId, segments))
+        return try {
+            client.action(SendPrivateMessageSegments(targetId, segments))
+            true
+        } catch (t: Throwable) {
+            log(LogLevel.WARN, "[OneBot] 私聊图片发送失败 ($targetId): ${t.message}")
+            false
+        }
     }
 
     override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) {
@@ -195,7 +209,12 @@ class OneBotAdapter(
 
     override fun loadGroupName(groupId: Long): CompletableFuture<String> {
         val future = CompletableFuture<String>()
-        client.action(GetGroupInfo(groupId)) { group: Group ->
+        client.action(GetGroupInfo(groupId)) { group ->
+            if (group == null) {
+                // 与 fetchMember 同理：避免把 NPE 抛给缓存层，改为可读的"未找到"异常。
+                future.completeExceptionally(NoSuchElementException("Group $groupId not found"))
+                return@action
+            }
             try {
                 future.complete(group.groupName)
             } catch (e: Exception) {
@@ -208,6 +227,13 @@ class OneBotAdapter(
     override fun fetchMember(groupId: Long, userId: Long): CompletableFuture<MemberInfo?> {
         val future = CompletableFuture<MemberInfo?>()
         client.action(GetGroupMemberInfo(groupId, userId)) { result ->
+            if (result == null) {
+                // 目标不在该群或群号无效时 AOneBot 会回调 null（retcode != 0）。
+                // 这属于正常数据状态，用 null 结果表达即可，不应以异常完成 future，
+                // 否则会被缓存层当作加载失败并向日志刷 "Exception thrown during asynchronous load"。
+                future.complete(null)
+                return@action
+            }
             try {
                 future.complete(
                     MemberInfo(

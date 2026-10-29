@@ -26,6 +26,7 @@ import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.bot.command.MessageForwardService
 import me.regadpole.plumbot.bot.command.PlayerListCommandService
 import me.regadpole.plumbot.bot.command.RemoteConsoleCommandService
+import me.regadpole.plumbot.bot.command.RenderCards
 import me.regadpole.plumbot.bot.command.StatusCommandService
 import me.regadpole.plumbot.bot.command.WhitelistCommandService
 import me.regadpole.plumbot.bot.requireCapability
@@ -50,12 +51,9 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
     )
 
     /**
-     * 命令注册表。
-     *
-     * **不能缓存成构造期常量**：`/plumbot reload` 后 `config` 会换成新实例，
-     * 别名（`keys.*`）若只在构造期读一次，用户改了别名必须重启才生效（且无任何提示）。
-     * 这里按"别名列表"做**廉价指纹**：指纹未变直接复用已解析结果（正则与 handler 只构建一次），
-     * 变了就重建。读 7 个字符串列表远比重新构造正则/handler 便宜。
+     * 命令注册表。**不能缓存成构造期常量**：reload 后 `config` 会换成新实例，别名只在构造期
+     * 读一次的话，用户改了别名必须重启才生效且无任何提示。按"别名列表"做**廉价指纹**：
+     * 指纹未变直接复用已解析的正则与 handler，变了才重建。
      */
     @Volatile
     private var commandsCache: Pair<List<List<String?>>, List<CommandRegistration>>? = null
@@ -143,13 +141,11 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         val prefix = commandService.config.getString("command", "prefix") ?: "/"
         val trimmed = message.trim()
 
-        // 1. 前缀快速短路：若不是以命令前缀开头，直通消息转发，跳过无谓的正则遍历匹配
         if (!trimmed.startsWith(prefix)) {
             messageForwardService.forward(message, groupId, userId)
             return
         }
 
-        // 2. 补齐帮助指令响应 (/help 或 /帮助)
         val commandBody = trimmed.removePrefix(prefix).trim()
         if (commandBody.equals("help", ignoreCase = true) || commandBody == "帮助") {
             sendHelpMessage(groupId, prefix)
@@ -209,12 +205,10 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         }
         val formatted = resolvedLines.joinToString("\n")
 
-        commandService.sendRendered(
+        commandService.sendCard(
             groupId = groupId,
             route = RenderRoute.HELP,
-            payload = mapOf("prefix" to prefix, "lines" to resolvedLines),
-            fallbackText = formatted,
-            pic = true
+            card = RenderCards.help(formatted, prefix, resolvedLines)
         )
     }
 
@@ -239,17 +233,10 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         whitelistCommandService.onUserDecrease(groupId, userId)
     }
 
-    /**
-     * 释放内置服务持有的协程作用域。
-     *
-     * 此前这两个作用域只在对象创建时建立、**从不释放**：适配器 `shutdown()` 只清空 handler 引用，
-     * 于是 Bot 反复启停（插件 reload / 切换适配器）会持续泄漏 IO 线程。
-     */
+    /** 释放内置服务持有的协程作用域：此前从不释放，Bot 反复启停（reload / 换适配器）会泄漏 IO 线程。 */
     override fun shutdown() {
         runCatching { commandService.shutdown() }
             .onFailure { context.log(LogLevel.WARN, "[PlumBot] 命令服务释放失败：${it.message}") }
-        runCatching { statusCommandService.shutdown() }
-            .onFailure { context.log(LogLevel.WARN, "[PlumBot] 状态服务释放失败：${it.message}") }
     }
 
     private fun handleCommand(
@@ -266,8 +253,7 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         keys.forEach {
             if (!regex(prefix, it).toRegex().matches(message)) return@forEach
 
-            // 命令已命中：无论功能是否开启，本条消息都算"已被消费"。
-            // 若这里返回 false，onGroupMessage 会把它当普通聊天转发到游戏内 ——
+            // 命令已命中即算"已被消费"：返回 false 会让 onGroupMessage 把它当普通聊天转发，
             // 于是 `/申请白名单 xxx`、`/cmd op xxx` 这类文本会以聊天形式进入服务器。
             if (!commandService.isFeatureEnabled(feature)) {
                 commandService.context.log(

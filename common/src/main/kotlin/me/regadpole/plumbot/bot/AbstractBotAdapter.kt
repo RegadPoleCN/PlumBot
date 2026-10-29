@@ -44,7 +44,8 @@ import me.regadpole.plumbot.render.RenderProvider
 import me.regadpole.plumbot.render.RenderRequest
 import me.regadpole.plumbot.render.RenderResult
 import me.regadpole.plumbot.render.RenderRoute
-import me.regadpole.plumbot.render.TextPayload
+import me.regadpole.plumbot.bot.command.RenderCards
+import me.regadpole.plumbot.render.RenderCard
 import java.util.concurrent.CompletableFuture
 
 /**
@@ -65,11 +66,10 @@ abstract class AbstractBotAdapter : IBot {
     private val groupNameCache = DefaultBotCache(::loadGroupName)
 
     /**
-     * 出图协程作用域：渲染是挂起能力，不能阻塞调用线程（游戏事件线程/调度线程）。
+     * 出图协程作用域：渲染是挂起能力，不能阻塞调用线程。
      *
-     * **必须可重建**：`shutdown()` 会取消它，若沿用"lazy 单例"写法，
-     * 之后 `start()`（插件 reload / 重启 Bot）拿到的仍是**已取消**的作用域，
-     * 所有出图都会以 `CancellationException` 静默失败。
+     * **必须可重建**：`shutdown()` 会取消它；若沿用 lazy 单例，reload 后拿到的是**已取消**
+     * 的作用域，所有出图都会以 `CancellationException` 静默失败。
      */
     @Volatile
     private var renderScope: CoroutineScope? = null
@@ -77,12 +77,7 @@ abstract class AbstractBotAdapter : IBot {
     /** 已派发的出图任务（关闭时有界排空用；任务结束自动移除）。 */
     private val pendingJobs = java.util.Collections.synchronizedSet(mutableSetOf<Job>())
 
-    /**
-     * 取（必要时创建）出图作用域 —— **仅供测试断言"作用域可重建"**（A07）。
-     *
-     * 真正触发出图需要渲染门户返回图片，测试里无法稳定构造；而 A07 的契约正是
-     * "shutdown 取消并置空、下次出图拿到新实例"，直接断言作用域本身才确定。
-     */
+    /** 取出图作用域，**仅供测试断言"作用域可重建"**：真正出图需要门户产出图片，测试无法稳定构造。 */
     internal fun renderScopeForTest(): CoroutineScope = renderJobs()
 
     /** 当前作用域（未创建或已置空时为 null）—— 仅供测试。 */
@@ -109,9 +104,7 @@ abstract class AbstractBotAdapter : IBot {
         }
     }
 
-    /**
-     * 出图（群）。实现已上移到本基类：适配层只负责"把字节发出去"，不认识任何渲染细节。
-     */
+    /** 出图（群）：渲染已上移到本基类，适配层只负责把字节发出去。 */
     override fun sendGroupPicWithText(targetId: Long, message: String) {
         dispatchRendered(isGroup = true, targetId = targetId, message = message)
     }
@@ -126,26 +119,22 @@ abstract class AbstractBotAdapter : IBot {
             isGroup = isGroup,
             targetId = targetId,
             route = RenderRoute.TEXT,
-            payload = TextPayload(body = message),
-            fallbackText = stripColorCodes(message),
+            card = RenderCards.text(message),
             pic = true
         )
     }
 
-    /**
-     * 按指定 route 出图；门户不可用或渲染失败时降级为 [fallbackText]。
-     *
-     * 适配层只负责"把字节发出去"，不认识任何渲染细节。
-     */
+    /** 按指定 route 出图；门户不可用或渲染失败时降级为 [fallbackText]。 */
     private fun dispatchRoute(
         isGroup: Boolean,
         targetId: Long,
         route: RenderRoute,
-        payload: Any,
-        fallbackText: String,
+        card: RenderCard,
         pic: Boolean
     ) {
-        val fallback = stripColorCodes(fallbackText)
+        // 降级文本只由卡片投影（含 title）；这里只去 § 色码，不能再用 stripColorCodes ——
+        // 它还会删掉正文里字面量 "&a" 等序列，而 AWT/浏览器图片按原文显示，两边会不一致。
+        val fallback = RenderCards.plain(card)
         val portal = if (pic) RenderProvider.getOrNull() else null
         if (portal == null) {
             // 平台没有渲染门户：属于"没有出图能力"，与用户配置关闭一起归入 DISABLED
@@ -160,8 +149,8 @@ abstract class AbstractBotAdapter : IBot {
             sendSafely(isGroup, targetId, fallback)
             return
         }
-        // R17：用 warmUpEngines（先触发按需装载）而不是 isImageCapable（只看当前是否可用）——
-        // 否则"引擎依赖尚未装载"会被误判为"不能出图"，按需装载路径永远走不到。
+        // 用 warmUpEngines（先触发按需装载）而不是 isImageCapable（只看当前是否可用）：
+        // 否则"引擎尚未装载"会被误判为"不能出图"，按需装载路径永远走不到。
         if (!portal.warmUpEngines()) {
             // 已启用却拿不到引擎：这是故障，不是配置，必须计入降级并留下线索
             HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
@@ -175,7 +164,7 @@ abstract class AbstractBotAdapter : IBot {
                 portal.render(
                     RenderRequest(
                         route = route.route,
-                        payload = payload,
+                        payload = card,
                         targetKey = (if (isGroup) "group:" else "user:") + targetId
                     )
                 )
@@ -187,9 +176,8 @@ abstract class AbstractBotAdapter : IBot {
 
             val png = (result as? RenderResult.Image)?.png
             if (png == null) {
-                // 走到这里说明"配置已启用"，没图就是降级（队列溢出/引擎失败），必须计入降级指标。
-                // Failed 的具体原因由门户/异常分支记 WARN；此处只用 DEBUG 补一条路由线索，避免刷屏。
-                HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
+                // 这里**不再计数**：分类由门户 renderHealth() 负责，重复计数会让同一场故障出现两次。
+                // 具体原因由门户记 WARN，此处只用 DEBUG 补一条路由线索，避免刷屏。
                 val reason = (result as? RenderResult.Failed)?.reason
                 context.log(
                     LogLevel.DEBUG,
@@ -199,22 +187,29 @@ abstract class AbstractBotAdapter : IBot {
                 return@launchTracked
             }
 
-            runCatching {
-                if (isGroup) sendGroupImage(targetId, png) else sendUserImage(targetId, png)
-            }.onFailure {
-                HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
-                context.log(LogLevel.WARN, "[PlumBot-Render] 图片发送失败: ${it.message}，降级为纯文本")
+            // 发送结果必须**同时**看异常与返回值：适配器可能吞掉异常，只看异常会让
+            // "图没发出去"完全不可见；失败原因复用同一个变量，保证一次失败只留一条 WARN。
+            val failure: String? = try {
+                val ok = if (isGroup) sendGroupImage(targetId, png) else sendUserImage(targetId, png)
+                if (ok) null else "适配器返回 false"
+            } catch (t: Throwable) {
+                // 门户契约"永不抛异常"不覆盖发送通道；这里把异常收敛为一次可读的失败。
+                "${t.javaClass.simpleName}: ${t.message}"
+            }
+
+            if (failure != null) {
+                // 图是好的、发送通道坏了：单列一类，避免与"渲染失败"混在一起
+                HealthCounters.increment(HealthCounters.Key.RENDER_SEND_FAILED)
+                context.log(
+                    LogLevel.WARN,
+                    "[PlumBot-Render] 图片未送达（${route.route}，${if (isGroup) "group" else "user"}:$targetId，原因: $failure），降级为纯文本"
+                )
                 sendSafely(isGroup, targetId, fallback)
             }
         }
     }
 
-    /**
-     * 在出图作用域上派发任务，并**纳入关闭时的有界排空**。
-     *
-     * 抽出来是为了让"跟踪与排空"这条路径可被测试直接驱动（见 `launchTrackedForTest`）：
-     * 否则要构造一个会成功出图的门户，测试既脆弱又难写。
-     */
+    /** 在出图作用域上派发任务并纳入关闭时的有界排空（抽出来让测试可直接驱动该路径）。 */
     private fun launchTracked(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit): Job {
         val job = renderJobs().launch(block = block)
         pendingJobs += job
@@ -222,17 +217,16 @@ abstract class AbstractBotAdapter : IBot {
         return job
     }
 
-    /** 仅供测试：用与生产**完全相同**的路径派发一个出图任务（验证 A10 的有界排空）。 */
+    /** 仅供测试：用与生产**完全相同**的路径派发一个出图任务，验证有界排空。 */
     internal fun launchTrackedForTest(block: suspend kotlinx.coroutines.CoroutineScope.() -> Unit) {
         launchTracked(block)
     }
 
     /**
-     * 有界排空：等待已派发的出图任务结束（最多 [DRAIN_TIMEOUT_MS]），再取消作用域。
+     * 有界排空：最多等待 [DRAIN_TIMEOUT_MS] 让已派发的出图任务结束，再取消作用域。
      *
-     * 关闭时的"卸载广播"也是异步出图任务；若不等待就 `cancel()`，
-     * 刚派发的卸载通知会被直接取消 —— 表现为"停服公告有时发得出去、有时发不出去"。
-     * 等待必须是**有界**的：渲染引擎卡住时不能把平台关服线程一起拖死。
+     * 卸载广播也是异步任务，不等待就 `cancel()` 会丢掉通知；但无限等待会在引擎卡住时
+     * 把平台关服线程一起拖死。
      */
     private fun drainPendingJobs() {
         val jobs = synchronized(pendingJobs) { pendingJobs.toList() }
@@ -250,12 +244,7 @@ abstract class AbstractBotAdapter : IBot {
         }
     }
 
-    /**
-     * 启动广播（`load` 路由）。
-     *
-     * 抽到基类供各适配器共用 —— 旧实现由 `OneBotAdapter.start()` **复制了一份**相同逻辑，
-     * 任何改动都必须在两处同步，属遗漏高发点。
-     */
+    /** 启动广播（`load` 路由），抽到基类供各适配器共用，避免同一逻辑散落两处。 */
     protected fun announceLoaded() {
         if (!context.config.getBoolean("feature", "load", "enable")) return
         val pic = true
@@ -264,8 +253,7 @@ abstract class AbstractBotAdapter : IBot {
                 isGroup = true,
                 targetId = groupId,
                 route = RenderRoute.LOAD,
-                payload = mapOf("text" to Messages.load),
-                fallbackText = Messages.load,
+                card = RenderCards.notice(Messages.load),
                 pic = pic
             )
         }
@@ -280,8 +268,7 @@ abstract class AbstractBotAdapter : IBot {
                 isGroup = true,
                 targetId = groupId,
                 route = RenderRoute.UNLOAD,
-                payload = mapOf("text" to Messages.unload),
-                fallbackText = Messages.unload,
+                card = RenderCards.notice(Messages.unload),
                 pic = pic
             )
         }
@@ -292,11 +279,10 @@ abstract class AbstractBotAdapter : IBot {
     }
 
     /**
-     * 发送纯文本的**安全包装**：连接不可用时只记一条 WARN，不向调用方（协程/宿主线程）抛异常。
+     * 发送纯文本的**安全包装**：连接不可用时只记一条 WARN，不向调用方抛异常。
      *
-     * 2026-10-18 实测：OneBot 后端未启动时 `client.action()` 抛 `WebsocketNotConnectedException`，
-     * 异常从 `renderJobs` 协程冒到宿主日志（Velocity/Hytale 各刷一屏），看起来像插件崩溃。
-     * 生命周期广播的正确语义是"发不出去就放弃"，而不是把宿主日志变成异常转储。
+     * OneBot 后端未启动时 `client.action()` 会抛 `WebsocketNotConnectedException`，
+     * 异常从协程冒到宿主日志会看起来像插件崩溃；生命周期广播的语义是"发不出去就放弃"。
      */
     private fun sendSafely(isGroup: Boolean, targetId: Long, text: String) {
         try {
@@ -326,10 +312,8 @@ abstract class AbstractBotAdapter : IBot {
             throw t
         }
 
-        // 同步适配器（MiraiMC 等）会在 doStart 内调用 markOnline()，广播已在那时补发；
-        // 异步适配器（OneBot）此刻仍在 CONNECTING，由 markOnline() 在连接就绪后触发。
-        // 2026-10-18 实测：旧实现在这里无条件广播，OneBot 后端未启动时会抛
-        // WebsocketNotConnectedException（Velocity/Hytale 各刷一屏异常）。
+        // 同步适配器在 doStart 内 markOnline() 时已补发广播；异步适配器（OneBot）仍在
+        // CONNECTING，由 markOnline() 在连接就绪后触发。此处无条件广播会在后端未启动时抛连接异常。
         if (botState == BotState.ONLINE && !loadAnnounced) {
             loadAnnounced = true
             announceLoaded()
@@ -380,8 +364,6 @@ abstract class AbstractBotAdapter : IBot {
         }
     }
 
-    // ---------- 连接状态机（R02）----------
-
     @Volatile
     private var botState: BotState = BotState.INIT
 
@@ -391,12 +373,7 @@ abstract class AbstractBotAdapter : IBot {
 
     override val state: BotState get() = botState
 
-    /**
-     * 状态迁移（唯一入口）。
-     *
-     * 只在**变化时**记录一行 INFO —— 状态查询会出现在热路径与状态展示里，
-     * 每次调用都打日志会把控制台刷满。
-     */
+    /** 状态迁移唯一入口；只在**变化时**记 INFO，避免热路径与状态查询把控制台刷满。 */
     protected fun transitionTo(next: BotState, detail: String? = null) {
         val previous = botState
         if (previous == next) return
@@ -436,11 +413,9 @@ abstract class AbstractBotAdapter : IBot {
     }
 
     /**
-     * 主动失效成员缓存。
+     * 主动失效成员缓存，由 [BotEventDispatcher.dispatchUserDecrease] 统一调用。
      *
-     * 由 [BotEventDispatcher.dispatchUserDecrease] 统一调用 —— 放在中心分发点而不是各适配器的
-     * 监听器里，是为了避免"某个适配器忘了失效"这类不对称：历史上 OneBot 的监听器失效了缓存，
-     * 而两个 MiraiMC 监听器没有，导致同一份代码在两个适配器上行为不同。
+     * 放在中心分发点而不是各适配器监听器里，避免"某个适配器忘了失效"这类不对称。
      */
     override fun invalidateGroupMember(groupId: Long, userId: Long) {
         groupMemberCache.invalidate(groupId, userId)
@@ -497,7 +472,11 @@ abstract class AbstractBotAdapter : IBot {
     }
 
     /**
-     * 异步获取指定群成员信息，供 [groupMemberCache] 回源。
+     * 异步获取群成员信息，供 [groupMemberCache] 回源。
+     *
+     * **契约**：目标不在群内 / 群号无效时请让 future 以 `null` 正常完成，不要用异常表达 ——
+     * 缓存层把 `null` 当"无值"，异常则会被视作异步加载失败并打印
+     * `Exception thrown during asynchronous load`。
      */
     protected abstract fun fetchMember(groupId: Long, userId: Long): CompletableFuture<MemberInfo?>
 
@@ -512,14 +491,12 @@ abstract class AbstractBotAdapter : IBot {
     /**
      * 直发原图（群）。
      *
-     * 这里刻意采用「**有默认实现、且默认实现立即报错**」，而不是 `abstract`：
-     * - 旧的空实现会**静默丢弃**图片，是最坏的行为，必须避免；
-     * - 但 `AbstractBotAdapter` 是 `@StableApi`，把已有具体方法改成 `abstract`
-     *   会让第三方适配器在升级时直接编译失败。
+     * 刻意采用「有默认实现、且默认实现立即报错」而不是 `abstract`：旧的空实现会静默丢图，
+     * 而把 `@StableApi` 的已有具体方法改成 `abstract` 会让第三方适配器升级时编译失败。
      *
-     * 默认实现立即抛出，既保证"绝不静默丢图"，又保住已有子类的源码兼容。
+     * 返回 `false` 与抛异常都会让基类回落纯文本并计入 [HealthCounters.Key.RENDER_SEND_FAILED]。
      */
-    override fun sendGroupImage(targetId: Long, imageFile: java.io.File) {
+    override fun sendGroupImage(targetId: Long, imageFile: java.io.File): Boolean {
         throw UnsupportedOperationException(
             "适配器 ${javaClass.simpleName} 未实现 sendGroupImage(targetId, imageFile)；" +
                 "请在子类中实现图片直发，或移除 metadata.capabilities 中的 IMAGE_SEND。"
@@ -529,7 +506,7 @@ abstract class AbstractBotAdapter : IBot {
     /**
      * 直发原图（私聊）。与 [sendGroupImage] 同理：有默认实现，但默认实现立即报错。
      */
-    override fun sendUserImage(targetId: Long, imageFile: java.io.File) {
+    override fun sendUserImage(targetId: Long, imageFile: java.io.File): Boolean {
         throw UnsupportedOperationException(
             "适配器 ${javaClass.simpleName} 未实现 sendUserImage(targetId, imageFile)；" +
                 "请在子类中实现私聊图片直发，或移除 metadata.capabilities 中的 IMAGE_SEND。"
@@ -560,12 +537,7 @@ abstract class AbstractBotAdapter : IBot {
         private val COLOR_CODE_AMP = Regex("&([0-9a-fklmnor])")
         private val COLOR_CODE_SECTION = Regex("§([0-9a-fklmnor])")
 
-        /**
-         * Adapter 层默认同步等待超时（毫秒）。
-         *
-         * 当前与 [DefaultGroupMemberCache] 的 10 秒超时保持一致；
-         * 如需调整，请同步检查缓存层的默认实现。
-         */
+        /** Adapter 层默认同步等待超时（毫秒），需与 [DefaultGroupMemberCache] 的 10 秒保持一致。 */
         const val DEFAULT_ADAPTER_TIMEOUT_MS = 10000L
 
         private const val DEFAULT_ADAPTER_TIMEOUT_SECONDS = DEFAULT_ADAPTER_TIMEOUT_MS / 1000

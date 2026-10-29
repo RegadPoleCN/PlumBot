@@ -18,6 +18,8 @@
 
 package me.regadpole.plumbot.bot.command
 
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -30,29 +32,40 @@ import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.bot.requireCapability
 import me.regadpole.plumbot.bot.command.whitelist.BindPolicy
 import me.regadpole.plumbot.database.DatabaseProvider
+import me.regadpole.plumbot.internal.HealthCounters
 import me.regadpole.plumbot.api.platform.PlatformConfig
 import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.api.platform.PlatformType
 import me.regadpole.plumbot.render.AvatarBlend
 import me.regadpole.plumbot.render.AvatarComposeRequest
 import me.regadpole.plumbot.render.AvatarLayer
+import me.regadpole.plumbot.render.RenderCard
 import me.regadpole.plumbot.render.RenderProvider
 import me.regadpole.plumbot.render.RenderPortal
 import me.regadpole.plumbot.render.RenderRequest
 import me.regadpole.plumbot.render.RenderResult
 import me.regadpole.plumbot.render.RenderRoute
 
-class BotCommandService(val context: PlatformContext, val bot: IBot) {
+class BotCommandService(
+    val context: PlatformContext,
+    val bot: IBot,
     /**
-     * 配置读取入口。
-     *
-     * **必须是 getter，不能缓存成 val**：`/plumbot reload` 会替换 `context.config`，
-     * 缓存旧引用会让所有门控、别名与文案继续读"上一份"配置——
-     * 表现为"reload 成功但配置不生效"，而且不报任何错。
+     * 渲染门户来源。生产路径恒为 [RenderProvider.getOrNull]；保留构造参数只为**可测** ——
+     * 单元测试无法启动真实引擎，需注入替身验证「主路由失败 → 回落旧路由」。
+     * [shutdown] 只取消协程，不会替调用方关闭门户。
+     */
+    private val portalSupplier: () -> RenderPortal? = { RenderProvider.getOrNull() },
+    /** 出图协程的调度器；测试用 Unconfined 让 launch 同步执行，避免靠 sleep 等待。 */
+    renderDispatcher: CoroutineDispatcher = Dispatchers.IO
+) {
+    /**
+     * 配置读取入口。**必须是 getter，不能缓存成 val**：`/plumbot reload` 会替换
+     * `context.config`，缓存旧引用会让门控、别名与文案继续读上一份配置，且不报任何错。
      */
     val config: PlatformConfig get() = context.config
 
     /** 出图协程作用域（渲染是挂起能力，不能阻塞调用线程）。 */
-    private val renderScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val renderScope = CoroutineScope(renderDispatcher + SupervisorJob())
 
     fun shutdown() {
         renderScope.cancel()
@@ -68,10 +81,72 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
     /**
      * 头像指令是否出图（`render.outputs.avatar`）。
      *
-     * 门户对 `hytaleAvatar` 路由也会判同一开关；这里提前判断是为了在关闭时直接回纯文本，
-     * 省去皮肤抓取与图层合成。
+     * [RenderRoute.AVATAR] 与旧 [RenderRoute.HYTALE_AVATAR] 共用同一开关；这里提前判断是为了
+     * 在关闭时直接回纯文本，省去皮肤抓取与图层合成。
      */
     private fun avatarPicEnabled(): Boolean = config.getBoolean("render", "outputs", "avatar")
+
+    /** 已提示过"路由出图被配置关闭"（键为 route，避免每条消息刷屏）。 */
+    private val notifiedDisabledRoutes = ConcurrentHashMap.newKeySet<String>()
+
+    /** 已提示过"没有任何出图能力"（全局一次）。 */
+    @Volatile
+    private var warnedRenderUnavailable = false
+
+    /**
+     * 路由出图关闭时**一次性 INFO**。这是"说好渲染卡片却只发纯文字"最常见的原因
+     * （`render.outputs.<gate>=false` 或 `engine=none`）；静默降级会让服主无从判断是开关还是故障。
+     */
+    private fun noticeImageDisabled(route: RenderRoute) {
+        if (!notifiedDisabledRoutes.add(route.route)) return
+        val gate = route.featureGate
+        context.log(
+            LogLevel.INFO,
+            "[PlumBot-Render] 路由 ${route.route} 的图片输出已关闭" +
+                (if (gate != null) "（render.outputs.$gate=false 或引擎为 none）" else "") +
+                "，本次及后续回复使用纯文本"
+        )
+    }
+
+    /** 门户确认"完全没有出图能力"时**一次性 WARN**：没有任何引擎可用，图片永远不会出现。 */
+    private fun noticeRenderUnavailable() {
+        if (warnedRenderUnavailable) return
+        warnedRenderUnavailable = true
+        context.log(
+            LogLevel.WARN,
+            "[PlumBot-Render] 当前平台没有任何可用的渲染引擎（render.engine=awt 时需 AWT 可用，" +
+                "playwright 需装载完成），图片回复将全部降级为纯文本"
+        )
+    }
+
+    /** 已提示过"旧模板没有 avatar 路由，已自动回落 hytaleAvatar"（会话内一次）。 */
+    @Volatile
+    private var warnedAvatarRouteFallback = false
+
+    /**
+     * 主路由 `avatar` 在**模板层**未实现时的一次性 INFO。插件先于 PlumBot-Web 模板发版时
+     * 旧模板只有 `hytaleAvatar`；静默回落会让用户只觉得"头像卡样式没变"。
+     */
+    private fun noticeAvatarRouteFallback() {
+        if (warnedAvatarRouteFallback) return
+        warnedAvatarRouteFallback = true
+        context.log(
+            LogLevel.INFO,
+            "[PlumBot-Render] 模板未实现 route '${RenderRoute.AVATAR.route}'，头像卡已自动回落旧路由 " +
+                "'${RenderRoute.HYTALE_AVATAR.route}'（旧模板兼容）。升级 PlumBot-Web 模板后自动恢复新路由，无需改配置"
+        )
+    }
+
+    /**
+     * 平台品牌名，写进头像卡片的 `data.platform`。前端模板据此挑选皮肤/头像图层，
+     * 取值与 PlumBot-Web 约定一致：`bukkit` / `velocity` / `hytale` / `unknown`。
+     */
+    private fun platformBrand(): String = when (context.platformType) {
+        PlatformType.BUKKIT -> "bukkit"
+        PlatformType.VELOCITY, PlatformType.BUNGEE -> "velocity"
+        PlatformType.HYTALE -> "hytale"
+        PlatformType.STANDALONE -> "unknown"
+    }
 
     /** 已提示过"适配器不支持成员校验"（去重，避免每条指令刷屏）。 */
     @Volatile
@@ -133,8 +208,7 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
 
     /**
      * 以**指定路由**发送结构化载荷；门户不可用或渲染失败时自动降级为 [fallbackText]。
-     *
-     * 这是业务层与渲染层的标准接口：业务层只决定"哪个 route + 什么 payload + 纯文本兜底长什么样"。
+     * 业务层只决定"哪个 route + 什么 payload + 纯文本兜底长什么样"。
      */
     fun sendRendered(
         groupId: Long,
@@ -142,13 +216,47 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
         payload: Any,
         fallbackText: String,
         pic: Boolean
-    ) = sendRendered(groupId, route, fallbackText, pic) { payload }
+    ) = sendRendered(groupId, route, effectiveFallback(payload, fallbackText), pic) { payload }
 
     /**
-     * 变体：载荷在**渲染协程内**构建。
+     * 以 [RenderCard] 发送；纯文本降级**只由卡片正文投影**，调用方不再单独拼 fallbackText。
+     */
+    fun sendCard(groupId: Long, route: RenderRoute, card: RenderCard, pic: Boolean = true) {
+        sendRendered(groupId, route, card, RenderCards.plain(card), pic)
+    }
+
+    /**
+     * 在渲染协程内补齐 [RenderCard.data] 的变体。[text] 是正文唯一真源。
      *
-     * 用于需要在出图前做异步准备（例如服务端预取头像并写入磁盘缓存）的场景 ——
-     * 这样准备开销既不占用调用线程，也不落在渲染超时窗口内。
+     * 降级文本必须在这里算好（**含 [title]**）：载荷在协程内才构建，降级路径拿不到它；
+     * 只投影 [text] 会让「在线玩家」这类标题只出现在图片里，与 [sendCard] 及事件派发路径口径不一致。
+     */
+    fun sendCard(
+        groupId: Long,
+        route: RenderRoute,
+        text: String,
+        title: String? = null,
+        pic: Boolean = true,
+        data: suspend (RenderPortal) -> Map<String, Any?> = { emptyMap() }
+    ) {
+        val fallback = RenderCards.plain(RenderCard(text = text, title = title))
+        sendRendered(groupId, route, fallback, pic) { portal ->
+            RenderCard(text = text, title = title, data = data(portal))
+        }
+    }
+
+    /**
+     * [RenderCard] 的降级文本必须与**要发的卡片内容一致**；旧载荷保留调用方给出的 fallback。
+     *
+     * 走 [RenderCard.displayText]（标题 + 正文）而不是只投影 [RenderCard.text]：标题承载着
+     * 正文里没有的事实，只取正文会让纯文本丢信息，而图片侧却带着它。
+     */
+    private fun effectiveFallback(payload: Any, fallbackText: String): String =
+        if (payload is RenderCard) RenderCards.plain(payload) else fallbackText
+
+    /**
+     * 变体：载荷在**渲染协程内**构建，供异步准备（如预取头像写磁盘缓存）的场景使用 ——
+     * 准备开销既不占用调用线程，也不落在渲染超时窗口内。
      */
     fun sendRendered(
         groupId: Long,
@@ -157,144 +265,275 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
         pic: Boolean,
         payload: suspend (RenderPortal) -> Any
     ) {
+        val portal = openRenderPortal(groupId, route, fallbackText, pic) ?: return
+        renderScope.launch {
+            deliverRendered(groupId, route, renderOnce(portal, route, groupId, payload), fallbackText)
+        }
+    }
+
+    /**
+     * 出图前置门控：能力声明 → 门户 → 路由开关 → 引擎可用性。
+     *
+     * 返回 null 表示"已降级为纯文本并投递"（或 [pic] 为 false）。门控先于一切异步准备：
+     * 路由被关掉时连 payload（可能含皮肤抓取/图层合成）都不该求值。
+     */
+    private fun openRenderPortal(
+        groupId: Long,
+        route: RenderRoute,
+        fallbackText: String,
+        pic: Boolean
+    ): RenderPortal? {
         bot.requireCapability(BotCapability.GROUP_MESSAGE_SEND)
 
-        val portal = if (pic) RenderProvider.getOrNull() else null
+        val portal = if (pic) portalSupplier() else null
         if (portal == null) {
+            // 与事件派发路径对齐：没有门户 = 配置/平台关闭，计入 RENDER_DISABLED，
+            // 否则命令回复长期降级为文本而状态卡上一切正常。
+            HealthCounters.increment(HealthCounters.Key.RENDER_DISABLED)
+            bot.sendMsg(true, groupId, fallbackText, false)
+            return null
+        }
+        // 计数放在这里而不是门户内部：门户对 Unavailable 不计数，否则统计里的"配置关闭"恒为 0。
+        if (!portal.isImageEnabled(route.route)) {
+            HealthCounters.increment(HealthCounters.Key.RENDER_DISABLED)
+            noticeImageDisabled(route)
+            bot.sendMsg(true, groupId, fallbackText, false)
+            return null
+        }
+        // 命令回复是纯命令操作服务器时唯一的出图入口，必须预热：否则首次出图会因
+        // "Playwright 尚未装载"降级为文本。warmUpEngines() 只调度异步装载，不阻塞调用线程。
+        if (!portal.warmUpEngines()) {
+            HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
+            // 引擎确认"完全没有出图能力"时不能静默降级，否则"渲染开关失灵"无从排查。
+            noticeRenderUnavailable()
+            bot.sendMsg(true, groupId, fallbackText, false)
+            return null
+        }
+        return portal
+    }
+
+    /** 出图一次：把渲染异常收敛为 [RenderResult.Failed]，交给 [deliverRendered] 统一降级。 */
+    private suspend fun renderOnce(
+        portal: RenderPortal,
+        route: RenderRoute,
+        groupId: Long,
+        payload: suspend (RenderPortal) -> Any
+    ): RenderResult = try {
+        portal.render(
+            RenderRequest(
+                route = route.route,
+                payload = payload(portal),
+                targetKey = "group:$groupId"
+            )
+        )
+    } catch (t: Throwable) {
+        RenderResult.Failed(t.message ?: "exception")
+    }
+
+    /** 投递渲染结果：无图 → DEBUG + 纯文本；有图但发送失败 → WARN + 纯文本。 */
+    private fun deliverRendered(
+        groupId: Long,
+        route: RenderRoute,
+        result: RenderResult,
+        fallbackText: String
+    ) {
+        val png = (result as? RenderResult.Image)?.png
+        if (png == null) {
+            // 分类由门户负责（RenderHealth）；这里只留一条 DEBUG 线索便于按路由排查
+            val reason = (result as? RenderResult.Failed)?.reason
+            context.log(
+                LogLevel.DEBUG,
+                "[PlumBot-Render] 渲染未产出图片（${route.route}）${reason?.let { ": " + it } ?: ""}，降级为纯文本"
+            )
             bot.sendMsg(true, groupId, fallbackText, false)
             return
         }
-
-        renderScope.launch {
-            val result = try {
-                portal.render(
-                    RenderRequest(
-                        route = route.route,
-                        payload = payload(portal),
-                        targetKey = "group:$groupId"
-                    )
-                )
-            } catch (t: Throwable) {
-                RenderResult.Failed(t.message ?: "exception")
-            }
-            val png = (result as? RenderResult.Image)?.png
-            val sent = png != null && runCatching { bot.sendGroupImage(groupId, png) }.isSuccess
-            if (!sent) {
-                bot.sendMsg(true, groupId, fallbackText, false)
-            }
+        // sendGroupImage 返回 Boolean（true=已交给协议层）：只判"没抛异常"会把适配器的 false
+        // 当成发送成功，用户看到的是"消息没了、也没有降级文本"。
+        val sent = runCatching { bot.sendGroupImage(groupId, png) }.getOrDefault(false)
+        if (!sent) {
+            HealthCounters.increment(HealthCounters.Key.RENDER_SEND_FAILED)
+            context.log(LogLevel.WARN, "[PlumBot-Render] 图片发送失败（${route.route}），降级为纯文本")
+            bot.sendMsg(true, groupId, fallbackText, false)
         }
     }
 
-    /**
-     * 列表型绑定结果统一走 `bindList` 路由（`whitelist` 路由只承接单人成功绑定）。
-     */
-    fun sendBindList(groupId: Long, title: String, players: List<String>, fallbackText: String) {
-        sendRendered(
-            groupId = groupId,
-            route = RenderRoute.BIND_LIST,
-            payload = mapOf(
-                "title" to title,
-                "players" to players,
-                "total" to players.size
-            ),
-            fallbackText = fallbackText,
-            pic = true
+    /** 列表型绑定结果统一走 `bindList` 路由（`whitelist` 路由只承接单人成功绑定）。 */
+    fun sendBindList(
+        groupId: Long,
+        title: String,
+        players: List<String>,
+        userId: String,
+        limit: Int,
+        fallbackText: String
+    ) {
+        val card = RenderCards.bindList(
+            text = fallbackText,
+            title = title,
+            userId = userId,
+            players = players,
+            limit = limit
         )
+        sendCard(groupId, RenderRoute.BIND_LIST, card)
     }
 
-    /**
-     * 单人绑定成功卡片（`whitelist` 路由）。
-     *
-     * 与 [sendBindList] 的分工：**单人成功绑定**走定制卡片（含头像与绑定时间），
-     * 其余列表型回复一律走 `bindList`。
-     */
+    /** 单人绑定成功卡片（`whitelist` 路由）：含头像与绑定时间；其余列表型回复走 [sendBindList]。 */
     fun sendWhitelistCard(
         groupId: Long,
         playerName: String,
         qq: String,
         bindTime: String?,
-        fallbackText: String
+        fallbackText: String,
+        title: String = "白名单绑定成功",
+        originId: String? = null,
+        originName: String? = null,
+        bindCount: Int = 0,
+        current: List<String> = emptyList()
     ) {
         sendRendered(
             groupId = groupId,
             route = RenderRoute.WHITELIST,
-            fallbackText = fallbackText,
+            fallbackText = RenderCards.plain(fallbackText),
             pic = true
         ) { portal ->
-            mapOf(
-                "playerName" to playerName,
-                "qq" to qq,
-                "bindTime" to bindTime,
-                "avatarUrl" to runCatching {
-                    portal.fetchAvatarAsDataUrl("qq:$qq", "https://q1.qlogo.cn/g?b=qq&nk=$qq&s=640")
-                }.getOrNull()
+            val avatarUrl = runCatching {
+                portal.fetchAvatarAsDataUrl("qq:$qq", "https://q1.qlogo.cn/g?b=qq&nk=$qq&s=640")
+            }.getOrNull()
+            RenderCards.whitelist(
+                text = fallbackText,
+                title = title,
+                playerName = playerName,
+                qq = qq,
+                bindTime = bindTime,
+                avatarUrl = avatarUrl,
+                originId = originId,
+                originName = originName,
+                bindCount = bindCount,
+                current = current
             )
         }
     }
 
     /**
-     * 平台原生头像卡片（`hytaleAvatar` 路由）。
+     * 平台原生头像卡片（[RenderRoute.AVATAR] 路由）。
      *
-     * 解析顺序：平台原生外观图层（Hytale 部件化皮肤，服务端合成）→ 绑定 QQ 头像 → 前端占位图。
-     * 在非 Hytale 平台上退化为 QQ 头像卡片，因此该指令三端均可用。
+     * 解析顺序：平台原生外观图层（服务端合成）→ 绑定 QQ 头像 → 前端占位图；非 Hytale 平台
+     * 退化为 QQ 头像卡片，因此该指令三端均可用。
+     *
+     * ## 旧模板兼容：先探测，再回落
+     *
+     * 已发版的 PlumBot-Web 模板 manifest 里没有 `avatar`，会明确拒绝。两道防线：
+     * 1. **先探测**（[RenderPortal.supportsRoute]）：明确没声明 `avatar` 时直接走旧
+     *    [RenderRoute.HYTALE_AVATAR]，不发起 `avatar` 渲染。这一步必需：默认
+     *    `fallback_to_awt=true` 时 `avatar` 失败会被 AWT 用纯文字图接住（AWT 忽略 viewRoute），
+     *    调用方拿到 Image 而非 Failed，回落逻辑不会触发，用户只看到一张没头像的文字图。
+     * 2. **失败后重试一次**（不循环）：探测结果未知时，若判词确为"路由未实现"，改旧路由重试。
+     *
+     * 只对"路由未实现"重试：manifest 缺失、协议号不符同样报 PW_TEMPLATE_INVALID，
+     * 换旧路由也一样画不出来，白白多跑一次渲染。
      */
     fun sendAvatarCard(groupId: Long, playerName: String, fallbackText: String) {
-        sendRendered(
-            groupId = groupId,
-            route = RenderRoute.HYTALE_AVATAR,
-            fallbackText = fallbackText,
-            pic = avatarPicEnabled()
-        ) { portal ->
-            val qq = DatabaseProvider.getBindByName(playerName)
-
-            // ①–③ 皮肤漏斗（皮肤插件 → GameProfile → 正版源），服务端裁头 + 缓存
-            val skin = runCatching { portal.resolveSkinAvatar(playerName) }.getOrNull()
-
-            // ④ 平台原生外观图层（Hytale 部件化皮肤）→ 服务端合成
-            val layers = runCatching {
-                context.playerService.resolveAvatarLayers(playerName)
-            }.getOrDefault(emptyList())
-
-            val composed = if (skin != null || layers.isEmpty()) {
-                null
+        val plain = RenderCards.plain(fallbackText)
+        val portal = openRenderPortal(groupId, RenderRoute.AVATAR, plain, avatarPicEnabled()) ?: return
+        renderScope.launch {
+            var route = if (portal.supportsRoute(RenderRoute.AVATAR) == false) {
+                noticeAvatarRouteFallback()
+                RenderRoute.HYTALE_AVATAR
             } else {
-                runCatching {
-                    portal.composeAvatar(
-                        AvatarComposeRequest(
-                            cacheKey = "platform:$playerName",
-                            layers = layers.map { layer ->
-                                AvatarLayer(
-                                    png = layer.png,
-                                    blend = if (layer.blend.equals("multiply", ignoreCase = true)) {
-                                        AvatarBlend.MULTIPLY
-                                    } else {
-                                        AvatarBlend.NORMAL
-                                    },
-                                    color = layer.color
-                                )
-                            }
-                        )
+                RenderRoute.AVATAR
+            }
+            val primary = renderOnce(portal, route, groupId) {
+                avatarCard(portal, playerName, plain, route)
+            }
+            val result = if (
+                route == RenderRoute.AVATAR &&
+                primary is RenderResult.Failed &&
+                avatarRouteMissing(primary.reason)
+            ) {
+                noticeAvatarRouteFallback()
+                // 复用 RENDER_FALLBACK（出图链路被迫降级，但降级后仍成功出图），
+                // 配合 noticeAvatarRouteFallback 的日志可把"旧模板"与"真故障"区分开。
+                HealthCounters.increment(HealthCounters.Key.RENDER_FALLBACK)
+                route = RenderRoute.HYTALE_AVATAR
+                renderOnce(portal, route, groupId) {
+                    avatarCard(portal, playerName, plain, route)
+                }
+            } else {
+                primary
+            }
+            deliverRendered(groupId, route, result, plain)
+        }
+    }
+
+    /**
+     * 头像卡载荷。[route] 决定是否下发 `data.platform`：旧 [RenderRoute.HYTALE_AVATAR] 模板
+     * 协议里没有该字段，多写一个键会触发"载荷多出协议未声明"告警，所以只有新路由才带。
+     */
+    private suspend fun avatarCard(
+        portal: RenderPortal,
+        playerName: String,
+        fallbackText: String,
+        route: RenderRoute
+    ): RenderCard {
+        val qq = DatabaseProvider.getBindByName(playerName)
+
+        // ①–③ 皮肤漏斗（皮肤插件 → GameProfile → 正版源），服务端裁头 + 缓存
+        val skin = runCatching { portal.resolveSkinAvatar(playerName) }.getOrNull()
+
+        // ④ 平台原生外观图层（Hytale 部件化皮肤）→ 服务端合成
+        val layers = runCatching {
+            context.playerService.resolveAvatarLayers(playerName)
+        }.getOrDefault(emptyList())
+
+        val composed = if (skin != null || layers.isEmpty()) {
+            null
+        } else {
+            runCatching {
+                portal.composeAvatar(
+                    AvatarComposeRequest(
+                        cacheKey = "platform:$playerName",
+                        layers = layers.map { layer ->
+                            AvatarLayer(
+                                png = layer.png,
+                                blend = if (layer.blend.equals("multiply", ignoreCase = true)) {
+                                    AvatarBlend.MULTIPLY
+                                } else {
+                                    AvatarBlend.NORMAL
+                                },
+                                color = layer.color
+                            )
+                        }
                     )
+                )
+            }.getOrNull()
+        }
+
+        // ⑤ 绑定 QQ 头像
+        val qqAvatar = if (skin != null || composed != null) {
+            null
+        } else {
+            qq?.let { q ->
+                runCatching {
+                    portal.fetchAvatarAsDataUrl("qq:$q", "https://q1.qlogo.cn/g?b=qq&nk=$q&s=640")
                 }.getOrNull()
             }
-
-            // ⑤ 绑定 QQ 头像
-            val qqAvatar = if (skin != null || composed != null) {
-                null
-            } else {
-                qq?.let { q ->
-                    runCatching {
-                        portal.fetchAvatarAsDataUrl("qq:$q", "https://q1.qlogo.cn/g?b=qq&nk=$q&s=640")
-                    }.getOrNull()
-                }
-            }
-
-            mapOf(
-                "username" to playerName,
-                "avatarUrl" to (skin ?: composed ?: qqAvatar),
-                "fallbackQq" to qq
-            )
         }
+
+        val avatarUrl = skin ?: composed ?: qqAvatar
+        val source = when {
+            skin != null -> "skin"
+            composed != null -> "platform"
+            qqAvatar != null -> "qq"
+            else -> "none"
+        }
+        return RenderCards.hytaleAvatar(
+            text = fallbackText,
+            playerName = playerName,
+            avatarUrl = avatarUrl,
+            fallbackQq = qq,
+            source = source,
+            platform = if (route == RenderRoute.AVATAR) platformBrand() else null
+        )
     }
 
     fun sendBindMessage(groupId: Long, message: String) {
@@ -349,11 +588,23 @@ class BotCommandService(val context: PlatformContext, val bot: IBot) {
 
     fun checkPlayerExists(player: String): Boolean = DatabaseProvider.getBindByName(player) != null
 
-    /** 绑定额度上限（`feature.bind.maxNum`）；供事务化写入在同一事务内使用（A04）。 */
+    /** 绑定额度上限（`feature.bind.maxNum`）；供事务化写入在同一事务内使用。 */
     fun bindingLimit(): Int = config.getInteger("feature", "bind", "maxNum")
 
     fun checkUserBindingFull(userId: String): Boolean =
-        // 走数据库端 COUNT：此前把该 QQ 的全部绑定行取回再 .size，行数随规模线性增长（A04 优化）
+        // 走数据库端 COUNT：把该 QQ 的全部绑定行取回再 .size 会让开销随规模线性增长。
         DatabaseProvider.getDatabase()?.countByUser(userId)
             ?.let { it >= config.getInteger("feature", "bind", "maxNum") } ?: false
+
+    /**
+     * 失败原因是否为"模板没有实现 avatar 路由"（而非 manifest 缺失/协议号不符）。
+     * 判词来自驱动层 manifest 校验：`模板未实现 route '<route>'（已实现：…）`。
+     */
+    internal fun avatarRouteMissing(reason: String): Boolean =
+        reason.contains(ROUTE_MISSING_MARKER) && reason.contains("'" + RenderRoute.AVATAR.route + "'")
+
+    private companion object {
+        /** 模板 manifest 未声明该路由时的判词前缀。 */
+        const val ROUTE_MISSING_MARKER = "模板未实现 route"
+    }
 }
