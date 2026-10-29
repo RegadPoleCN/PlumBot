@@ -1,0 +1,130 @@
+name: Release
+
+# 版本号的唯一真源是 `gradle.properties` 的 `version`：本流水线断言 tag 与它一致，
+# 再用 -Pversion 注入到 plugin.yml / manifest.json 的 ${version} 占位符。
+# 产物文件名不含版本（各模块 archiveVersion 已置空），因此
+# /releases/latest/download/PlumBot-Bukkit.jar 这类链接永远有效。
+
+on:
+  push:
+    tags: [ "v*" ]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号（不带 v，例如 3.0.0-beta1）；留空则取触发 ref 的 tag 名"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Verify & Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: v
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if ! printf '%s' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$'; then
+            echo "::error::版本号格式非法：$VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "解析版本：$VERSION"
+
+      - name: Assert gradle.properties matches release version
+        shell: bash
+        run: |
+          set -euo pipefail
+          DECLARED=$(grep -E '^version[[:space:]]*=' gradle.properties | head -1 | cut -d= -f2 | tr -d '[:space:]')
+          if [ "$DECLARED" != "${{ steps.v.outputs.version }}" ]; then
+            echo "::error::gradle.properties 的 version=$DECLARED 与发布版本 ${{ steps.v.outputs.version }} 不一致"
+            exit 1
+          fi
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '25'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: make gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Full verification
+        run: ./gradlew --no-daemon check
+
+      # 发布门禁比 CI 更严：四个校验器的负例自检必须通过，避免规则被静默改坏。
+      # 自检开关见根 build.gradle.kts 与 :api/build.gradle.kts。
+      - name: Verification self-tests
+        run: |
+          ./gradlew --no-daemon checkRenderProtocol -PrenderProtocolSelfTest=true
+          ./gradlew --no-daemon checkRenderBoundaries -PrenderBoundarySelfTest=true
+          ./gradlew --no-daemon :api:checkApiContract -PapiContractSelfTest=true
+          ./gradlew --no-daemon checkRuntimeLibraries -PruntimeLibrarySelfTest=true
+
+      - name: Assemble distribution & assert relocation
+        run: ./gradlew --no-daemon -Pversion=${{ steps.v.outputs.version }} dist checkRelocation
+
+      - name: Assert version substituted into manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          V="${{ steps.v.outputs.version }}"
+          unzip -p dist/PlumBot-Bukkit.jar plugin.yml | grep -q "version: $V" \
+            || { echo "::error::Bukkit plugin.yml 未注入版本 $V"; exit 1; }
+          unzip -p dist/PlumBot-Hytale.jar manifest.json | grep -q "\"Version\": \"$V\"" \
+            || { echo "::error::Hytale manifest.json 未注入版本 $V"; exit 1; }
+          echo "版本注入校验通过：$V"
+
+      - name: Checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.jar > SHA256SUMS.txt
+          cp ../render/src/main/resources/render-protocol.json .
+          sha256sum render-protocol.json >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: PlumBot-${{ steps.v.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.v.outputs.version) }}
+          name: PlumBot ${{ steps.v.outputs.version }}
+          generate_release_notes: true
+          prerelease: ${{ contains(steps.v.outputs.version, '-') }}
+          files: |
+            dist/PlumBot-Bukkit.jar
+            dist/PlumBot-Velocity.jar
+            dist/PlumBot-Hytale.jar
+            dist/render-protocol.json
+            dist/SHA256SUMS.txt

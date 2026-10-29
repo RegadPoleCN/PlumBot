@@ -1,4 +1,4 @@
-name: Build & Verify v3
+name: Build & Verify
 
 on:
   push:
@@ -7,10 +7,15 @@ on:
     branches: [ "v3" ]
   workflow_dispatch:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     if: >-
       !contains(github.event.head_commit.message, '[ci skip]') &&
       !contains(github.event.head_commit.message, '[skip ci]') &&
@@ -32,15 +37,27 @@ jobs:
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
 
+      # check 已聚合 test 与全部校验器（见根 build.gradle.kts 的 check 链）。
       - name: Run Tests & Verification
-        run: ./gradlew test check checkApiContract checkRenderBoundaries checkRenderProtocol
+        run: ./gradlew check
 
-      - name: Assemble Distribution Jars
-        run: ./gradlew dist
+      # checkRelocation 断言 dist 产物的重定位结果，必须与 dist 同批执行。
+      - name: Assemble Distribution Jars & Assert Relocation
+        run: ./gradlew dist checkRelocation
+
+      - name: Collect Checksums And Protocol Manifest
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum *.jar > SHA256SUMS.txt
+          cp ../render/src/main/resources/render-protocol.json .
+          sha256sum render-protocol.json >> SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: PlumBot-Distributions
-          path: dist/*.jar
+          path: dist/
           if-no-files-found: error
+          retention-days: 14
