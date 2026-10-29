@@ -31,9 +31,10 @@ fun Binding.Companion.of(data: ResultSet?): Binding? {
     val userId = data.getString("user_id") ?: return null
     val playerName = data.getString("player_name") ?: return null
     val playerUUID = data.getString("player_uuid")
+    val sourceGroup = data.getString("source_group")
     val timeStr = data.getString("binding_time")
     val bindingTime = timeStr?.toLongOrNull()?.let { Instant.fromEpochMilliseconds(it) } ?: Clock.System.now()
-    return Binding(id, userId, playerName, playerUUID, bindingTime)
+    return Binding(id, userId, playerName, playerUUID, bindingTime, sourceGroup)
 }
 
 fun Binding.Companion.of(data: ResultProcessorList): List<Binding> {
@@ -46,9 +47,10 @@ fun Binding.Companion.of(data: ResultProcessorList): List<Binding> {
         val userId = getString("user_id") ?: return@forEach
         val playerName = getString("player_name") ?: return@forEach
         val playerUUID = getString("player_uuid")
+        val sourceGroup = getString("source_group")
         val timeStr = getString("binding_time")
         val bindingTime = timeStr?.toLongOrNull()?.let { Instant.fromEpochMilliseconds(it) } ?: Clock.System.now()
-        result.add(Binding(id, userId, playerName, playerUUID, bindingTime))
+        result.add(Binding(id, userId, playerName, playerUUID, bindingTime, sourceGroup))
     }
     return result
 }

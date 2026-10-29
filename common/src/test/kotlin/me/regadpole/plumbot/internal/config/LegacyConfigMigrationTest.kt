@@ -371,10 +371,10 @@ class LegacyConfigMigrationTest {
         assertTrue(root.node("ver").virtual())
         assertEquals(CONFIG_VERSION, root.node(CONFIG_VERSION_KEY).int)
         assertEquals("lobby", root.node("server", "name").string)
-        assertEquals("awt", root.node("render", "engine").string)
+        assertEquals("auto", root.node("render", "engine").string, "模板默认 engine=auto（按路由选首选引擎）")
         assertEquals("/", root.node("command", "prefix").string)
         assertEquals(true, root.node("render", "outputs", "avatar").boolean)
-        assertEquals(false, root.node("render", "outputs", "status").boolean)
+        assertEquals(true, root.node("render", "outputs", "status").boolean)
     }
 
     @Test

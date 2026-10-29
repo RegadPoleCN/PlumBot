@@ -85,16 +85,10 @@ class SqliteBindingDatabaseTest {
         val db = newDatabase()
         db.initialize()
 
-        val columns = db.getConnection().connection.use { conn ->
-            conn.createStatement().use { st ->
-                st.executeQuery("PRAGMA table_info($BINDING_TABLE_NAME)").use { rs ->
-                    buildList { while (rs.next()) add(rs.getString("name")) }
-                }
-            }
-        }
+        val columns = columnsOf(db)
 
         assertEquals(
-            listOf("id", "user_id", "player_name", "player_uuid", "binding_time"),
+            listOf("id", "user_id", "player_name", "player_uuid", "binding_time", "source_group"),
             columns,
             "绑定表列必须与 IDatabase 契约一致（缺列会让后续 select 直接失败）"
         )
@@ -245,6 +239,72 @@ class SqliteBindingDatabaseTest {
         db.initialize()
         assertNotNull(indexExists(db), "清理干净后必须自动补建唯一索引")
     }
+
+    @Test
+    fun `source group round trips and defaults to null`() {
+        val db = newDatabase()
+        db.initialize()
+
+        // 群内路径：写入来源群
+        assertTrue(db.addBindIfAbsent("10001", "Steve", "12345"), "群内绑定应写入成功")
+        assertEquals(
+            "12345",
+            assertNotNull(db.getByName("Steve"), "刚写入的绑定必须可按名字查到").sourceGroup,
+            "来源群必须落库（退群解绑据此判断该不该删这一条）"
+        )
+        assertEquals("12345", db.getByUser("10001").single().sourceGroup, "列表查询同样要带回来源群")
+
+        // 游戏内指令 / 外部 API 路径：不带来源群
+        db.addBind("10002", "Alex")
+        assertNull(assertNotNull(db.getByName("Alex")).sourceGroup, "不带来源群的写入必须落成 NULL，而不是空串")
+    }
+
+    @Test
+    fun `within limit overload records the source group`() {
+        val db = newDatabase()
+        db.initialize()
+
+        assertTrue(db.addBindIfAbsentWithinLimit("10003", "Bob", 2, "777"), "名额充足时应写入成功")
+        assertEquals("777", assertNotNull(db.getByName("Bob")).sourceGroup)
+        assertFalse(db.addBindIfAbsentWithinLimit("10003", "Carol", 1, "777"), "名额用尽时必须拒绝")
+        assertNull(db.getByName("Carol"), "被拒绝的写入不得留下记录")
+    }
+
+    @Test
+    fun `a legacy table without source group column is migrated in place`() {
+        val db = newDatabase()
+
+        // 模拟升级前的表：没有 source_group 列，且已有历史数据（createTable 不会给既有表加列）
+        db.getConnection().connection.use { conn ->
+            conn.createStatement().use { st ->
+                st.executeUpdate(
+                    "CREATE TABLE $BINDING_TABLE_NAME (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT, player_name TEXT, " +
+                        "player_uuid TEXT, binding_time TEXT)"
+                )
+                st.executeUpdate(
+                    "INSERT INTO $BINDING_TABLE_NAME (user_id, player_name, binding_time) VALUES ('10001', 'steve', '0')"
+                )
+            }
+        }
+
+        db.initialize()
+
+        assertTrue("source_group" in columnsOf(db), "initialize 必须给既有表补上 source_group 列")
+        val legacy = assertNotNull(db.getByName("Steve"), "迁移不得丢失历史数据")
+        assertNull(legacy.sourceGroup, "历史记录的来源群是未知的，必须读成 null 而不是抛异常")
+        assertTrue(db.addBindIfAbsent("10002", "Alex", "12345"), "迁移后新写入应带回来源群")
+        assertEquals("12345", assertNotNull(db.getByName("Alex")).sourceGroup)
+    }
+
+    private fun columnsOf(db: AbstractBindingDatabase<*, *>): List<String> =
+        db.getConnection().connection.use { conn ->
+            conn.createStatement().use { st ->
+                st.executeQuery("PRAGMA table_info($BINDING_TABLE_NAME)").use { rs ->
+                    buildList { while (rs.next()) add(rs.getString("name")) }
+                }
+            }
+        }
 
     private fun indexExists(db: AbstractBindingDatabase<*, *>): String? =
         db.getConnection().connection.use { conn ->

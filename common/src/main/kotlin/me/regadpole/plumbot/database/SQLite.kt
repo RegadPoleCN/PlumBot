@@ -31,6 +31,18 @@ class SQLite(path: String) :
     override fun SQLite.configurePlayerNameColumn() = type(ColumnTypeSQLite.TEXT)
     override fun SQLite.configureTextColumn() = type(ColumnTypeSQLite.TEXT)
 
+    /** SQLite 没有 information_schema，用 `PRAGMA table_info` 读列名。 */
+    override fun sourceGroupColumnPresent(connection: java.sql.Connection): Boolean =
+        connection.createStatement().use { st ->
+            st.executeQuery("PRAGMA table_info($BINDING_TABLE_NAME)").use { rs ->
+                var present = false
+                while (rs.next()) {
+                    if (rs.getString("name") == "source_group") present = true
+                }
+                present
+            }
+        }
+
     /** SQLite 支持 `IF NOT EXISTS`，天然幂等。 */
     override fun createUniquePlayerNameIndex() {
         dataSource.connection.use { conn ->

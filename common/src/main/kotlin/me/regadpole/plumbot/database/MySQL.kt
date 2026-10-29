@@ -32,6 +32,16 @@ class MySQL(node: ConfigurationNode) :
     override fun SQL.configurePlayerNameColumn() = type(ColumnTypeSQL.VARCHAR, 64)
     override fun SQL.configureTextColumn() = type(ColumnTypeSQL.TEXT)
 
+    /** MySQL 走 `information_schema.columns`（与建索引的探测方式保持一致）。 */
+    override fun sourceGroupColumnPresent(connection: java.sql.Connection): Boolean =
+        connection.createStatement().use { st ->
+            st.executeQuery(
+                "SELECT COUNT(*) FROM information_schema.columns " +
+                    "WHERE table_schema = DATABASE() AND table_name = '$BINDING_TABLE_NAME' " +
+                    "AND column_name = 'source_group'"
+            ).use { rs -> rs.next() && rs.getInt(1) > 0 }
+        }
+
     /**
      * MySQL 8 的 `CREATE INDEX` 不支持 `IF NOT EXISTS`，因此先查 `information_schema`
      * 再建索引；整个方法可重复执行。

@@ -40,7 +40,13 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                     }
                     // 此处**不做** require_in_group 校验：管理员自己发的群消息，
                     // 已由消息本身证明其在群内，查询不带来任何新信息。
-                    when (service.bindPolicy.bind(requireDatabase(), userId, playerName, bypassLimit = adminBypass)) {
+                    // 群内路径必须记录来源群：退本群时才解绑这一条，不牵连他在别的群的绑定
+                    when (
+                        service.bindPolicy.bind(
+                            requireDatabase(), userId, playerName,
+                            bypassLimit = adminBypass, sourceGroup = groupId.toString(),
+                        )
+                    ) {
                         BindPolicy.Result.LimitReached -> {
                             sendFullBindNotice(groupId, userId)
                             return
@@ -54,13 +60,22 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         BindPolicy.Result.Added -> Unit
                     }
                     val wl = DatabaseProvider.getBindByUser(userId.toString())
-                    service.sendBindTemplate(
-                        groupId,
-                        Messages.playerAddBind,
-                        *service.userReplacements(groupId, userId),
-                        "%target_player%" to playerName,
-                        "%num%" to wl.size.toString(),
-                        "%current%" to wl.keys.joinToString(", ")
+                    // 管理员给自己申请与成员自助申请产出同一种业务结果，走同一张 whitelist 卡片，
+                    // 不再落到 sendBindTemplate（那条路径由 render.outputs.text 门控，默认关闭）。
+                    service.sendWhitelistCard(
+                        groupId = groupId,
+                        playerName = playerName,
+                        qq = userId.toString(),
+                        bindTime = DatabaseProvider.getBindingByName(playerName)?.bindingTime?.toString(),
+                        fallbackText = service.render(
+                            Messages.playerAddBind,
+                            *service.userReplacements(groupId, userId),
+                            "%target_player%" to playerName,
+                            "%num%" to wl.size.toString(),
+                            "%current%" to wl.keys.joinToString(", ")
+                        ),
+                        bindCount = wl.size,
+                        current = wl.keys.toList()
                     )
                     return
                 }
@@ -83,7 +98,8 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                     if (!service.ensureTargetInGroup(groupId, targetUserId)) return
                     when (
                         service.bindPolicy.bind(
-                            requireDatabase(), targetUserId, playerName, bypassLimit = adminBypass
+                            requireDatabase(), targetUserId, playerName,
+                            bypassLimit = adminBypass, sourceGroup = groupId.toString(),
                         )
                     ) {
                         BindPolicy.Result.LimitReached -> {
@@ -114,7 +130,11 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                             "%target_player%" to playerName,
                             "%num%" to wl.size.toString(),
                             "%current%" to wl.keys.joinToString(", ")
-                        )
+                        ),
+                        originId = userId.toString(),
+                        originName = service.bot.getGroupUserCard(groupId, userId),
+                        bindCount = wl.size,
+                        current = wl.keys.toList()
                     )
                     return
                 }
@@ -133,7 +153,12 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
             }
             // 此处**不做** require_in_group 校验：申请人是在本群发出的消息，
             // 成员身份已确立；查询只会引入"超时被误判为不在群"的风险。
-            when (service.bindPolicy.bind(requireDatabase(), userId, playerName, bypassLimit = false)) {
+            when (
+                service.bindPolicy.bind(
+                    requireDatabase(), userId, playerName,
+                    bypassLimit = false, sourceGroup = groupId.toString(),
+                )
+            ) {
                 BindPolicy.Result.LimitReached -> {
                     sendFullBindNotice(groupId, userId)
                     return
@@ -159,7 +184,9 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                     "%target_player%" to playerName,
                     "%num%" to wl.size.toString(),
                     "%current%" to wl.keys.joinToString(", ")
-                )
+                ),
+                bindCount = wl.size,
+                current = wl.keys.toList()
             )
             return
         }
@@ -174,6 +201,8 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
             groupId = groupId,
             title = "白名单已满 · ${service.bot.getGroupUserName(groupId, targetUser)}",
             players = wl.keys.toList(),
+            userId = targetUser.toString(),
+            limit = service.bindingLimit(),
             fallbackText = service.render(
                 Messages.fullBind,
                 "%player_name%" to wl.keys.joinToString(", "),

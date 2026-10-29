@@ -47,6 +47,9 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
     protected abstract fun E.configurePlayerNameColumn()
     protected abstract fun E.configureTextColumn()
 
+    /** 由后端实现：`source_group` 列是否已存在（迁移前判断，必须可重复执行）。 */
+    protected abstract fun sourceGroupColumnPresent(connection: java.sql.Connection): Boolean
+
     protected val dataSource by lazy { host.createDataSource() }
 
     protected val table = Table<H, E>(tableName, host) {
@@ -55,6 +58,7 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         add("player_name") { configurePlayerNameColumn() }
         add("player_uuid") { configureTextColumn() }
         add("binding_time") { configureTextColumn() }
+        add("source_group") { configureTextColumn() }
     }
 
     /** 释放只做一次：重复调用直接返回，避免二次借还连接。 */
@@ -62,7 +66,32 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
 
     override fun initialize() {
         table.createTable(dataSource)
+        ensureSourceGroupColumn()
         ensureUniquePlayerNameIndex()
+    }
+
+    /**
+     * 给**既有表**补 `source_group` 列。
+     *
+     * `createTable` 对已存在的表不会加列，因此升级路径必须显式 `ALTER TABLE`；
+     * 多实例同时启动时后到者会撞"duplicate column"，此时复查一遍即可判定为成功。
+     */
+    private fun ensureSourceGroupColumn() {
+        runCatching {
+            dataSource.connection.use { conn ->
+                if (sourceGroupColumnPresent(conn)) return@use
+                conn.createStatement().use { st ->
+                    st.executeUpdate("ALTER TABLE $tableName ADD COLUMN source_group TEXT")
+                }
+            }
+        }.onFailure { error ->
+            val present = runCatching {
+                dataSource.connection.use { conn -> sourceGroupColumnPresent(conn) }
+            }.getOrDefault(false)
+            if (!present) {
+                System.err.println("[PlumBot-DB] $tableName 表缺少 source_group 列且自动迁移失败（${error.message}）")
+            }
+        }
     }
 
     /**
@@ -150,13 +179,28 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         }).firstOrNull()
     }
 
-    override fun addBind(user: String, name: String) {
+    override fun addBind(user: String, name: String) = addBindWithSource(user, name, null)
+
+    /**
+     * 带上来源群的插入。`sourceGroup` 为空时与旧写入**完全一致**（该列为 NULL），
+     * 因此游戏内指令与外部 API 两条路径的落库结果没有变化。
+     */
+    private fun addBindWithSource(user: String, name: String, sourceGroup: String?) {
         val cleanName = normalize(name)
         val cleanUser = user.trim()
         val now = System.currentTimeMillis().toString()
-        table.insert(dataSource, "user_id", "player_name", "binding_time") {
-            value(cleanUser, cleanName, now)
+        val cleanGroup = sourceGroup?.trim()?.takeIf { it.isNotEmpty() }
+        if (cleanGroup == null) {
+            table.insert(dataSource, "user_id", "player_name", "binding_time") {
+                value(cleanUser, cleanName, now)
+            }
+        } else {
+            table.insert(dataSource, "user_id", "player_name", "binding_time", "source_group") {
+                value(cleanUser, cleanName, now, cleanGroup)
+            }
         }
+        // 写后失效：下一次登录校验必须看到这条新绑定，不能等 TTL 自然过期。
+        BindingLookupCache.invalidate(cleanName)
     }
 
     /**
@@ -165,11 +209,14 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
      * 这里只把 `SQLException`（唯一约束冲突等数据库层错误）折叠为 false，
      * 其它异常照常抛出，避免把"数据库连不上"伪装成"已绑定"。
      */
-    override fun addBindIfAbsent(user: String, name: String): Boolean {
+    override fun addBindIfAbsent(user: String, name: String): Boolean =
+        addBindIfAbsent(user, name, null)
+
+    override fun addBindIfAbsent(user: String, name: String, sourceGroup: String?): Boolean {
         val cleanName = normalize(name)
         if (getByName(cleanName) != null) return false
         return try {
-            addBind(user, cleanName)
+            addBindWithSource(user, cleanName, sourceGroup)
             true
         } catch (e: java.sql.SQLException) {
             System.err.println("[PlumBot-DB] 绑定写入冲突，视为已存在：$cleanName（${e.message}）")
@@ -178,7 +225,7 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
     }
 
     /**
-     * 事务化写入（A04 核心）：**名额校验与插入在同一事务内**。
+     * 事务化写入：**名额校验与插入在同一事务内**。
      *
      * 为什么必须同事务：`BindPolicy` 此前先 `countByUser` 再写入，是两次独立往返 ——
      * 并发时两个请求都读到"还差一个名额"，于是**突破上限**。同名冲突由唯一索引兜底，
@@ -188,10 +235,19 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
      * 无法与外部事务共用 `Connection`；因此这里显式取连接、关自动提交、自行提交/回滚。
      * 列名与时间格式（epoch 毫秒字符串）与 DSL 写入保持一致。
      */
-    override fun addBindIfAbsentWithinLimit(user: String, name: String, maxPerUser: Int): Boolean {
+    override fun addBindIfAbsentWithinLimit(user: String, name: String, maxPerUser: Int): Boolean =
+        addBindIfAbsentWithinLimit(user, name, maxPerUser, null)
+
+    override fun addBindIfAbsentWithinLimit(
+        user: String,
+        name: String,
+        maxPerUser: Int,
+        sourceGroup: String?,
+    ): Boolean {
         val cleanUser = user.trim()
         val cleanName = normalize(name)
-        if (maxPerUser <= 0) return addBindIfAbsent(cleanUser, cleanName)
+        val cleanGroup = sourceGroup?.trim()?.takeIf { it.isNotEmpty() }
+        if (maxPerUser <= 0) return addBindIfAbsent(cleanUser, cleanName, cleanGroup)
 
         return try {
             dataSource.connection.use { conn ->
@@ -207,15 +263,21 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
                         return@use false
                     }
 
+                    // 同一事务内写入来源群：列与占位符一起拼，避免再写一条几乎相同的语句
+                    val columns = "user_id, player_name, binding_time" +
+                        if (cleanGroup == null) "" else ", source_group"
+                    val placeholders = if (cleanGroup == null) "?, ?, ?" else "?, ?, ?, ?"
                     conn.prepareStatement(
-                        "INSERT INTO $tableName (user_id, player_name, binding_time) VALUES (?, ?, ?)"
+                        "INSERT INTO $tableName ($columns) VALUES ($placeholders)"
                     ).use { ps ->
                         ps.setString(1, cleanUser)
                         ps.setString(2, cleanName)
                         ps.setString(3, System.currentTimeMillis().toString())
+                        if (cleanGroup != null) ps.setString(4, cleanGroup)
                         ps.executeUpdate()
                     }
                     conn.commit()
+                    BindingLookupCache.invalidate(cleanName)
                     true
                 } catch (t: Throwable) {
                     runCatching { conn.rollback() }
@@ -232,7 +294,7 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
     }
 
     /**
-     * 在数据库端计数（A04 前置）：此前"名额是否已满"要先把该 QQ 的**所有绑定行取回内存**再 `.size`，
+     * 在数据库端计数：此前"名额是否已满"要先把该 QQ 的**所有绑定行取回内存**再 `.size`，
      * 行数随玩家规模线性增长，而这些操作在指令热路径上。
      *
      * 用原生 SQL 是为了避免表 DSL 的"取回全部行"语义；只读、不含时间列，因此不存在格式差异问题。
@@ -261,6 +323,10 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         table.delete(dataSource) {
             where { "user_id" eq cleanUser and ("id" eq id) }
         }
+        if (arg != null) {
+            BindingLookupCache.invalidate(arg)
+            BindingLookupCache.invalidateUser(cleanUser)
+        }
         return arg
     }
 
@@ -269,6 +335,7 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         table.delete(dataSource) {
             where { "user_id" eq cleanUser }
         }
+        BindingLookupCache.invalidateUser(cleanUser)
     }
 
     override fun removeBind(name: String) {
@@ -276,6 +343,7 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         table.delete(dataSource) {
             where { "player_name" eq cleanName }
         }
+        BindingLookupCache.invalidate(cleanName)
     }
 
     override fun setUUID(name: String, uuid: UUID) {

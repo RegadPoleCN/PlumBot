@@ -28,9 +28,7 @@ object DatabaseProvider {
     private var database: IDatabase? = null
     private var hasLoaded = false
 
-    /**
-     * @deprecated 零调用成员：请改用 `getDatabaseOrNull() != null` 判断（D8 弃用周期，主版本内保留）。
-     */
+    /** @deprecated 零调用成员：请改用 `getDatabase() != null` 判断；主版本内保留。 */
     @Deprecated("改用 getDatabaseOrNull() != null")
     val isReady: Boolean
         get() = hasLoaded && database != null
@@ -58,9 +56,14 @@ object DatabaseProvider {
         }
         this.database = database
         hasLoaded = true
+        // 重载路径：shutdown() 取消过查询作用域，这里重新拉起，否则登录校验会一直超时。
+        BindingLookupService.ensureRunning()
     }
 
     fun shutdown() {
+        // 登录查询协程与缓存都挂在数据库生命周期上：先停掉，避免关闭过程中还在发查询。
+        BindingLookupService.shutdown()
+        BindingLookupCache.clear()
         database?.let {
             it.close()
             database = null
@@ -68,16 +71,11 @@ object DatabaseProvider {
         }
     }
 
-    /**
-     * Get the database instance
-     * @see me.regadpole.plumbot.database.IDatabase
-     * @return the object of IDatabase
-     */
+    /** 当前数据库实例；尚未初始化时为 `null`。 */
     fun getDatabase(): IDatabase? {
         return database
     }
 
-    //
     fun getBindByUser(user: String): MutableMap<String, Int> {
         val map: MutableMap<String, Int> = LinkedHashMap()
         val info = loadedDatabase.getByUser(user)

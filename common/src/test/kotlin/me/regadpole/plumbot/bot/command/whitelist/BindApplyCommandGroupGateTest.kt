@@ -81,8 +81,6 @@ class BindApplyCommandGroupGateTest {
     private fun boundPlayerNames(): List<String> =
         database.bindings.map { it.playerName }
 
-    // ---------------- 用例 ----------------
-    //
     // 门控**只作用于管理员代绑**（`#addBind <QQ> <玩家名>`）：
     // 自助申请者是在本群发出的消息，成员身份已由消息本身确立，再查一次没有新信息。
 
@@ -146,8 +144,6 @@ class BindApplyCommandGroupGateTest {
         )
     }
 
-    // ---------------- 收窄范围的核心守卫 ----------------
-
     @Test
     fun `群员自助申请不触发成员校验`() {
         context.set("feature.bind.require_in_group", true)
@@ -186,8 +182,6 @@ class BindApplyCommandGroupGateTest {
         assertEquals(0, bot.checkUserInGroupCalls.get(), "移除路径不得被门控拦截")
         assertTrue(boundPlayerNames().isEmpty(), "绑定应被正常移除，否则用户会被锁死在自己的绑定之外")
     }
-
-    // ---------------- 测试替身 ----------------
 
     private class FakeConfig : PlatformConfig {
         private val values = mutableMapOf<String, Any>(
@@ -288,7 +282,7 @@ class BindApplyCommandGroupGateTest {
 
         override fun getGroupUserName(groupId: Long, targetId: Long): String = "user$targetId"
         override fun getGroupUserCard(groupId: Long, targetId: Long): String = "card$targetId"
-        override fun sendGroupImage(targetId: Long, imageFile: File) = Unit
+        override fun sendGroupImage(targetId: Long, imageFile: File) = true
         override fun sendGroupMsgAt(targetId: Long, userId: Long, message: String) = Unit
         override fun sendGroupMsgAtAll(targetId: Long, message: String) = Unit
     }

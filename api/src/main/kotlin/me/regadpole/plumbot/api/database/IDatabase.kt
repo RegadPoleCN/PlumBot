@@ -48,13 +48,13 @@ interface IDatabase {
     /**
      * 统计某 QQ 的绑定条数。
      *
-     * 默认实现为"取回再计数"（兼容既有实现）；内置实现会走数据库端 `COUNT(*)`，
-     * 避免在指令热路径上把该 QQ 的全部绑定行搬进内存（A04 前置优化）。
+     * 默认实现为"取回再计数"（兼容既有实现）；内置实现走数据库端 `COUNT(*)`，
+     * 避免在指令热路径上把该 QQ 的全部绑定行搬进内存。
      */
     fun countByUser(user: String): Int = getByUser(user).size
 
     /**
-     * 在**同一事务**内完成"名额校验 + 幂等写入"（A04）。
+     * 在**同一事务**内完成"名额校验 + 幂等写入"。
      *
      * 默认实现是两次独立调用（`countByUser` + `addBindIfAbsent`），**非原子**，仅为兼容外部实现；
      * 内置实现使用数据库事务：并发下同一 QQ 的名额上限**不可能被突破**。
@@ -64,6 +64,23 @@ interface IDatabase {
      */
     fun addBindIfAbsentWithinLimit(user: String, name: String, maxPerUser: Int): Boolean =
         (maxPerUser <= 0 || countByUser(user) < maxPerUser) && addBindIfAbsent(user, name)
+
+    /**
+     * 幂等写入，并顺带记录**来源群**。
+     *
+     * @param sourceGroup 写入发生在哪个 QQ 群；`null` 表示不是群消息路径（游戏内指令 / 外部 API），
+     *   这些记录的 `source_group` 列为 NULL，退群时**不会被自动解绑**。
+     */
+    fun addBindIfAbsent(user: String, name: String, sourceGroup: String?): Boolean =
+        addBindIfAbsent(user, name)
+
+    /**
+     * [addBindIfAbsentWithinLimit] 的来源群版本。
+     *
+     * 默认实现同样"先判名额再写入"，**非原子**，仅为兼容外部实现；内置实现走同一事务。
+     */
+    fun addBindIfAbsentWithinLimit(user: String, name: String, maxPerUser: Int, sourceGroup: String?): Boolean =
+        (maxPerUser <= 0 || countByUser(user) < maxPerUser) && addBindIfAbsent(user, name, sourceGroup)
 
     /**
      * 按玩家 UUID 查询绑定记录。

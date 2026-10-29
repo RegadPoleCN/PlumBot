@@ -24,11 +24,10 @@ import me.regadpole.plumbot.bot.command.BotCommandService
 /**
  * 绑定写入的**唯一决策点**。
  *
- * 三条写入路径（管理员自助、管理员代绑、玩家自助）此前各自复制"名额判断 + 重名判断 + 插入"，
- * 任何一处漏改都会造成路径间行为不一致；而且它们都用 `addBind` 直插，
- * 在并发下会绕过重名判断直接撞唯一索引，把 `SQLException` 抛进命令处理链。
+ * 三条写入路径（管理员自助、管理员代绑、玩家自助）必须共用同一套"名额判断 + 重名判断 + 插入"：
+ * 各自复制一份会在路径间产生行为差异，并发下还会绕过重名判断直接撞唯一索引。
  *
- * 现在统一为：名额判断（可被管理员绕过）→ 幂等写入（内部先查后插，并由唯一索引兜底）。
+ * 顺序为：名额判断（可被管理员绕过）→ 幂等写入（内部先查后插，并由唯一索引兜底）。
  */
 class BindPolicy(private val service: BotCommandService) {
 
@@ -47,12 +46,20 @@ class BindPolicy(private val service: BotCommandService) {
      * 尝试为 [userId] 写入角色名 [playerName] 的绑定。
      *
      * @param bypassLimit 是否跳过名额上限（对应 `feature.bind.adminBypass`，仅管理员路径可置 true）
+     * @param sourceGroup 写入发生在哪个 QQ 群：群内路径传群号，游戏内指令与外部 API 传 `null`；
+     *   只有带来源群的绑定会在"该群退群"时被自动解绑
      */
-    fun bind(database: IDatabase, userId: Long, playerName: String, bypassLimit: Boolean): Result {
-        // **名额校验与写入在同一事务内完成**（A04）：此前"先 count 再 insert"是两次独立往返，
+    fun bind(
+        database: IDatabase,
+        userId: Long,
+        playerName: String,
+        bypassLimit: Boolean,
+        sourceGroup: String? = null,
+    ): Result {
+        // **名额校验与写入在同一事务内完成**：此前"先 count 再 insert"是两次独立往返，
         // 并发时两个请求都可能读到"还差一个名额"，从而突破上限。
         val limit = if (bypassLimit) 0 else service.bindingLimit()
-        if (database.addBindIfAbsentWithinLimit(userId.toString(), playerName, limit)) return Result.Added
+        if (database.addBindIfAbsentWithinLimit(userId.toString(), playerName, limit, sourceGroup)) return Result.Added
 
         // 未写入：区分"名额已满"与"该角色名已被绑定"，让调用方能给出不同提示
         return if (limit > 0 && database.countByUser(userId.toString()) >= limit) {
