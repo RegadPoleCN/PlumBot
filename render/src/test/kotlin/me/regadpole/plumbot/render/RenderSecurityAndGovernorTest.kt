@@ -30,17 +30,15 @@ import kotlin.test.assertTrue
 /**
  * 渲染期守卫与长度治理的契约测试。
  *
- * 覆盖批次 2 的三项 P1：
- * - **P1-9** SSRF 白名单（含"看似同域"的绕过尝试）；
- * - **P1-10** `file://` 沙箱收紧 + 路径百分号编码；
- * - **P1-13** 三层长度治理（data URL 不被文本截断、嵌套结构同样受约束）。
+ * 三组约束：
+ * - 主机白名单（含"看似同域"的绕过尝试；只约束起点、不做 IP 审查）；
+ * - `file://` 沙箱收紧 + 路径百分号编码；
+ * - 三层长度治理（data URL 不被文本截断、嵌套结构同样受约束）。
  */
 class RenderSecurityAndGovernorTest {
 
     private val tempRoot: File =
         File(System.getProperty("java.io.tmpdir"), "plumbot-render-test").apply { mkdirs() }
-
-    // ---------- P1-10：file:// 沙箱与路径编码 ----------
 
     @Test
     fun `含空格与中文的路径被正确百分号编码`() {
@@ -71,8 +69,6 @@ class RenderSecurityAndGovernorTest {
         assertFalse(RenderSecurity.isFileUrlWithinRoot("https://example.com/a", tempRoot))
     }
 
-    // ---------- P1-9：主机白名单 ----------
-
     @Test
     fun `白名单大小写不敏感且支持子域`() {
         val allowed = setOf("q1.qlogo.cn", "crafatar.com")
@@ -91,25 +87,6 @@ class RenderSecurityAndGovernorTest {
         assertFalse(RenderSecurity.isHostAllowed("notcrafatar.com", allowed))
         assertFalse(RenderSecurity.isHostAllowed("", allowed))
     }
-
-    @Test
-    fun `环回与私网地址被识别为受限目标`() {
-        assertTrue(RenderSecurity.resolvesToBlockedAddress("127.0.0.1"))
-        assertTrue(RenderSecurity.resolvesToBlockedAddress("10.0.0.1"))
-        assertTrue(RenderSecurity.resolvesToBlockedAddress("172.17.0.1"), "172.16/12 必须覆盖 172.17")
-        assertTrue(RenderSecurity.resolvesToBlockedAddress("172.31.255.254"))
-        assertTrue(RenderSecurity.resolvesToBlockedAddress("192.168.1.1"))
-        assertTrue(RenderSecurity.resolvesToBlockedAddress("169.254.169.254"), "云元数据地址必须拒绝")
-        assertTrue(RenderSecurity.resolvesToBlockedAddress("100.64.0.1"), "CGNAT 段必须拒绝")
-    }
-
-    @Test
-    fun `公网地址不被误判`() {
-        assertFalse(RenderSecurity.resolvesToBlockedAddress("1.1.1.1"))
-        assertFalse(RenderSecurity.resolvesToBlockedAddress("8.8.8.8"))
-    }
-
-    // ---------- P1-13：三层长度治理 ----------
 
     private fun governor(
         displayTextMax: Int = 10,
@@ -216,6 +193,25 @@ class RenderSecurityAndGovernorTest {
         val name = result["name"] as String
         assertFalse(name.contains("\u0301\u0301\u0301"), "连续组合符应被收敛：$name")
         assertEquals(dataUrl(40), result["avatarUrl"], "data URL 不应被组合符规则触碰")
+    }
+
+    @Test
+    fun `RenderCard 正文不截断但 data 仍受治理`() {
+        val warns = mutableListOf<String>()
+        val g = governor(displayTextMax = 10, warns = warns)
+        val card = RenderCard(
+            text = "x".repeat(50),
+            title = "t".repeat(50),
+            data = mapOf("long" to "y".repeat(50), "num" to 1)
+        )
+        val result = g.govern(card) as RenderCard
+        g.report()
+
+        assertEquals(50, result.text.length, "card.text 是正文真源，不能截断成与 fallback 不同的内容")
+        assertEquals(11, result.title!!.length, "title 仍应受展示文本上限约束")
+        assertEquals(11, (result.data["long"] as String).length, "data 内字段仍应受治理")
+        assertEquals(1, result.data["num"])
+        assertTrue(warns.any { it.contains("截断") }, "data 截断必须有告警：$warns")
     }
 
     @Test

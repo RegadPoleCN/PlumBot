@@ -18,38 +18,65 @@
 
 package me.regadpole.plumbot.render
 
+import me.regadpole.plumbot.api.platform.LogLevel
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
 
 /**
- * 受控 HTTP 下载 —— 逐跳校验的重定向跟随。
+ * 受控 HTTP 下载 —— 手动逐跳跟随重定向。
  *
- * ## 为什么不能直接用 `instanceFollowRedirects = true`
- * 出口白名单与"解析后 IP 不得是内网/回环"这两道校验都作用在**初始 URL** 上；
- * 开启自动跳转后，被允许的主机只要回一个 `302 Location: http://169.254.169.254/...`
- * （或 `http://127.0.0.1:port`），请求就会带着白名单的"通行证"打到内网地址 —— 典型 SSRF。
+ * ## 为什么不用 `instanceFollowRedirects = true`
+ * 这里要的是**逐跳可见**：每一跳的响应码、Location、拒绝原因都要落进日志，
+ * 而 JDK 的自动跳转把整条链吞进去后只留一个终态，现场问题无法复盘。
+ * 代价是上限要自己掌握：`MAX_REDIRECTS = 20`，超过即终止。
  *
- * 因此这里**关闭自动跳转**，改为手动跟随：每一跳都重新做 scheme / 白名单 / IP 校验，
- * 任一跳不合法立即终止。
+ * ## 出口约束
+ * - **起点**：仅 https + 主机在白名单内（模板下载没有固定域名清单，只查 https）；
+ * - **跳转**：每一跳仍必须 https，但**不再校验白名单** —— CDN / 镜像站把资源 302 到自己的
+ *   域名是常态，逐跳校验会把正常下载误杀；
+ * - 不再解析目标域名、不再做 IP / CIDR 审查：宿主机常见 DNS 代理 / fake-ip
+ *   （本机实测 example.com 解析到 198.18.0.74、q1.qlogo.cn 解析到 198.18.0.75），校验时的
+ *   解析结果与真正建连时可能不同（DNS 重绑定），据此拦截只会误伤。**已知残余面**：https
+ *   直连内网地址的请求仍会发出，内容由体积上限 / sha256 / 图片签名嗅探兜底。
+ *
+ * ## 日志分级
+ * - WARN：被拒绝（非 https / 起点在名单外 / 缺 Location / 超跳数）—— 值得抬头；
+ * - DEBUG：逐跳跟随（带跳数）、非 2xx / 3xx 终态、连接失败 —— 只在 `debug.enable: true` 时可见；
+ *
+ * 下载的"开始 / 完成 / 全候选失败"由调用方（[ThemeManager] / [AvatarCache]）各打一行
+ * INFO / ERROR，不在这里逐条重复。
  */
 internal object SafeHttp {
 
     /** 允许的最大跳转次数（含初始请求共 MAX_REDIRECTS + 1 次请求）。 */
-    const val MAX_REDIRECTS = 3
+    const val MAX_REDIRECTS = 20
 
-    /** URI 层面的准入判定；返回 null 表示通过，否则返回拒绝原因（用于日志）。 */
-    fun rejectionReason(uri: URI?, allowedHosts: Set<String>?): String? {
+    /** https-only 判定，起点与跳转共用。 */
+    private fun schemeAdmission(uri: URI?): String? {
         if (uri == null) return "地址无法解析"
         if (!uri.scheme.equals("https", ignoreCase = true)) return "仅允许 https：$uri"
-        val host = uri.host
-        if (host.isNullOrBlank()) return "缺少主机名：$uri"
+        if (uri.host.isNullOrBlank()) return "缺少主机名：$uri"
+        return null
+    }
+
+    /**
+     * **起点**准入判定：仅 https + 主机白名单（`allowedHosts == null` 时只查 https）。
+     *
+     * 白名单只约束起点：CDN / 镜像站经常把资源 302 到自己的域名，逐跳校验会把正常
+     * 下载误杀。返回 null 表示通过，否则返回拒绝原因（用于日志）。
+     */
+    fun rejectionReason(uri: URI?, allowedHosts: Set<String>?): String? {
+        schemeAdmission(uri)?.let { return it }
+        val host = uri!!.host
         if (allowedHosts != null && !RenderSecurity.isHostAllowed(host, allowedHosts)) {
             return "主机不在出口白名单内：$host"
         }
-        if (RenderSecurity.resolvesToBlockedAddress(host)) return "主机解析到内网/回环地址：$host"
         return null
     }
+
+    /** **跳转目标**准入判定：只要求仍是 https；起点白名单不适用于跳转目标。 */
+    fun redirectRejectionReason(uri: URI?): String? = schemeAdmission(uri)
 
     /** 解析 `Location`（支持相对地址），失败返回 null。 */
     fun resolveRedirect(from: URI, location: String?): URI? {
@@ -86,7 +113,9 @@ internal object SafeHttp {
     fun looksLikeImage(bytes: ByteArray): Boolean = mimeOf(bytes) != null
 
     /**
-     * 打开一个**已经过逐跳校验**的连接。
+     * 打开一个**起点已通过准入判定**的连接。
+     *
+     * 白名单只在起点校验；跳转目标只要求 https。
      *
      * @return 返回码为 2xx 的连接；被拒绝、超跳数或非 2xx 时返回 null（连接已关闭）
      */
@@ -97,22 +126,21 @@ internal object SafeHttp {
         connectTimeoutMs: Int,
         readTimeoutMs: Int,
         accepted: String? = null,
-        log: (String) -> Unit,
+        log: (LogLevel, String) -> Unit,
         /**
          * 连接工厂 —— **仅供测试注入**（默认走真实网络）。
          *
-         * 为什么需要它：本模块只允许 https 且拒绝内网/回环地址，因此"起一个本地 HTTP 服务器"
-         * 在物理上不可能成为合法起点（目标在建立连接**之前**就被拒了）。要验证真实的逐跳链路
+         * 为什么需要它：本模块只允许 https，而本地测试服务器通常跑在 `http://127.0.0.1:port`，
+         * 在建立连接**之前**就会被 [rejectionReason] 拒掉。要验证真实的逐跳链路
          * （302 链、超跳数、降级），只能替换连接建立这一步。
          */
         connectionFactory: (URI) -> HttpURLConnection = { it.toURL().openConnection() as HttpURLConnection },
     ): HttpURLConnection? = open(url, allowedHosts, userAgent, connectTimeoutMs, readTimeoutMs, accepted, log, connectionFactory)
 
     /**
-     * 与 [openValidated] 相同，但**不做出口白名单**限制，只保证 https + 非内网/回环。
+     * 与 [openValidated] 相同，但**起点**不做白名单限制，只保证 https。
      *
-     * 用于"来源由管理员配置的直链"（例如模板下载）：这类地址没有固定域名清单，
-     * 但仍不应被 302 引到内网地址。
+     * 用于"来源由管理员配置的直链"（例如模板下载）：这类地址没有固定域名清单。
      */
     fun openValidatedWithoutAllowlist(
         url: String,
@@ -120,7 +148,7 @@ internal object SafeHttp {
         connectTimeoutMs: Int,
         readTimeoutMs: Int,
         accepted: String? = null,
-        log: (String) -> Unit,
+        log: (LogLevel, String) -> Unit,
         connectionFactory: (URI) -> HttpURLConnection = { it.toURL().openConnection() as HttpURLConnection },
     ): HttpURLConnection? = open(url, null, userAgent, connectTimeoutMs, readTimeoutMs, accepted, log, connectionFactory)
 
@@ -131,16 +159,17 @@ internal object SafeHttp {
         connectTimeoutMs: Int,
         readTimeoutMs: Int,
         accepted: String?,
-        log: (String) -> Unit,
+        log: (LogLevel, String) -> Unit,
         connectionFactory: (URI) -> HttpURLConnection,
     ): HttpURLConnection? {
         var current: URI? = runCatching { URI(url) }.getOrNull()
 
         for (hop in 0..MAX_REDIRECTS) {
-            val rejection = rejectionReason(current, allowedHosts)
             val uri = current
+            // 起点（hop 0）过白名单；后续跳转只要求 https
+            val rejection = if (hop == 0) rejectionReason(uri, allowedHosts) else redirectRejectionReason(uri)
             if (rejection != null || uri == null) {
-                log("[PlumBot-Render] 下载被拒绝（$rejection）：$url")
+                log(LogLevel.WARN, "[PlumBot-Render] 下载被拒绝（$rejection）：$uri")
                 return null
             }
 
@@ -162,25 +191,26 @@ internal object SafeHttp {
                     val next = resolveRedirect(uri, conn.getHeaderField("Location"))
                     conn.disconnect()
                     if (next == null) {
-                        log("[PlumBot-Render] 跳转缺少 Location，已终止：$uri")
+                        log(LogLevel.WARN, "[PlumBot-Render] 跳转缺少 Location，已终止：$uri")
                         return null
                     }
-                    log("[PlumBot-Render] 跟随跳转（$code）：$uri -> $next")
+                    log(LogLevel.DEBUG, "[PlumBot-Render] 跟随跳转（$code，第 ${hop + 1} 跳）：$uri -> $next")
                     current = next
                     continue
                 }
 
-                log("[PlumBot-Render] 响应码 $code，已终止：$uri")
+                // 非 2xx/3xx 是**这一跳**的终态；上层会把多个候选的失败汇总成一条 ERROR。
+                log(LogLevel.DEBUG, "[PlumBot-Render] 响应码 $code，已终止：$uri")
                 conn.disconnect()
                 return null
             } catch (e: IOException) {
                 conn?.disconnect()
-                log("[PlumBot-Render] 连接失败（$uri）：${e.message}")
+                log(LogLevel.DEBUG, "[PlumBot-Render] 连接失败（$uri）：${e.message}")
                 return null
             }
         }
 
-        log("[PlumBot-Render] 跳转次数超过 $MAX_REDIRECTS 次，已终止：$url")
+        log(LogLevel.WARN, "[PlumBot-Render] 跳转次数超过 $MAX_REDIRECTS 次，已终止：$url")
         return null
     }
 }

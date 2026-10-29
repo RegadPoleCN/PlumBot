@@ -27,10 +27,11 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 逐跳校验：白名单与"解析到内网"判定必须对**每一跳**生效。
+ * 准入判定：白名单只约束**起点**，跳转目标只要求 https。
  *
- * 背景：旧实现开 `instanceFollowRedirects = true`，被放行的主机只要回一个
- * `302 Location: http://127.0.0.1:port/` 就能带着白名单的通行证打到内网（SSRF）。
+ * 背景：旧实现开 `instanceFollowRedirects = true`，跳转目标完全不受控；现在改为手动逐跳跟随，
+ * 但只对起点查白名单 —— CDN / 镜像站 302 到自有域名是常态。
+ * 同时不再解析目标域名：DNS 代理 / fake-ip 环境下解析结果与真实出口无关。
  */
 class SafeHttpTest {
 
@@ -53,10 +54,19 @@ class SafeHttpTest {
     }
 
     @Test
-    fun `解析到回环或内网的主机被拒绝`() {
-        // 直连 IP 与 localhost 都必须被判为不可达外部地址
-        assertNotNull(SafeHttp.rejectionReason(URI("https://127.0.0.1:8080/x.png"), setOf("127.0.0.1")))
-        assertNotNull(SafeHttp.rejectionReason(URI("https://localhost/x.png"), setOf("localhost")))
+    fun `起点白名单不约束跳转目标`() {
+        // CDN / 镜像站 302 到自有域名是常态，跳转目标只要仍是 https 就放行
+        assertNotNull(SafeHttp.rejectionReason(URI("https://cdn.example.org/x.png"), allowed), "起点仍必须在白名单内")
+        assertNull(SafeHttp.redirectRejectionReason(URI("https://cdn.example.org/x.png")))
+    }
+
+    @Test
+    fun `跳转目标仍必须 https`() {
+        val reason = SafeHttp.redirectRejectionReason(URI("http://cdn.example.org/x.png"))
+        assertNotNull(reason)
+        assertTrue(reason.contains("仅允许 https"), "拒绝原因应指明协议：$reason")
+        // https 直连内网地址不再被审查：这是已知残余面，靠内容侧校验兜底
+        assertNull(SafeHttp.redirectRejectionReason(URI("https://127.0.0.1/x.png")))
     }
 
     @Test
@@ -77,17 +87,6 @@ class SafeHttpTest {
         )
         assertNull(SafeHttp.resolveRedirect(base, null))
         assertNull(SafeHttp.resolveRedirect(base, "   "))
-    }
-
-    @Test
-    fun `跳转目标仍要过同一套校验`() {
-        // 白名单主机跳转到内网：这一跳必须被拒绝（这正是旧实现漏掉的一步）
-        val next = SafeHttp.resolveRedirect(URI("https://q1.qlogo.cn/a.png"), "http://127.0.0.1:8080/secret")
-        assertNotNull(next)
-        assertNotNull(SafeHttp.rejectionReason(next, allowed), "跳转后的 http 内网地址必须被拒绝")
-
-        val nextHttpsInternal = SafeHttp.resolveRedirect(URI("https://q1.qlogo.cn/a.png"), "https://localhost/x")
-        assertNotNull(SafeHttp.rejectionReason(nextHttpsInternal, allowed), "跳转后的回环地址必须被拒绝")
     }
 
     @Test
