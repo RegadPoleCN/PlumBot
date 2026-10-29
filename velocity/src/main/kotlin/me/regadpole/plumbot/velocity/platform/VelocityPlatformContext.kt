@@ -76,10 +76,9 @@ class VelocityPlatformContext(
     override fun isPluginAvailable(name: String): Boolean =
         server.pluginManager.isLoaded(name.lowercase())
     /**
-     * 审计是否记录**完整指令**（决策 D9，配置键 `feature.remote_console.log_commands`）。
-     *
-     * 键缺失时按"隐藏明细"处理：这是安全侧失败模式（少记而不是多记）。
-     * 正常安装下该键由内置模板与 `ConfigMigrator` 补齐（默认 `true`）。
+     * 审计是否记录**完整指令**（配置键 `feature.remote_console.log_commands`）。
+     * 键缺失按"隐藏明细"处理：安全侧失败模式是少记而不是多记；正常安装下该键由
+     * 内置模板与 `ConfigMigrator` 补齐（默认 `true`）。
      */
     private fun logCommandsEnabled(): Boolean =
         config.getBoolean("feature", "remote_console", "log_commands")
@@ -95,6 +94,59 @@ class VelocityPlatformContext(
         }.exceptionally { err ->
             future.complete("执行指令出现异常: ${err.message}")
             null
+        }
+        return future
+    }
+
+    /**
+     * 结构化回显：把 `executeAsync` 的布尔结果与捕获行映射成 [EchoResult]，才能区分
+     * "执行成功但无回显"和"指令未识别"，并带上真实通道名 `velocity`。
+     * 旧 [dispatchConsoleCommand] 仍保留字符串契约，供未迁移的调用方使用。
+     */
+    override fun dispatchConsoleCommandEcho(command: String): CompletableFuture<EchoResult> {
+        val startNanos = System.nanoTime()
+        val capturer = CapturingVelocityCommandSource(server.consoleCommandSource)
+        log(LogLevel.WARN, RemoteConsoleAudit.describe(command, logCommandsEnabled()))
+        val future = CompletableFuture<EchoResult>()
+        server.commandManager.executeAsync(capturer, command).whenComplete { executed, err ->
+            val lines = capturer.getOutputOrEmpty()
+                .split('\n')
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            val durationMs = (System.nanoTime() - startNanos) / 1_000_000
+            future.complete(
+                when {
+                    err != null -> EchoResult(
+                        state = EchoState.FAILED,
+                        channel = "velocity",
+                        lines = lines,
+                        durationMs = durationMs,
+                        code = EchoCode.ECHO_EXCEPTION,
+                        detail = err.message?.takeIf { it.isNotBlank() } ?: err.javaClass.simpleName
+                    )
+                    executed == false -> EchoResult(
+                        state = EchoState.UNKNOWN_OR_REJECTED,
+                        channel = "velocity",
+                        lines = lines,
+                        durationMs = durationMs,
+                        code = EchoCode.ECHO_DISPATCH_FALSE,
+                        detail = "代理端未识别或拒绝该指令"
+                    )
+                    lines.isNotEmpty() -> EchoResult(
+                        state = EchoState.CAPTURED,
+                        channel = "velocity",
+                        lines = lines,
+                        durationMs = durationMs
+                    )
+                    else -> EchoResult(
+                        state = EchoState.SUCCESS_NO_OUTPUT,
+                        channel = "velocity",
+                        durationMs = durationMs,
+                        code = EchoCode.ECHO_NO_CHANNEL,
+                        detail = "代理端执行成功，但没有捕获到回显"
+                    )
+                }
+            )
         }
         return future
     }

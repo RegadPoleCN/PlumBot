@@ -18,17 +18,22 @@
 
 package me.regadpole.plumbot.bukkit.platform
 
+import me.regadpole.plumbot.config.ConsoleEchoSetting
 import me.regadpole.plumbot.config.YamlConfigurator
-import me.regadpole.plumbot.internal.RemoteConsoleAudit
 import me.regadpole.plumbot.internal.LogLevel
+import me.regadpole.plumbot.api.platform.EchoResult
+import me.regadpole.plumbot.api.platform.EchoState
 import me.regadpole.plumbot.api.platform.PlatformCapability
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformType
+import me.regadpole.plumbot.bukkit.echo.BukkitEchoExecutor
+import me.regadpole.plumbot.bukkit.echo.EchoSettingsReader
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import java.nio.file.Path
+import java.util.concurrent.CompletableFuture
 
 class BukkitPlatformContext(
     private val configProvider: () -> YamlConfigurator,
@@ -39,6 +44,14 @@ class BukkitPlatformContext(
     override val playerService: PlatformPlayerService,
     val messenger: BukkitPlatformMessenger,
 ): PlatformContext {
+    private val echoExecutor by lazy {
+        BukkitEchoExecutor(
+            settingsProvider = { EchoSettingsReader.read(config) },
+            logger = this.logger,
+            scheduler = this.scheduler
+        )
+    }
+
     override val config: YamlConfigurator
         get() = configProvider()
 
@@ -64,7 +77,7 @@ class BukkitPlatformContext(
     }
 
     override fun sendMessage(message: Component) {
-        messenger.sendMessage(message)
+        messenger.sendMessage(message, ConsoleEchoSetting.enabled(config))
     }
 
     override fun isPluginAvailable(name: String): Boolean {
@@ -79,13 +92,12 @@ class BukkitPlatformContext(
     }
 
     override fun getMspt(): Double? {
-        // 1. 优先尝试 Paper 原生 getAverageTickTime()
+        // 逐层降级：Paper 原生 getAverageTickTime → getTickTimes → NMS tickTimes 反射兜底。
         runCatching {
             val method = Bukkit.getServer().javaClass.getMethod("getAverageTickTime")
             val result = method.invoke(Bukkit.getServer())
             if (result is Number) return result.toDouble()
         }
-        // 2. 尝试 Paper getTickTimes()
         runCatching {
             val method = Bukkit.getServer().javaClass.getMethod("getTickTimes")
             val times = method.invoke(Bukkit.getServer()) as? LongArray
@@ -93,7 +105,6 @@ class BukkitPlatformContext(
                 return times.average() * 1.0E-6
             }
         }
-        // 3. 尝试 NMS MinecraftServer.tickTimes 反射兜底
         return runCatching {
             val mcServerClass = Class.forName("net.minecraft.server.MinecraftServer")
             val getServerMethod = mcServerClass.getMethod("getServer")
@@ -105,35 +116,32 @@ class BukkitPlatformContext(
             } else null
         }.getOrNull()
     }
-    /**
-     * 审计是否记录**完整指令**（决策 D9，配置键 `feature.remote_console.log_commands`）。
-     *
-     * 键缺失时按"隐藏明细"处理：这是安全侧失败模式（少记而不是多记）。
-     * 正常安装下该键由内置模板与 `ConfigMigrator` 补齐（默认 `true`）。
-     */
-    private fun logCommandsEnabled(): Boolean =
-        config.getBoolean("feature", "remote_console", "log_commands")
+    override fun dispatchConsoleCommandEcho(command: String): CompletableFuture<EchoResult> =
+        echoExecutor.submit(command)
 
-    override fun dispatchConsoleCommand(command: String): java.util.concurrent.CompletableFuture<String> {
-        val future = java.util.concurrent.CompletableFuture<String>()
-        // 强制在游戏主线程调度执行，保证线程安全
-        scheduler.runSync {
-            try {
-                val consoleSender = Bukkit.getConsoleSender()
-                val capturingSender = CapturingConsoleCommandSender(consoleSender)
-                logger.log(LogLevel.WARN, RemoteConsoleAudit.describe(command, logCommandsEnabled()))
-                val success = Bukkit.dispatchCommand(capturingSender, command)
-                val output = capturingSender.getOutput()
-                val resultText = when {
-                    output.isNotBlank() -> output
-                    success -> "指令已在主线程执行成功（无控制台回显）。"
-                    else -> "指令执行失败或未识别此指令。"
-                }
-                future.complete(resultText)
-            } catch (e: Throwable) {
-                future.complete("执行指令出现异常: ${e.message}")
+    override fun echoDiagnostics(): List<String> = echoExecutor.diagnostics()
+
+    /**
+     * 预热回显链路（幂等）。必须在**异步线程**调用：内部要做 Paper 通道探测、反射构造
+     * FeedbackForwardingSender、解析 en_us，这些是首次派发时白花在主线程上的开销。
+     */
+    fun warmUpEcho() {
+        echoExecutor.warmUp()
+    }
+
+    /**
+     * 旧接口的兼容投影：新代码用 [dispatchConsoleCommandEcho]，这里把结构化结果压回
+     * 旧字符串，保证未迁移调用方的行为（含原兜底文案）不变。
+     */
+    override fun dispatchConsoleCommand(command: String): CompletableFuture<String> =
+        dispatchConsoleCommandEcho(command).thenApply { echo ->
+            when (echo.state) {
+                EchoState.CAPTURED -> echo.text
+                EchoState.SUCCESS_NO_OUTPUT -> "指令已在主线程执行成功（无控制台回显）。"
+                EchoState.UNKNOWN_OR_REJECTED -> echo.text.ifBlank { "指令执行失败或未识别此指令。" }
+                EchoState.FAILED -> "执行指令出现异常: " + (
+                    echo.detail?.takeIf { it.isNotBlank() } ?: echo.code ?: "未知错误"
+                    )
             }
         }
-        return future
-    }
 }

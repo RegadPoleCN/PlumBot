@@ -69,17 +69,20 @@ class CapturingVelocityCommandSource(
 
     override fun sendRichMessage(message: String) {
         val component = MiniMessage.miniMessage().deserialize(message)
+        // capturer 内部已通过 forwardTo 转发给真实控制台，不能再显式 delegate 一次，
+        // 否则同一条官方消息会在控制台出现两遍。
         capturer.sendMessage(component)
-        delegate.sendMessage(component)
     }
 
     override fun sendRichMessage(message: String, vararg resolvers: TagResolver) {
         val component = MiniMessage.miniMessage().deserialize(message, *resolvers)
         capturer.sendMessage(component)
-        delegate.sendMessage(component)
     }
 
     fun getOutput(): String = capturer.getResult()
+
+    /** 不做“成功但无回显”兜底文案的原始捕获，供结构化回显判断是否真的捕获到行。 */
+    fun getOutputOrEmpty(): String = capturer.getResult("")
 
     override fun hasPermission(permission: String?): Boolean {
         return true

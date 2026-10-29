@@ -68,7 +68,8 @@ class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
         HytaleDependencyLoader(this) { if (::config.isInitialized) config else null }
     }
 
-    private val platformScheduler by lazy { HytalePlatformScheduler() }
+    // 调度器需要告警出口：拿不到世界 tick 线程时 runSync 会悄悄回退异步，必须留痕。
+    private val platformScheduler by lazy { HytalePlatformScheduler(warn = { logger.atWarning().log(it) }) }
     private val playerService by lazy { HytalePlayerService() }
 
     private val platformContext: HytalePlatformContext by lazy {
@@ -86,20 +87,17 @@ class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
     override val platform: PlatformContext get() = platformContext
 
     override fun setup() {
-        // 1. 动态注入 SQLite/MySQL 运行时驱动
         dependencyLoader.loadDependencies()
-        // 1.1 把 Libby 装载器交给渲染门户：engine=playwright 且真正出图时才按需下载 Playwright
+        // 交给渲染门户：engine=playwright 且真正出图时才按需下载 Playwright
         RenderProvider.registerLibraryLoader(dependencyLoader)
-        // 1.2 装配 Hytale 外观解析器：服主覆盖目录 + 平台日志出口
+        // 外观解析器：服主覆盖目录 + 平台日志出口
         HytaleAvatarResolver.overrideRoot = dataDirectory.resolve("assets/characters").toFile()
         HytaleAvatarResolver.logSink = { message -> logger.atWarning().log(message) }
-        // 2. 加载与自愈补齐配置文件
         loadConfig()
         metrics
     }
 
     override fun start() {
-        // 3. 注册内置 OneBot 工厂与公开 API 门面
         BotProvider.clearFactories()
         BotProvider.registerFactory(OneBotFactory)
 
@@ -107,21 +105,18 @@ class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
         PlumBotApiProvider.register(apiImpl)
         BotEventDispatcher.attachedPlugin = this
 
-        // 4. 初始化持久层与 Bot 客户端
         enable()
 
-        // 5. 初始化敏感词过滤
         val filterThesaurus = FilterThesaurusManager(platformContext)
         FilterManagerHolder.manager = filterThesaurus
         // 异步预热词库：走插件自有 IO 作用域，不再占用平台调度线程
         filterThesaurus.reloadAsync()
 
-        // 6. 注册事件网桥 (最前置白名单鉴权 + 就绪后进服广播)
+        // 事件网桥：最前置的白名单鉴权 + 就绪后进服广播
         val eventBridge = GameEventBridge(platform)
         val loginService = PlayerLoginService(platform)
         HytaleServerListener(this, eventRegistry, eventBridge, loginService).register()
 
-        // 7. 注册 Hytale 原生管理指令 /plumbot
         commandRegistry.registerCommand(HytalePlumBotCommand(this))
     }
 
@@ -159,10 +154,8 @@ class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
 }
 
 /**
- * 注册 bStats「适配器类别」chart（决策：chart 做适配器类别）。
- *
- * 只上报类别名（onebot / miraimc / unknown），不含任何标识信息；
- * 配置未就绪时回退到当前已加载适配器的类型。
+ * 注册 bStats「适配器类别」chart：只上报类别名（onebot / miraimc / unknown），
+ * 不含任何标识信息；配置未就绪时回退到当前已加载适配器的类型。
  */
 private fun registerAdapterChart(metrics: org.bstats.hytale.Metrics) {
     metrics.addCustomChart(SimplePie(AdapterTelemetry.CHART_ID) { AdapterTelemetry.current() })

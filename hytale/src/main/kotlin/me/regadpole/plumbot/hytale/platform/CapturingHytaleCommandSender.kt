@@ -48,6 +48,9 @@ class CapturingHytaleCommandSender(
 
     fun getOutput(): String = capturer.getResult()
 
+    /** 不做“成功但无回显”兜底文案的原始捕获，供结构化回显判断是否真的捕获到行。 */
+    fun getOutputOrEmpty(): String = capturer.getResult("")
+
     override fun hasPermission(query: PermissionQuery): Boolean {
         return true
     }

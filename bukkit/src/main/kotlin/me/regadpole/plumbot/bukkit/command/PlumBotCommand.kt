@@ -22,6 +22,7 @@ import me.regadpole.plumbot.bukkit.PlumBotBukkit
 import me.regadpole.plumbot.command.CommandHost
 import me.regadpole.plumbot.command.CommandOutput
 import me.regadpole.plumbot.command.PlumBotCommandHandler
+import me.regadpole.plumbot.command.RenderCommandService
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
@@ -31,8 +32,7 @@ import org.bukkit.command.CommandSender
 import org.bukkit.command.TabCompleter
 
 /**
- * Bukkit 适配层：只做权限判定、Tab 补全与 `Component → § 传统文本` 落地。
- * 命令语义（help / status / bind）统一在 common 的 [PlumBotCommandHandler]。
+ * Bukkit 适配层：只做权限判定、Tab 补全与 `Component → § 传统文本` 落地；命令语义在 [PlumBotCommandHandler]。
  */
 class PlumBotCommand(private val plugin: PlumBotBukkit) : CommandExecutor, TabCompleter {
 
@@ -41,7 +41,7 @@ class PlumBotCommand(private val plugin: PlumBotBukkit) : CommandExecutor, TabCo
         override fun reloadPlugin() = plugin.reloadPlugin()
         override fun onlinePlayerCount(): Int = plugin.listPlayers().size
         override fun kickPlayer(playerName: String) = plugin.kickPlayer(playerName)
-    })
+    }, RenderCommandService(plugin.platform), { plugin.platform.echoDiagnostics() })
 
     private val legacy: LegacyComponentSerializer = LegacyComponentSerializer.legacySection()
 

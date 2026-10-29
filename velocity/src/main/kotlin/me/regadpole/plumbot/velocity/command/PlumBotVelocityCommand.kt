@@ -22,13 +22,13 @@ import com.velocitypowered.api.command.SimpleCommand
 import me.regadpole.plumbot.command.CommandHost
 import me.regadpole.plumbot.command.CommandOutput
 import me.regadpole.plumbot.command.PlumBotCommandHandler
+import me.regadpole.plumbot.command.RenderCommandService
 import me.regadpole.plumbot.velocity.PlumBotVelocity
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 
 /**
- * Velocity 适配层：只做权限判定 + 把 common 生成的 [Component] 直接交给代理端发送。
- * Velocity 自带 Adventure，因此这里可以直接使用宿主类，无需重定位或回退装载。
+ * Velocity 适配层：只做权限判定，[Component] 直接交给代理端发送，无需重定位。
  */
 class PlumBotVelocityCommand(private val plugin: PlumBotVelocity) : SimpleCommand {
 
@@ -37,7 +37,7 @@ class PlumBotVelocityCommand(private val plugin: PlumBotVelocity) : SimpleComman
         override fun reloadPlugin() = plugin.reloadPlugin()
         override fun onlinePlayerCount(): Int = plugin.listPlayers().size
         override fun kickPlayer(playerName: String) = plugin.kickPlayer(playerName)
-    })
+    }, RenderCommandService(plugin.platform), { plugin.platform.echoDiagnostics() })
 
     override fun execute(invocation: SimpleCommand.Invocation) {
         val source = invocation.source()

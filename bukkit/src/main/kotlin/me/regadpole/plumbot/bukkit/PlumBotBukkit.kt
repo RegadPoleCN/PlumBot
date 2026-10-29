@@ -94,7 +94,6 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         }
 
         val metrics = Metrics(this, 19427)
-        // 适配器类别上报（决策：bStats chart 用适配器类别；仅类别名，无标识信息）
         registerAdapterChart(metrics)
 
         val botType = config.getString("bot", "type") ?: "onebot"
@@ -123,6 +122,11 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
         server.servicesManager.register(PlumBotAPI::class.java, apiImpl, this, ServicePriority.Normal)
 
         enable()
+
+        // 异步预热回显链路：首次派发曾在主线程单 tick 花掉 72ms；只预热一次，失败仅影响首帧耗时。
+        runCatching {
+            platformScheduler.runAsync { runCatching { platformContext.warmUpEcho() } }
+        }
 
         val filterThesaurus = me.regadpole.plumbot.filter.FilterThesaurusManager(platformContext)
         me.regadpole.plumbot.filter.FilterManagerHolder.manager = filterThesaurus
@@ -156,7 +160,6 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
     }
 
     override fun onDisable() {
-        // 插件禁用时的逻辑
         disable()
         // 清空注册表，避免 /reload 后残留外部 adapter。
         runCatching {
@@ -196,10 +199,8 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 }
 
 /**
- * 注册 bStats「适配器类别」chart（决策：chart 做适配器类别）。
- *
- * 只上报类别名（onebot / miraimc / unknown），不含任何标识信息；
- * 配置未就绪时回退到当前已加载适配器的类型。
+ * 注册 bStats「适配器类别」chart：只上报类别名（onebot / miraimc / unknown），
+ * 不含任何标识信息；配置未就绪时回退到当前已加载适配器的类型。
  */
 private fun registerAdapterChart(metrics: org.bstats.bukkit.Metrics) {
     metrics.addCustomChart(SimplePie(AdapterTelemetry.CHART_ID) { AdapterTelemetry.current() })

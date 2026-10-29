@@ -24,15 +24,15 @@ import com.hypixel.hytale.server.core.command.system.CommandContext
 import me.regadpole.plumbot.command.CommandHost
 import me.regadpole.plumbot.command.CommandOutput
 import me.regadpole.plumbot.command.PlumBotCommandHandler
+import me.regadpole.plumbot.command.RenderCommandService
 import me.regadpole.plumbot.hytale.PlumBotHytale
 import me.regadpole.plumbot.utils.toPlainText
 import java.util.concurrent.CompletableFuture
 
 /**
  * Hytale 适配层：只做参数拆分、权限（框架侧 `requirePermission`）与
- * `Component → 纯文本` 落地。命令语义统一在 common 的 [PlumBotCommandHandler]。
- *
- * Hytale 宿主不带 Adventure，纯文本转换走 [toPlainText]（只递归 TextComponent，不需要额外模块）。
+ * `Component → 纯文本` 落地，命令语义统一在 [PlumBotCommandHandler]。
+ * Hytale 宿主不带 Adventure，纯文本转换走 [toPlainText]。
  */
 class HytalePlumBotCommand(private val plugin: PlumBotHytale) :
     AbstractCommand("plumbot", "PlumBot 管理命令") {
@@ -42,7 +42,7 @@ class HytalePlumBotCommand(private val plugin: PlumBotHytale) :
         override fun reloadPlugin() = plugin.reloadPlugin()
         override fun onlinePlayerCount(): Int = plugin.listPlayers().size
         override fun kickPlayer(playerName: String) = plugin.kickPlayer(playerName)
-    })
+    }, RenderCommandService(plugin.platform), { plugin.platform.echoDiagnostics() })
 
     init {
         requirePermission("plumbot.admin")
