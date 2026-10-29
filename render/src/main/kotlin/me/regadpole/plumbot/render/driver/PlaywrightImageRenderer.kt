@@ -926,7 +926,7 @@ internal class PlaywrightImageRenderer(
         "browser",
         null,
         "未找到可用的 Chromium/Chrome/Edge，且 playwright-browsers 下没有已安装版本：" + detail,
-        "运行 /plumbot render install 安装内置 Chromium；或设置 render.playwright.custom_chrome_path 指向 Chrome/Edge；或设置 browser_channel=chrome/msedge。P4 起渲染不再自动下载浏览器。",
+        "运行 /plumbot render install 安装内置 Chromium；或设置 render.playwright.custom_chrome_path 指向 Chrome/Edge；或设置 browser_channel=chrome/msedge。渲染不再自动下载浏览器。",
         manualInstallCommand(options)
     )
 
