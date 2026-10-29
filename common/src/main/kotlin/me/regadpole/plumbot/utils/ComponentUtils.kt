@@ -29,32 +29,20 @@ fun String.asMiniMessage(): Component = MiniMessage.miniMessage().deserialize(th
 /** 转义 MiniMessage 标签 */
 fun String.escapeMiniMessage(): String = MiniMessage.miniMessage().escapeTags(this)
 
-/** Component 转 & 颜色字符串 */
-fun Component.toLegacyAmpersand(): String = LegacyComponentSerializer.legacyAmpersand().serialize(this)
+/** Component 转 & 颜色字符串（翻译键会先经过 GlobalTranslator 渲染）。 */
+fun Component.toLegacyAmpersand(): String = ComponentProjector.projectLegacyAmpersand(this)
 
-/** 递归提取 Component 中的所有纯文本，完全剥除颜色和样式 */
-fun Component.toPlainText(): String {
-    val builder = StringBuilder()
-    fun extract(c: Component) {
-        if (c is TextComponent) {
-            builder.append(c.content())
-        }
-        for (child in c.children()) {
-            extract(child)
-        }
-    }
-    extract(this)
-    return builder.toString()
-}
+/** 提取 Component 中的所有纯文本，完全剥除颜色和样式；translatable/score/keybind 等节点不会被吞掉。 */
+fun Component.toPlainText(): String = ComponentProjector.projectPlain(this)
 
-/** 剥除传统 Minecraft 格式码 */
+/** 剥除传统 Minecraft 格式码（同时支持 & 与 § 两种前缀）。 */
 fun String.stripMinecraftFormatting(): String {
-    val component = LegacyComponentSerializer.legacyAmpersand().deserialize(
-        LegacyComponentSerializer.legacySection().serialize(
-            LegacyComponentSerializer.legacyAmpersand().deserialize(this)
-        )
-    )
-    return component.toPlainText()
+    val component = if (this.contains('§')) {
+        LegacyComponentSerializer.legacySection().deserialize(this)
+    } else {
+        LegacyComponentSerializer.legacyAmpersand().deserialize(this)
+    }
+    return ComponentProjector.projectPlain(component)
 }
 
 // 保持既有顶层函数无缝兼容
