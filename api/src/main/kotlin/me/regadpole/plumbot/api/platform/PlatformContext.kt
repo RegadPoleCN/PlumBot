@@ -66,6 +66,24 @@ interface PlatformContext {
     fun dispatchConsoleCommand(command: String): java.util.concurrent.CompletableFuture<String> =
         java.util.concurrent.CompletableFuture.completedFuture("当前平台不支持指令执行回显。")
 
+    /**
+     * 在平台控制台异步执行指令，并返回结构化的执行/回显结果。
+     *
+     * 默认实现把旧 [dispatchConsoleCommand] 的字符串包装为 [EchoResult]，
+     * 因此未迁移的平台仍可工作；具备多通道捕获能力的平台应覆盖本方法。
+     */
+    fun dispatchConsoleCommandEcho(command: String): java.util.concurrent.CompletableFuture<EchoResult> =
+        dispatchConsoleCommand(command).thenApply { EchoResult.fromLegacyOutput(it) }
+
+    /**
+     * 远程控制台回显的诊断信息（供 `/plumbot doctor echo` 展示）。
+     *
+     * 默认实现说明"当前平台未提供结构化诊断"，具备多通道捕获能力的平台覆盖后
+     * 应返回通道可用性、最近一次结果等**不含密码/敏感配置**的行。
+     */
+    fun echoDiagnostics(): List<String> =
+        listOf("当前平台未提供远程控制台回显诊断（使用默认回显实现）。")
+
     /** 校验当前平台是否具备某个能力 */
     fun hasCapability(capability: PlatformCapability): Boolean =
         capability in supportedCapabilities

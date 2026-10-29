@@ -21,6 +21,7 @@ package me.regadpole.plumbot
 import me.regadpole.config.DatabaseSource
 import me.regadpole.plumbot.api.StableApi
 import me.regadpole.plumbot.config.MessagesBinder
+import me.regadpole.plumbot.config.RenderTextStyleReader
 import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.database.DatabaseProvider
@@ -32,7 +33,6 @@ import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.task.TaskProviderImpl
 import me.regadpole.plumbot.render.RenderConfig
 import me.regadpole.plumbot.render.RenderProvider
-import me.regadpole.plumbot.render.RenderTextStyle
 import me.regadpole.plumbot.utils.HttpConstants
 import net.kyori.adventure.text.Component
 import taboolib.module.database.Database
@@ -74,8 +74,15 @@ interface PlumBot {
     fun disable() {
         BotProvider.unloadBot()
         log(LogLevel.INFO, "Bot stopped!")
-        RenderProvider.shutdown()
-        log(LogLevel.INFO, "Render portal shutdown!")
+        // 停服路径必须**等待**引擎拆除：shutdown() 是 fire-and-forget，若 disable() 立刻返回，
+        // 平台随即关闭插件类加载器，而回收线程仍在执行 PlaywrightImpl.close() —— 线上实测抛
+        // "The plugin classloader for PlumBot has thrown a zip file error."。
+        val drained = RenderProvider.shutdownAndAwait()
+        if (drained) {
+            log(LogLevel.INFO, "Render portal shutdown!")
+        } else {
+            log(LogLevel.WARN, "Render portal shutdown timed out; Chromium driver will be reaped with the JVM.")
+        }
         DatabaseProvider.shutdown()
         log(LogLevel.INFO, "Database closed!")
         TaskProviderImpl.shutdown()
@@ -122,20 +129,18 @@ interface PlumBot {
             ?.replace("%plugin_folder%", dataDirectory.pathString)
 
         // 文本可读性规则：配置 → 门户 → AWT 引擎。
-        // 任一键缺失时回落到 RenderTextStyle 的默认值（与协议清单一致）。
-        val defaults = RenderTextStyle()
-        val configuredThreshold = config.getDouble("render", "text", "contrast_threshold")
-        val textStyle = RenderTextStyle(
-            baseColor = config.getString("render", "text", "base")?.takeIf { it.isNotBlank() }
-                ?: defaults.baseColor,
-            textColor = config.getString("render", "text", "color")?.takeIf { it.isNotBlank() }
-                ?: defaults.textColor,
-            contrastThreshold = configuredThreshold.takeIf { it.isFinite() && it > 0.0 }
-                ?: defaults.contrastThreshold,
-            autoOutline = config.getBoolean("render", "text", "auto_outline")
-        )
+        // 读取语义（缺失/非法/0）集中在 RenderTextStyleReader，由单测覆盖；
+        // 此处不得再就地解析 render.text，否则新增键仍会静默漏读。
+        val textStyle = RenderTextStyleReader.read(config)
 
-        val portal = RenderProvider.bootstrap(platform)
+        // 主线程只做廉价配置注入：门户的 configure() 会把 TTF 读取、字体 CSS 构建、
+        // 主题目录扫描与引擎重建调度到平台异步线程，不得在此处同步读取字体/扫目录。
+        //
+        // **已装配则复用**：bootstrap() 会先同步关闭旧门户，而 Playwright 的
+        // Browser.close()/PlaywrightImpl.close() 会阻塞等待 node 驱动进程退出（实测秒级，
+        // 单 tick MSPT 最高 1817ms）。reload 只需要用新配置重新 configure()，
+        // 引擎重建由紧随其后的 RenderProvider.getOrNull()?.reload() 在异步线程完成。
+        val portal = RenderProvider.getOrNull() ?: RenderProvider.bootstrap(platform)
         portal.configure(
             RenderConfig(
                 fontFile = fontPath?.takeIf { it.isNotBlank() }?.let { File(it) },

@@ -39,6 +39,14 @@ class DebugProvider(private val plugin: PlumBot) {
     @Volatile
     private var timerHandle: PlatformTaskHandle? = null
 
+    /**
+     * debug 是否真正启用（`debug.enable: true` 且 [load] 已跑完）。
+     *
+     * 平台层需要它来决定"把 DEBUG 映射成控制台可见的 INFO"还是"保持隐藏"
+     * 仅看配置项而不看 [initialized] 会把加载失败当成开启。
+     */
+    val isEnabled: Boolean get() = initialized
+
     fun load() {
         val config = plugin.config
         if (config.getBoolean("debug", "enable")) {

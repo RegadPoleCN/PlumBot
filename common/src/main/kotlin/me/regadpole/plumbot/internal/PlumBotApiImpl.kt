@@ -91,25 +91,34 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
         }
     }
 
-    override suspend fun sendGroupImage(groupId: Long, imageFile: File) = withContext(Dispatchers.IO) {
+    override suspend fun sendGroupImage(groupId: Long, imageFile: File): Unit = withContext(Dispatchers.IO) {
         val bot = BotProvider.getBot() ?: throw BotNotReadyException()
         if (!imageFile.exists() || !imageFile.isFile) {
             throw IllegalArgumentException("指定图片文件不存在: ${imageFile.absolutePath}")
         }
         try {
-            bot.sendGroupImage(groupId, imageFile)
+            // 适配器在明确未送达时返回 false（不再静默吞异常）；对外 API 语义仍是"抛异常"，保持一致。
+            if (!bot.sendGroupImage(groupId, imageFile)) {
+                throw BotMessageSendException("发送群图片失败 (群: $groupId)：协议层未送达", null)
+            }
+        } catch (e: BotMessageSendException) {
+            throw e
         } catch (e: Throwable) {
             throw BotMessageSendException("发送群图片失败 (群: $groupId)", e)
         }
     }
 
-    override suspend fun sendGroupImage(groupId: Long, imageBytes: ByteArray) = withContext(Dispatchers.IO) {
+    override suspend fun sendGroupImage(groupId: Long, imageBytes: ByteArray): Unit = withContext(Dispatchers.IO) {
         if (imageBytes.isEmpty()) {
             throw IllegalArgumentException("图片字节为空")
         }
         val bot = BotProvider.getBot() ?: throw BotNotReadyException()
         try {
-            bot.sendGroupImage(groupId, imageBytes)
+            if (!bot.sendGroupImage(groupId, imageBytes)) {
+                throw BotMessageSendException("发送群图片失败 (群: $groupId)：协议层未送达", null)
+            }
+        } catch (e: BotMessageSendException) {
+            throw e
         } catch (e: Throwable) {
             throw BotMessageSendException("发送群图片失败 (群: $groupId)", e)
         }
