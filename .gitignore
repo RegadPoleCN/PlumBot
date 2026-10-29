@@ -1,8 +1,13 @@
 .gradle
 build/
+/dist/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
+# 代码知识图谱索引（本地索引，不入库）
+.codegraph/
+# 临时工作区
+.tmp/
 
 ### IntelliJ IDEA ###
 .idea/modules.xml
@@ -35,7 +40,6 @@ bin/
 ### NetBeans ###
 /nbproject/private/
 /nbbuild/
-/dist/
 /nbdist/
 /.nb-gradle/
 
@@ -47,11 +51,14 @@ bin/
 
 .trae/
 .omo
-TODO.md
+# 根目录待办清单（本地规划产物）
+/TODO.md
 # 渲染子系统规划/核对文档（本地规划产物，不入库）
 rendertodo*.md
 # 审查/修补文档集（本地评审产物，不入库）
 /coding-docs/review/
-# Web 前端 workspace（独立维护，整体不入库）
-/web/
 temp/
+# Agent Teams 审查过程产物（临时报告，不入库）
+.dsh-tmp/
+# 构建日志（本地诊断产物，不入库）
+/*.log
