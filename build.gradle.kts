@@ -128,7 +128,7 @@ val copyDist = tasks.register<Copy>("dist") {
 }
 
 /**
- * 模块边界机械校验（基线 §3.6.7 层 3）。
+ * 模块边界机械校验。
  *
  * 1. **适配层零依赖 `:render`** —— 适配层只应"把字节发出去"，任何渲染引用都属越级；
  * 2. **`:render` 内部类型不得被跨模块引用** —— 门户是唯一入口；
@@ -298,7 +298,7 @@ fun yamlBlock(file: File, path: List<String>): Map<String, String>? {
 }
 
 /**
- * 渲染协议清单一致性校验（基线 §4.5 轻档）。
+ * 渲染协议清单一致性校验。
  *
  * 单一真源为 `render/src/main/resources/render-protocol.json`。本任务保证：
  * 1. 清单中的 route 集合与 Kotlin 的 [RenderRoute] 枚举**完全一致**（双向，防止任一侧漂移）；

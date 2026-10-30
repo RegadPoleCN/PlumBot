@@ -137,7 +137,7 @@ RenderCard(text: String, title: String? = null, data: Map<String, Any?> = emptyM
 
 装载门把「要不要下载」收进一个状态机（`IDLE → RUNNING → READY | COOLING`），三条不变式：
 
-1. **非阻塞**：`startOnce(reason)` 只把装载排进 `PlatformScheduler.runAsync` 就返回。渲染路径发现类不在类路径时只按一下按钮就抛 `PW_DEPENDENCY_MISSING`，本轮交给 AWT；在渲染线程里内联下载会让出图卡到超时。
+1. **非阻塞**：`startOnce(reason)` 只把装载排进 `PlatformScheduler.runAsync` 就返回。渲染路径发现类不在类路径时只按一下按钮就抛 `PW_DEPENDENCY_MISSING`，本次交给 AWT；在渲染线程里内联下载会让出图卡到超时。
 2. **单飞 + 冷却**：`RUNNING` 期间重复请求直接拒绝，`startOnce` 与 `awaitLoad()`（doctor / install 的阻塞入口）共用一把装载锁；`READY` 后不再触发，失败冷却 60s，`COOLING` 期间不摸网络、降级日志降为 INFO。
 
 装载入口必须齐备，否则「只有消息能出图、只敲命令的服务器永远降级」：`configure()` 见已启用且 `engine=playwright` 的路由即调度（`schedulePlaywrightLoadIfConfigured`）；消息走 `warmUpEngines()`；命令回复走 `sendRendered()` → `warmUpEngines()`；`doRender()` 再兜底一次（幂等 + 冷却）。

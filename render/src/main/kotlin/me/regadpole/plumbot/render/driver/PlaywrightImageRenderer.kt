@@ -173,7 +173,7 @@ internal class PlaywrightImageRenderer(
             // 真正的下载在平台异步泳道上进行，完成后下一次出图自动改用高清引擎。
             val requested = installGate?.startOnce("render") == true
             val state = if (requested) {
-                "已按需在后台开始装载，本轮先用 AWT 兜底，装载完成后自动改用 Playwright 引擎。"
+                "已按需在后台开始装载，本次先用 AWT 兜底，装载完成后自动改用 Playwright 引擎。"
             } else {
                 "装载未在本次触发（已就绪 / 正在装载 / 失败冷却中），执行 /plumbot render doctor 查看原因。"
             }
@@ -371,7 +371,7 @@ internal class PlaywrightImageRenderer(
         }
     }
 
-    /** 出口白名单：来自配置，缺省回落到基线 §3.4 的内置列表。 */
+    /** 出口白名单：来自配置，缺省回落到内置列表。 */
     private fun resolveAllowedHosts(): Set<String> = RenderSecurity.allowedHostsFrom(context.config)
 
     override suspend fun render(viewRoute: String, payload: Any, options: RenderOptions): ByteArray? = withContext(renderDispatcher) {

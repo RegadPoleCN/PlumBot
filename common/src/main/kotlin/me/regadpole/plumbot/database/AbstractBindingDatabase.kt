@@ -97,7 +97,7 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
             return
         }
         runCatching { createUniquePlayerNameIndex() }
-            .onFailure { System.err.println("[PlumBot-DB] 唯一索引创建失败（本轮跳过）：${it.message}") }
+            .onFailure { System.err.println("[PlumBot-DB] 唯一索引创建失败（本次跳过）：${it.message}") }
     }
 
     private fun findDuplicatePlayerNames(): List<String> = runCatching {

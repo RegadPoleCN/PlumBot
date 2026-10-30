@@ -6,7 +6,7 @@
 
 - 默认引擎 `awt`：不下载、不装载、不实例化、不加载任何 `com.microsoft.playwright.*` 类。
 - 切到 `playwright` 后浏览器只做**检测**（`custom_chrome_path` → `browser_channel` → 系统浏览器 → `browsers_path` 托管目录），四条链都没命中才返回 `PW_BROWSER_MISSING` 并附手动命令；**绝不在渲染线程里等下载**。
-- 运行库装载走 `PlaywrightInstallGate`：渲染线程发现 `com.microsoft.playwright.Playwright` 不在类路径时，只「按一下按钮」非阻塞调度一次异步装载，随即抛 `PW_DEPENDENCY_MISSING`，本轮用 AWT 兜底。单飞（同一时刻只许一次装载）；成功后不再触发；失败冷却 60 秒，冷却期内不摸网络、降级日志降为 INFO。主线程守卫在装载器一侧：Bukkit 拒绝从主线程下载，Hytale 拒绝从世界 tick 线程下载，Velocity 没有 tick 线程概念。
+- 运行库装载走 `PlaywrightInstallGate`：渲染线程发现 `com.microsoft.playwright.Playwright` 不在类路径时，只「按一下按钮」非阻塞调度一次异步装载，随即抛 `PW_DEPENDENCY_MISSING`，本次交给 AWT 兜底。单飞（同一时刻只许一次装载）；成功后不再触发；失败冷却 60 秒，冷却期内不摸网络、降级日志降为 INFO。主线程守卫在装载器一侧：Bukkit 拒绝从主线程下载，Hytale 拒绝从世界 tick 线程下载，Velocity 没有 tick 线程概念。
 - `render.playwright.fallback_to_awt`（默认 `true`）：失败先出 AWT 图并写 ERROR（同引擎 + 同路由 5 分钟去重），计入 `RenderMetrics.FALLBACK`；为 `false` 时直接发纯文本。
 - **doctor / install 是例外**：走同一道闸门的阻塞入口 `awaitLoad()`，先在异步线程触发 Libby 装载（首次下载 `driver-bundle` 约 190 MB），否则「查 jar」只会得到一条虚假的 `PW_DEPENDENCY_MISSING`。冷却未到期时直接报出剩余秒数，不假装成功。
 
