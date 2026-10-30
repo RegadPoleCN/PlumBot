@@ -25,10 +25,8 @@ import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 /**
- * 页面字体注入测试（基线 E4：中文 / Emoji 豆腐块）。
- *
- * 采用"注入服主已为 AWT 配置的同一个 TTF"而不是内嵌模板字体：
- * 模板经 `vite-plugin-singlefile` 打成单文件并在运行时下载，内嵌中文字体会让它从几十 KB 涨到数 MB。
+ * 页面字体注入测试（中文 / Emoji 豆腐块）：注入服主已为 AWT 配置的同一个字体，
+ * 而不是内嵌模板字体 —— 后者会让单文件模板从几十 KB 涨到数 MB。
  */
 class RenderFontInjectorTest {
 

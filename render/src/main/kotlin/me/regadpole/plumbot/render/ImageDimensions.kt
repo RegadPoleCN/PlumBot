@@ -19,26 +19,22 @@
 package me.regadpole.plumbot.render
 
 /**
- * 图片**头部尺寸**解析（不完整解码）。
+ * 图片**头部尺寸**解析（不完整解码，不分配像素缓冲）。
  *
- * ## 为什么需要
- * 头像/皮肤来自外部（图床、玩家皮肤服务），体积上限拦得住"大文件"，
- * 拦不住**解压炸弹**：一个几百 KB 的 PNG 可以声明 50000×50000 像素，
- * `ImageIO.read` 会按声明尺寸分配 ARGB 缓冲（约 10GB）—— 直接 OOM，把整个服务端带走。
- *
- * 因此解码**之前**先读头部尺寸，超过上限直接拒绝。只解析头部，不分配像素缓冲。
+ * 头像/皮肤来自外部（图床、玩家皮肤服务），体积上限拦得住"大文件"，拦不住**解压炸弹**：
+ * 几百 KB 的 PNG 可声明 50000×50000 像素，`ImageIO.read` 会按声明尺寸分配 ARGB 缓冲
+ * （约 10GB）直接 OOM，把整个服务端带走。故解码**之前**先读头部尺寸，超限直接拒绝。
  */
 internal object ImageDimensions {
 
     /** 默认像素上限（宽×高）。64M 像素 ≈ 256MB ARGB，已是单张头像的极端上限。 */
     const val DEFAULT_MAX_PIXELS = 64 * 1024 * 1024
 
-    /**
-     * 解析宽高；无法识别或头部不完整时返回 null（调用方应"未知则放行但受体积上限约束"）。
-     */
+    /** 解析宽高；无法识别或头部不完整时返回 null（调用方"未知则放行"，由体积上限兜底）。 */
     fun read(bytes: ByteArray): Pair<Int, Int>? = readPng(bytes) ?: readGif(bytes) ?: readJpeg(bytes)
 
-    /** 是否超过像素上限。**尺寸未知时返回 false**（不误杀未知格式，交由体积上限兜底）。 */
+    /** 是否超过像素上限：**解析不到尺寸返回 false**（不误杀未知格式，交由体积上限兜底），
+     *  解析出非正尺寸则视为超限。 */
     fun exceedsPixelBudget(bytes: ByteArray, maxPixels: Int = DEFAULT_MAX_PIXELS): Boolean {
         val (w, h) = read(bytes) ?: return false
         if (w <= 0 || h <= 0) return true

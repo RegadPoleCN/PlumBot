@@ -26,9 +26,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 头像磁盘缓存测试（基线 §8.3）。
- *
- * 缓存是"服务端预取"能够成立的前提：没有它，列表类 route 会在渲染窗口内逐张去取头像。
+ * 头像磁盘缓存测试：缓存是"服务端预取"能够成立的前提 —— 没有它，列表类 route 会在渲染窗口内逐张去取头像。
  */
 class AvatarCacheTest {
 

@@ -24,8 +24,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * A13 验收：`options.timeoutMs` 是**整次渲染**预算，各阶段只能花"剩余额度"。
- *
+ * `options.timeoutMs` 是**整次渲染**预算，各阶段只能花"剩余额度"。
  * 用可控时钟模拟"阶段耗时累计"，因此不需要真实浏览器即可断言预算语义。
  */
 class RenderBudgetTest {

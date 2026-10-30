@@ -22,10 +22,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * 卡片图输出格式（决策：不引入 WebP，走"降 `scale_factor` + 可选 JPEG 档"）。
- *
- * 断言三件事：默认必须是 PNG（文字清晰优先）、`jpg` 等写法要能识别成 JPEG、
- * 质量值必须落在 Playwright 要求的 1..100 内。
+ * 卡片图输出格式：不引入 WebP，走"降 `scale_factor` + 可选 JPEG 档"。
+ * 断言默认必须是 PNG（文字清晰优先）、`jpg` 等写法识别成 JPEG、质量值落在 1..100。
  */
 class ScreenshotFormatTest {
 

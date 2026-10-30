@@ -34,7 +34,6 @@ enum class AvatarBlend {
  * 头像图层。
  *
  * @param png 图层 PNG 字节（来源由调用方决定：平台资产、服主自定义目录、网络等）
- * @param blend 混合方式
  * @param color `#RRGGBB`，仅 [AvatarBlend.MULTIPLY] 使用
  */
 @PublicApi
@@ -48,14 +47,10 @@ class AvatarLayer(
 }
 
 /**
- * 头像合成请求。
- *
- * **有序图层只是服务端内部中间表示**：线上契约收敛为单张成品图的 `data:` URL
- * （基线与 Hytale 侧均只传一张图），因此浏览器端无需 canvas、无需跨域、无需模式嗅探。
- *
+ * 头像合成请求。**有序图层只是服务端内部中间表示**：线上契约是单张成品图的 `data:` URL，
+ * 浏览器端因此无需 canvas、无需跨域、无需模式嗅探。
  * @param cacheKey 缓存键（如 `hytale:Steve`）；为空表示不缓存
  * @param layers 自底向上的图层顺序
- * @param size 输出边长（默认 128）
  */
 @PublicApi
 data class AvatarComposeRequest(

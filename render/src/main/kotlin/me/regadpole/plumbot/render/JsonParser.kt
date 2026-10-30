@@ -19,13 +19,11 @@
 package me.regadpole.plumbot.render
 
 /**
- * 极简 JSON 解析器。
- *
- * 存在的理由与 [JsonEncoder] 相同：渲染子系统**不引入 gson**。
- * 而正版皮肤链路必须解析两段 JSON —— `sessionserver.mojang.com` 的响应，
+ * 极简 JSON 解析器：渲染子系统**不引入 gson**（理由同 [JsonEncoder]）。
+ * 正版皮肤链路必须解析两段 JSON —— `sessionserver.mojang.com` 的响应，
  * 以及其 `properties[0].value` 里那段 base64 之后嵌套的 texture JSON。
  *
- * 只支持标准 JSON 子集（对象/数组/字符串/数字/布尔/null），不做注释与尾逗号等扩展。
+ * 只支持标准 JSON 子集（对象/数组/字符串/数字/布尔/null），不做注释与尾逗号等扩展；
  * 解析失败抛 [IllegalArgumentException]，调用方需自行 `runCatching`。
  */
 internal object JsonParser {
@@ -40,11 +38,8 @@ internal object JsonParser {
     }
 
     /**
-     * 按路径取值。`String` 键取对象字段，`Int` 键取数组下标。
-     *
-     * ```
-     * JsonParser.path(root, "properties", 0, "value")
-     * ```
+     * 按路径取值：`String` 键取对象字段，`Int` 键取数组下标，路径不通返回 null。
+     * 例：`path(root, "properties", 0, "value")`
      */
     fun path(root: Any?, vararg keys: Any): Any? {
         var current: Any? = root

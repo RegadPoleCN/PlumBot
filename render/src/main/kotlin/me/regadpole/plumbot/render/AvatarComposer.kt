@@ -26,17 +26,13 @@ import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
 /**
- * 有序图层 → 单张成品头像的**服务端合成器**。
+ * 有序图层 → 单张成品头像的**服务端合成器**：线上契约收敛为**一张图**。
  *
- * 为什么在服务端合成（基线 §8.2）：
- * 1. 浏览器不再需要跨域取图 → 可以移除 `--disable-web-security`；
- * 2. 渲染耗时与外部服务抖动解耦（配合磁盘缓存）；
- * 3. 组队与 Hytale 的有序图层共用同一套实现，线上契约收敛为**一张图**。
+ * 为什么在服务端：浏览器不必跨域取图（这才可能移除 `--disable-web-security`），
+ * 渲染耗时与外部服务抖动解耦（配合磁盘缓存），组队与 Hytale 也共用一套实现。
  *
- * 混合规则：
- * - [AvatarBlend.NORMAL]：按 alpha 直接叠加；
- * - [AvatarBlend.MULTIPLY]：先把图层按 `color` 做逐通道正片叠底（保留 alpha），再叠加。
- *   手写逐像素实现而非依赖 `BlendingMode`，以免受 JDK/平台实现差异影响。
+ * NORMAL 按 alpha 直接叠加；MULTIPLY 先按 `color` 逐通道正片叠底（保留 alpha）再叠加 ——
+ * 手写逐像素而非依赖 `BlendingMode`，以免受 JDK / 平台实现差异影响。
  */
 internal object AvatarComposer {
 
@@ -70,10 +66,8 @@ internal object AvatarComposer {
         return out.toByteArray()
     }
 
-    /**
-     * 解码前先做**像素尺寸校验**（A15）：体积上限拦不住解压炸弹
-     * （几百 KB 的 PNG 可声明 50000×50000，`ImageIO.read` 会按声明尺寸分配约 10GB 缓冲）。
-     */
+    /** 解码前先做**像素尺寸校验**：体积上限拦不住解压炸弹 —— 几百 KB 的 PNG 可声明
+     *  50000×50000，`ImageIO.read` 会按声明尺寸分配约 10GB 缓冲。 */
     private fun decode(bytes: ByteArray): BufferedImage? {
         if (ImageDimensions.exceedsPixelBudget(bytes)) return null
         return runCatching { ImageIO.read(ByteArrayInputStream(bytes)) }.getOrNull()

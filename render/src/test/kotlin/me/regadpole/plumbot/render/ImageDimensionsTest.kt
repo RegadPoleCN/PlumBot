@@ -28,9 +28,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * A15 验收（剩余部分）：**解码前的像素尺寸校验**，防解压炸弹。
- *
- * 体积上限拦不住"几百 KB 却声明 50000×50000"的图片 —— `ImageIO.read` 会按声明尺寸分配缓冲。
+ * **解码前的像素尺寸校验**，防解压炸弹：体积上限拦不住"几百 KB 却声明 50000×50000"的图片。
  */
 class ImageDimensionsTest {
 

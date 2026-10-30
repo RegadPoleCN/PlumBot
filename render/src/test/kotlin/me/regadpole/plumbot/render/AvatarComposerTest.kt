@@ -30,9 +30,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 有序图层服务端合成的契约测试（基线 §7.3 / §8.2）。
- *
- * 线上契约收敛为**单张成品图**：浏览器端因此不需要 canvas、不需要跨域、不需要模式嗅探。
+ * 有序图层服务端合成的契约测试：线上契约收敛为**单张成品图**，浏览器端因此不需要 canvas、跨域与模式嗅探。
  */
 class AvatarComposerTest {
 
@@ -94,7 +92,7 @@ class AvatarComposerTest {
         )
         assertEquals(rgba(255, 0, 0, 255), centerPixel(result))
 
-        // 反转顺序、顶层改为蓝色 → 蓝色胜出
+        // 反转顺序：两层都是不透明红，顶层只是覆盖底层 → 结果仍为红
         val blueTop = AvatarLayer(solidPng(rgba(255, 0, 0, 255)))
         val blueBottom = AvatarLayer(solidPng(rgba(255, 0, 0, 255)))
         val reversed = assertNotNull(

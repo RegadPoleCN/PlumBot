@@ -19,15 +19,11 @@
 package me.regadpole.plumbot.render
 
 /**
- * 整次渲染的**时间预算**（A13）。
+ * 整次渲染的**时间预算**：入口处算出**绝对截止时间**，每个阶段只花**剩余**额度。
  *
- * ## 为什么不是"每阶段一个超时"
- * `options.timeoutMs` 是**整次渲染**的预算。旧实现把它逐阶段重复计满
- * （等页面池 → 导航 → 握手 → READY → 截图各算一次），实际总耗时可达配置值的数倍，
- * 调用方设置的"超时"形同虚设；出图慢时会一直占着渲染线程。
- *
- * 正确做法：入口处算出一个**绝对截止时间**，每个阶段只花**剩余**额度。
- * 抽成独立类是为了让它可被单测覆盖（Playwright 驱动本身无法在本地运行）。
+ * `options.timeoutMs` 是整次渲染的预算，若逐阶段各计满一次（等页面池 → 导航 → 握手 →
+ * READY → 截图），实际总耗时可达配置值的数倍，调用方设置的"超时"形同虚设，出图慢时还会
+ * 一直占着渲染线程。独立成类是为了可单测（Playwright 驱动本身无法在本地运行）。
  */
 internal class RenderBudget(
     timeoutMs: Long,
@@ -39,7 +35,7 @@ internal class RenderBudget(
     /** 剩余额度（毫秒），**下限 1ms** —— 阶段拿到 0 会被 Playwright 当作"立即超时"并抛出难懂的异常。 */
     fun remainingMs(): Long = (deadline - clock()).coerceAtLeast(1L)
 
-    /** 剩余额度（秒，供 Playwright 的 `setTimeout(Double)` 使用）。 */
+    /** 剩余额度（**毫秒**，类型取 Double 是为了直接喂给 Playwright 的超时参数，不是秒）。 */
     fun remaining(): Double = remainingMs().toDouble()
 
     /** 预算是否已耗尽（用于提前放弃而不是继续发起新阶段）。 */

@@ -24,18 +24,18 @@ import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
 /**
- * Minecraft 皮肤 → **头部头像**的服务端裁切（基线 D-9）。
+ * Minecraft 皮肤 → **头部头像**的服务端裁切。
  *
  * 为什么放在服务端：浏览器端的皮肤嗅探（`src.includes('textures.minecraft.net')`）
  * 在 `data:` URL 下永远不命中，会把整张 64×64 皮肤当头像显示；
  * 且前端裁切需要把原始皮肤传给客户端，等于把"每张卡片 N 次网络往返"留在渲染超时窗口内。
  *
- * 皮肤布局（64×64 现代版）：
+ * 64×64 布局（坐标为 1 倍皮肤像素）：
  * ```
  * 头部正面  (8, 8)  8×8
  * 头部外层  (40, 8) 8×8   ← 帽子/头发等叠加层，按 alpha 合成
  * ```
- * 64×32 为旧版布局，无外层；128×128 为 2 倍高清皮肤，坐标同比放大。
+ * 64×32 旧版布局没有外层；128×128 高清皮肤所有坐标 ×2。
  */
 internal object MinecraftSkinCropper {
 
@@ -44,11 +44,7 @@ internal object MinecraftSkinCropper {
     private const val FACE_SIZE = 8
     private const val HAT_X = 40
 
-    /**
-     * 裁切并放大为 [targetSize] 见方的头像。
-     *
-     * @return 头像图；皮肤尺寸非法或整块面部全透明时返回 null（调用方应进入下一级）
-     */
+    /** 裁切并放大为 [targetSize] 见方的头像；皮肤尺寸非法或整块面部全透明时返回 null（调用方进入下一级）。 */
     fun cropHead(skin: BufferedImage, targetSize: Int = 128): BufferedImage? {
         val unit = resolveScale(skin) ?: return null
         val faceSize = FACE_SIZE * unit
@@ -65,7 +61,7 @@ internal object MinecraftSkinCropper {
         return scaleNearest(face, targetSize.coerceAtLeast(FACE_SIZE))
     }
 
-    /** 从 PNG 字节裁头；解码失败或尺寸超预算返回 null（A15：解码前先校验像素预算）。 */
+    /** 从 PNG 字节裁头；解码失败或尺寸超预算返回 null（预算校验放在解码之前，防解压炸弹）。 */
     fun cropHead(png: ByteArray, targetSize: Int = 128): ByteArray? {
         if (ImageDimensions.exceedsPixelBudget(png)) return null
         val image = runCatching { ImageIO.read(ByteArrayInputStream(png)) }.getOrNull() ?: return null

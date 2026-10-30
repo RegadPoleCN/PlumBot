@@ -24,10 +24,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * R25 / D6 验收：**沙箱默认开启，容器例外必须显式**。
- *
- * 本机无法真的启动 Chromium，因此断言的是启动参数与失败判定这两段纯逻辑 ——
- * 而它们正是"防线是否生效"与"失败是否被静默吞掉"的开关。
+ * **沙箱默认开启，容器例外必须显式**。本机无法真的启动 Chromium，故只断言启动参数与失败判定
+ * 这两段纯逻辑 —— 它们正是"防线是否生效"与"失败是否被静默吞掉"的开关。
  */
 class PlaywrightSandboxTest {
 

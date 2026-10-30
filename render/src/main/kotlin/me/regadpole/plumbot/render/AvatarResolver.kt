@@ -25,24 +25,21 @@ import me.regadpole.plumbot.api.platform.PlatformContext
 import java.util.Base64
 
 /**
- * Minecraft 皮肤头像的**五级漏斗**（基线 §8.1 / D-2）中的前三级的调度器。
+ * Minecraft 皮肤头像的**五级漏斗**中前三级的调度器。
  *
  * ```
  * ① 皮肤插件（SkinsRestorer 等，平台反射取得纹理 URL）
  * ② 内存 GameProfile 纹理（正版登录 / 插件注入）
  * ③ 正版皮肤源（sessionserver.mojang.com → textures.minecraft.net）
- * ④ 绑定 QQ 头像        ← 由调用方处理（RenderPortal 之外的业务决策）
- * ⑤ 占位图             ← 由前端组件降级
+ * ④ 绑定 QQ 头像  ← 由调用方处理
+ * ⑤ 占位图       ← 由前端组件降级
  * ```
  *
- * ## 调度纪律
+ * 每一级有**独立超时**（[LEVEL_TIMEOUT_MS]），整条漏斗另有**总预算**（[TOTAL_BUDGET_MS]）：
+ * 某一级卡住只拖慢该级，任何一级失败都静默进入下一级；头像解析与卡片渲染是两套独立预算。
  *
- * 每一级都有**独立超时**（[LEVEL_TIMEOUT_MS]），整条漏斗还有**总预算**（[TOTAL_BUDGET_MS]）。
- * 这样"某一级卡住"只会拖慢该级，不会把整次出图拖到渲染超时之外 ——
- * 头像解析与卡片渲染是两个独立预算，任何一级失败都静默进入下一级。
- *
- * 产物是**已裁切的头部 PNG**（不是原始皮肤）：依据 D-9，裁切在服务端完成。
- * 缓存按**来源**分键（`skin:<source>:<name>`），换源后不会脏读到上一级的皮肤。
+ * 产物是**已裁切的头部 PNG**（裁切在服务端完成），缓存按**来源**分键
+ * （`skin:<source>:<玩家名>`），换源后不会脏读到上一级的皮肤。
  */
 internal class AvatarResolver(
     private val context: PlatformContext,
@@ -85,15 +82,11 @@ internal class AvatarResolver(
     }
 
     /**
-     * 冷却时长（毫秒）。
+     * 冷却时长（毫秒），配置值按分钟解释：`> 0` 生效，`< 0` **禁用熔断**（返回 0），
+     * `0` / 键缺失取默认 10 分钟。
      *
-     * 语义（与 `config.yml` 的注释一致）：
-     * - `> 0`：该分钟数
-     * - `< 0`：**禁用熔断**（返回 0，[FailureCooldown] 据此不再记录失败）
-     * - `0` / 键缺失：默认 10 分钟
-     *
-     * 之所以不用「0 = 禁用」：`PlatformConfig.getInteger` 无法区分"键缺失"与"显式 0"，
-     * 那样会让未迁移的配置**静默关闭**这层保护。用负数可同时做到"可禁用"与"缺失时 fail-closed"。
+     * 不用「0 = 禁用」是因为 `PlatformConfig.getInteger` 分不清"键缺失"与"显式 0"，
+     * 会让未迁移的配置**静默关闭**这层保护；负数则"可禁用"且"缺失时 fail-closed"。
      */
     private fun cooldownMillis(): Long {
         val minutes = context.config.getInteger("render", "avatar", "failure_cooldown_minutes")
@@ -104,17 +97,13 @@ internal class AvatarResolver(
         }
     }
 
-    /** 逐级超时可配；非法值回落常量默认。 */
     private fun levelTimeoutMs(): Long =
         context.config.getLong("render", "avatar", "level_timeout_ms")
             .takeIf { it > 0 } ?: LEVEL_TIMEOUT_MS
 
-    /** 总预算可配；非法值回落常量默认。 */
     private fun totalBudgetMs(): Long =
         context.config.getLong("render", "avatar", "total_budget_ms")
             .takeIf { it > 0 } ?: TOTAL_BUDGET_MS
-
-    // ---------------- 三级来源 ----------------
 
     /** ① 皮肤插件（反射取得纹理属性）。 */
     private suspend fun fromPlugin(playerName: String): Resolution.Found? = level(Source.PLUGIN, playerName) {
@@ -127,9 +116,8 @@ internal class AvatarResolver(
     }
 
     /**
-     * ③ 正版皮肤源：UUID → 会话服务 → 会话服务同样返回纹理属性（base64）。
-     *
-     * 因此三级来源的产物在类型上完全一致，`base64 → JSON → SKIN.url` 的解析只有一处。
+     * ③ 正版皮肤源：UUID → 会话服务，返回的同样是 base64 纹理属性，
+     * 因此三级来源的产物类型一致，`base64 → JSON → SKIN.url` 的解析只有一处。
      */
     private suspend fun fromPremium(playerName: String): Resolution.Found? = level(Source.PREMIUM, playerName) {
         val uuid = context.playerService.premiumUuid(playerName)
@@ -150,12 +138,9 @@ internal class AvatarResolver(
             ?.takeIf { it.startsWith("https://", ignoreCase = true) }
             ?: DEFAULT_SESSION_SERVER
 
-    // ---------------- 通用执行 ----------------
-
     /**
-     * 执行一级：取纹理属性 → 解析出 SKIN.url → 抓取 → 裁头。
-     *
-     * @param propertyProvider 返回 base64 纹理属性（三级来源统一形态）
+     * 执行一级：取纹理属性 → 解析出 SKIN.url → 抓取 → 裁头；[propertyProvider] 返回 base64
+     * 纹理属性（三级来源统一形态）。
      */
     private suspend fun level(
         source: Source,
@@ -210,11 +195,9 @@ internal class AvatarResolver(
         }
 
         /**
-         * 归一化纹理地址。
-         *
-         * Mojang 返回的 `textures.SKIN.url` 是 **http**
-         * （`http://textures.minecraft.net/texture/<hash>`），而抓取器只允许 https ——
-         * 这里把该域名的 http 升级为 https，其余非 https 一律拒绝。
+         * 归一化纹理地址：Mojang 返回的 `textures.SKIN.url` 是 **http**
+         * （`http://textures.minecraft.net/texture/<hash>`），而抓取器只允许 https，
+         * 故只把该域名的 http 升为 https，其余非 https 一律拒绝。
          */
         internal fun normalizeTextureUrl(url: String): String? {
             val trimmed = url.trim()

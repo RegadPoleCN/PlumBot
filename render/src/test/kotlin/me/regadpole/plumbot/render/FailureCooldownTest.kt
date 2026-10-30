@@ -24,9 +24,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 失败熔断测试（基线 D-6）。
- *
- * 没有熔断时，一个查不到皮肤的玩家会在**每次**列表刷新时跑满整条漏斗（最坏 3 秒），
+ * 失败熔断测试：没有熔断时，一个查不到皮肤的玩家会在每次列表刷新时跑满整条漏斗（最坏 3 秒），
  * 列表里十几个这样的玩家就足以拖垮单次出图。
  */
 class FailureCooldownTest {

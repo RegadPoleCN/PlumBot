@@ -19,19 +19,14 @@
 package me.regadpole.plumbot.render.driver
 
 /**
- * Chromium 沙箱开关（R25 / 决策 D6）。
+ * Chromium 沙箱开关。
  *
- * ## 背景：此前沙箱是**一直关闭**的
- * 驱动无条件传入 `--no-sandbox` —— 也就是"模板 = 可信代码"之外的唯一防线从未生效。
- * 而渲染的是**模板页面**（可被第三方替换），一旦模板被投毒，无沙箱意味着进程级攻击面。
+ * 渲染的是**模板页面**（可被第三方替换），一旦模板被投毒，无沙箱即等于进程级攻击面，
+ * 故**默认开启沙箱**：不传 `--no-sandbox`，交给 Chromium 自身的隔离机制。
  *
- * ## 决策后的语义
- * - **默认开启沙箱**：不传 `--no-sandbox`，交给 Chromium 自身的隔离机制；
- * - **容器例外必须显式**：容器里 Chromium 常因缺少 `CAP_SYS_ADMIN`/user namespace 而启动失败。
- *   此时**不会静默降级**（那等于悄悄关掉防线），而是给出明确告警与配置指引，
- *   由管理员显式设置 `render.playwright.disable_sandbox: true`；
- * - 配置键取"反向命名"（`disable_sandbox`）：**键缺失时等于沙箱开启**，
- *   这是安全侧默认 —— 若用 `sandbox: true` 这种正向键，键被误删就会静默变成无沙箱。
+ * 容器里 Chromium 常因缺少 `CAP_SYS_ADMIN` / user namespace 而启动失败，此时**不会静默降级**
+ * （那等于悄悄关掉防线），而是给出告警与指引，由管理员显式设置 `disable_sandbox`。
+ * 键取反向命名是为了**键缺失时等于沙箱开启** —— 正向键一旦被误删就会静默变成无沙箱。
  *
  * 逻辑抽成纯函数以便单测（本机无法真的启动 Chromium）。
  */
@@ -45,11 +40,9 @@ internal object PlaywrightSandbox {
         if (sandboxDisabled) listOf(NO_SANDBOX, NO_SETUID_SANDBOX) else emptyList()
 
     /**
-     * 判定启动失败是否"看起来是沙箱问题"。
-     *
-     * Chromium 在受限环境下的报错形态很杂（SUID sandbox helper、clone/namespace 权限、
-     * `No usable sandbox`），这里只做**提示性**匹配：命中时给出针对性的修复指引，
-     * 不改变"失败即降级为纯文本"的既有行为。
+     * 判定启动失败是否"看起来是沙箱问题"：只做**提示性**匹配（Chromium 在受限环境下的
+     * 报错形态很杂：SUID sandbox helper、clone/namespace 权限、`No usable sandbox`），
+     * 命中时给出针对性指引，不改变"失败即降级为纯文本"的行为。
      */
     fun looksLikeSandboxFailure(message: String?): Boolean {
         if (message.isNullOrBlank()) return false

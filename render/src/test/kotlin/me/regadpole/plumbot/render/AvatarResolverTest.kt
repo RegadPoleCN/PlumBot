@@ -25,9 +25,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 皮肤漏斗的纯函数部分（基线 §8.1）。
- *
- * 三级来源（皮肤插件 / GameProfile / 正版源）的产物统一是 **base64 纹理属性**，
+ * 皮肤漏斗的纯函数部分：三级来源（皮肤插件 / GameProfile / 正版源）的产物统一是 **base64 纹理属性**，
  * 因此"属性 → 皮肤 URL"只有这一处解析，值得单独锁死。
  */
 class AvatarResolverTest {

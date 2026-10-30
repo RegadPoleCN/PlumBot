@@ -29,9 +29,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 /**
- * 皮肤裁头测试（基线 D-9：裁切在服务端完成）。
- *
- * 这条链路此前完全不存在 —— 前端靠 URL 字符串嗅探决定是否裁切，
+ * 皮肤裁头测试：裁切在服务端完成 —— 前端靠 URL 字符串嗅探决定是否裁切，
  * 而 data URL 下永不命中，会把整张 64×64 皮肤当头像发出去。
  */
 class MinecraftSkinCropperTest {

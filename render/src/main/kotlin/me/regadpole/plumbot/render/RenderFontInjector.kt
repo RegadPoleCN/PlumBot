@@ -22,23 +22,19 @@ import java.io.File
 import java.util.Base64
 
 /**
- * 把服主配置的 TTF 注入浏览器页面，解决中文 / Emoji 的**豆腐块**问题（基线 E4）。
+ * 把服主配置的字体文件（ttf / otf / woff / woff2）注入浏览器页面，解决中文 / Emoji 的**豆腐块**问题。
  *
  * ## 为什么用注入而不是内嵌模板字体
+ * 模板经 `vite-plugin-singlefile` 打包成**单文件**并在运行时下载，内嵌中文字体会让它从几十 KB
+ * 涨到数 MB，每次首装都要多下一次。
  *
- * 模板走 `vite-plugin-singlefile` 打包成**单文件**并在运行时下载。
- * 把中文字体内嵌进去会让模板体积从几十 KB 涨到数 MB —— 每次首装都要多下一次。
- *
- * 而服主为 AWT 引擎**已经配置过** `render.font`，把同一个字体注入页面：
- * 1. 不增加模板体积；
- * 2. **两条渲染途径字形完全一致** —— 这正是基线"共用同一套规则"的要求，
- *    否则同一条消息走 awt 与走 playwright 会呈现不同的字。
+ * 而服主为 AWT 引擎**已经配置过** `render.font`，把同一个字体注入页面：不增加模板体积，
+ * 且**两条渲染途径字形完全一致** —— 否则同一条消息走 awt 与走 playwright 会呈现不同的字。
  *
  * 注入方式是 `@font-face` + data URL，配合 `!important` 覆盖模板自身的 font-family。
  */
 internal object RenderFontInjector {
 
-    /** 注入后统一使用的字体族名。 */
     const val FONT_FAMILY = "PlumBotRenderFont"
 
     sealed interface Outcome {
@@ -50,9 +46,8 @@ internal object RenderFontInjector {
 
     /**
      * 生成注入用的 CSS。
-     *
      * @param fontFile 服主配置的字体文件（与 AWT 引擎同一个来源）
-     * @param maxBytes 体积上限：防止把几十 MB 的字体塞进每一页
+     * @param maxBytes 体积上限，**≤0 表示不限制**（防几十 MB 的字体塞进每一页）
      */
     fun buildCss(fontFile: File?, maxBytes: Int): Outcome {
         if (fontFile == null) return Outcome.Skipped("未配置 render.font，浏览器将使用系统字体")

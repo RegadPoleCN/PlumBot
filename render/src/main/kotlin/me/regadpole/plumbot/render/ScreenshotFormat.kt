@@ -19,10 +19,8 @@
 package me.regadpole.plumbot.render
 
 /**
- * 卡片图输出格式（决策：**不引入 WebP**，走"降 `scale_factor` + 可选 JPEG 档"）。
- *
- * 为什么默认 PNG：卡片上全是文字与细线，JPEG 的振铃会直接伤可读性 ——
- * 因此压缩优先靠"降低设备像素比"（面积减少 → 字节数近似线性下降），JPEG 只作为可选档。
+ * 卡片图输出格式：**不引入 WebP**，压缩只靠降 `scale_factor`，JPEG 仅作可选档。
+ * 默认 PNG 是因为卡片上全是文字与细线，JPEG 的振铃会直接伤可读性。
  */
 internal object ScreenshotFormat {
 
