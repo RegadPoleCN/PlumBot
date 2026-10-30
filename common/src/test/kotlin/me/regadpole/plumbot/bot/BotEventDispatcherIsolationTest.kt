@@ -28,10 +28,8 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * A06 / R13 验收：**内置 handler 抛异常不得阻断第三方监听器**。
- *
- * 为什么重要：内置 handler 里是数据库、渲染、成员查询 —— 任何一处抛异常（例如库连接断了），
- * 修复前的实现会让异常直接冒泡，于是**所有扩展都收不到事件**且看不出原因。
+ * **内置 handler 抛异常不得阻断第三方监听器**：内置 handler 里是数据库、渲染、成员查询，任何
+ * 一处抛异常（例如库连接断了）若直接冒泡，**所有扩展都收不到事件**且看不出原因。
  */
 class BotEventDispatcherIsolationTest {
 

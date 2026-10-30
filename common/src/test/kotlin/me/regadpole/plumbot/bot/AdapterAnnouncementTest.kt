@@ -26,18 +26,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * 生命周期广播的**时序**验收（2026-10-18 Velocity 4.2.0 / Hytale 0.7.2 实测缺陷）。
- *
- * 修复前的行为：
- * - `start()` 在 WebSocket 尚未连接时就派发 `load` 广播，`client.action()` 抛
- *   `WebsocketNotConnectedException`，异常从 renderJobs 协程冒到宿主日志；
- * - `shutdown()` 无条件派发 `unload`，后端从未连上时同样抛异常（而且根本没人能收到）；
- * - 纯文本降级发送没有异常保护，任何一次发送失败都会变成协程异常。
- *
- * 修复后的契约：
- * 1. 只有**首次确认在线**后才补发一次 `load`，重连不重复；
- * 2. 从未在线则关闭时**不发** `unload`；
- * 3. 发送失败只记 WARN，不向调用方抛异常。
+ * 生命周期广播的**时序**契约：
+ * 1. 只有**首次确认在线**后才补发一次 `load`，重连不重复 —— 否则 `client.action()` 抛
+ *    `WebsocketNotConnectedException`，异常沿 renderJobs 协程冒到宿主日志；
+ * 2. 从未在线则关闭时**不发** `unload` —— 否则同样抛异常，且根本没人能收到；
+ * 3. 发送失败只记 WARN，不向调用方抛异常 —— 否则一次降级发送失败就是未处理的协程异常。
  */
 class AdapterAnnouncementTest {
 
@@ -103,7 +96,7 @@ class AdapterAnnouncementTest {
         bot.failOnSend = true
         bot.start()
 
-        // 旧实现此处会把 WebsocketNotConnectedException 抛进监控协程 / 宿主日志
+        // 此处的发送异常必须被吞掉，不得抛进监控协程 / 宿主日志
         bot.markOnlineForTest()
 
         assertTrue(

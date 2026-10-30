@@ -24,10 +24,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 远程控制台审计文案（决策 D9）。
- *
- * 只保留一条用例：它同时覆盖两个分支与**唯一真正重要的断言**（关闭时不得泄露参数值）。
- * 原先 4 条里其余三条（"无参数记 0 个""首尾空格被裁剪"等）属实现细节，收益低于维护成本。
+ * 远程控制台审计文案：一条用例覆盖两个分支与**唯一真正重要的断言**——关闭记录时不得泄露参数值。
  */
 class RemoteConsoleAuditTest {
 

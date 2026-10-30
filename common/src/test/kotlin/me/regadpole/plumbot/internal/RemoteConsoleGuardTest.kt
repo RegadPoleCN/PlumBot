@@ -23,9 +23,8 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * R05 验收：远程控制台的**两道闸门**。
- *
- * 时间源注入 → 不需要真的等待；并发计数用"不释放"来模拟指令仍在跑。
+ * 远程控制台的**两道闸门**（按用户限流 + 全局并发上限）。时间源可注入，因此无需真的等待；
+ * 并发计数用"不释放"来模拟指令仍在跑。
  */
 class RemoteConsoleGuardTest {
 
@@ -43,7 +42,7 @@ class RemoteConsoleGuardTest {
 
     @Test
     fun `refills the bucket over time`() {
-        // 并发上限放到很大：本用例测的是**补桶**，不该被并发闸门挡住（首次写测试时正是被它误伤）
+        // 并发上限放到很大：本用例测的是**补桶**，不该被并发闸门挡住
         val guard = guard(perMinute = 60, maxConcurrent = 10_000)
         repeat(60) { guard.tryAcquire(1L) }
         assertEquals(RemoteConsoleGuard.Decision.RateLimited, guard.tryAcquire(1L))

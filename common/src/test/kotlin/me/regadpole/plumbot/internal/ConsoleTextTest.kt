@@ -24,10 +24,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * R05 验收：控制台输出的**归一化**。
- *
- * 真实控制台输出里混着颜色、清行、窗口标题与 `\r` 进度刷新；它们在 QQ 里是乱码，
- * 而且会**占用截断额度**把有用内容挤掉。
+ * 控制台输出的**归一化**：真实输出里混着颜色、清行、窗口标题与 `\r` 进度刷新，在 QQ 里是乱码，
+ * 还会**占用截断额度**把有用内容挤掉。
  */
 class ConsoleTextTest {
 

@@ -24,10 +24,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 宿主优先的 kyori 装载策略：宿主有就共享，没有才回退装载。
- *
- * 这条策略是 Velocity `/plumbot status` 的 `NoClassDefFoundError` 的修复前提 ——
- * 只要插件自己带一份（无论是否重定位）`Component`，就没法把它交给宿主 API。
+ * 宿主优先的 kyori 装载策略：宿主有就共享，没有才回退装载。插件自带一份（无论是否重定位）
+ * `Component` 就无法交给宿主 API —— Velocity 的 `/plumbot status` 曾因此 `NoClassDefFoundError`。
  */
 class KyoriSupportTest {
 

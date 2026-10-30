@@ -28,9 +28,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * 适配器类别上报：只上报**实际在跑的**适配器类型，且不含任何标识信息。
- *
- * 曾经的 `chart id is stable` 用例已删除：断言"常量 == 字面量"是同义反复，零信息量。
+ * 适配器类别上报：只上报**实际在跑的**适配器类型，且不含任何标识信息（上报面越小越好）。
  */
 class AdapterTelemetryTest {
 

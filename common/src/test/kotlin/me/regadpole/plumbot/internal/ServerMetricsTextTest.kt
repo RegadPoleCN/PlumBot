@@ -24,10 +24,8 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 /**
- * R31 验收：**指标缺失时的展示语义**。
- *
- * 核心断言是"缺失**不得**显示成看起来正常的数值"：旧实现把读不到的 TPS 显示为 `20.0`
- * （完美 TPS），于是代理端服主会看到一张"一切正常"的卡片，而指标其实根本没读到。
+ * **指标缺失时的展示语义**：缺失**不得**显示成看起来正常的数值——TPS 读不到却显示 `20.0`，
+ * 服主会看到一张"一切正常"的卡片，而指标根本没读到。
  */
 class ServerMetricsTextTest {
 

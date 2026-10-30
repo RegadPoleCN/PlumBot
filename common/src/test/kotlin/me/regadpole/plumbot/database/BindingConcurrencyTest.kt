@@ -33,13 +33,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 /**
- * A04 验收：**并发写入同一角色名，只允许产生一条绑定**。
+ * **并发写入同一角色名，只允许产生一条绑定**。
  *
- * 为什么值得单测：这是"先查后插"最经典的竞态 —— 两个线程同时判断"不存在"，
- * 然后各插一条。当前实现靠**唯一索引兜底**（冲突折叠为"已存在"）来保证正确性，
- * 但这个保证从未被并发验证过：单线程测试无论跑多少次都不会暴露它是否真的成立。
- *
- * 用真实 SQLite（而不是替身）是刻意的：唯一索引与驱动行为正是被测对象。
+ * "先查后插"的经典竞态：两个线程同时判断"不存在"，再各插一条。实现靠**唯一索引兜底**
+ * （冲突折叠为"已存在"），单线程测试跑多少次都验证不了它是否成立，所以用真实 SQLite
+ * 而非替身：唯一索引与驱动行为正是被测对象。
  */
 class BindingConcurrencyTest {
 
@@ -102,7 +100,7 @@ class BindingConcurrencyTest {
             assertTrue(done.await(60, TimeUnit.SECONDS), "50 个并发写入必须在 60 秒内完成")
 
             val rows = database.getByName("Steve")
-            // 只应有唯一一条；再用不同大小写查询确认归一化也一致
+            // 名字必须存在，且 50 个 QQ 加起来只对应一条记录（下面按 QQ 汇总）
             assertTrue(rows != null, "同名绑定必须存在（并发失败不应把记录全丢）")
             assertEquals(
                 1,
@@ -131,9 +129,8 @@ class BindingConcurrencyTest {
 
     @Test
     fun `the per user limit cannot be exceeded by concurrent writes`() {
-        // A04 核心：名额校验与写入必须在同一事务内。
-        // 修复前是"先 count 再 insert"两次往返 —— 并发时多个请求都读到"还差一个名额"，
-        // 于是**突破上限**（同名冲突有唯一索引兜底，名额上限没有任何兜底）。
+        // 名额校验与写入必须在同一事务内：拆成"先 count 再 insert"两次往返时，并发请求
+        // 都会读到"还差一个名额"，于是**突破上限**（同名冲突有唯一索引兜底，名额上限没有）。
         val database = newDatabase()
         val limit = 2
         val threads = 20

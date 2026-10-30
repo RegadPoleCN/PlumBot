@@ -25,11 +25,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 /**
- * `messages.yml` → [Messages] 的绑定测试。
- *
- * 背景：绑定实现从 `Messages::class.members` 换成了 Java 字段反射（kotlin-reflect 的实现类
- * 会被产物最小化裁掉）。这里用真实 YAML 覆盖一遍，钉住「字段名 = 配置键、String/List 两种
- * 形态都能写入、缺失键保留默认值」这三个约定。
+ * `messages.yml` → [Messages] 的绑定测试：用真实 YAML 钉住三个约定——字段名 = 配置键、
+ * String/List 两种形态都能写入、缺失键保留默认值。绑定走 Java 字段反射而非 `Messages::class.members`，
+ * 因为 kotlin-reflect 的实现类会被产物最小化裁掉。
  */
 class MessagesBinderTest {
 

@@ -21,12 +21,8 @@ package me.regadpole.plumbot
 import me.regadpole.plumbot.bot.BotEventDispatcher
 
 /**
- * Test-only accessor for [BotEventDispatcher] from outside the `bot` package.
- *
- * The dispatcher is intentionally `internal` (KDoc labelled "framework
- * internal") but its public-API registration / fan-out must be unit-tested
- * without depending on Bukkit. This file lives in the same module so it can
- * call the dispatcher's package-private surface.
+ * 供 `bot` 包之外使用的测试访问器：[BotEventDispatcher] 刻意是 `internal`，但它的注册/分发
+ * 必须在不依赖 Bukkit 的前提下被单测覆盖；本文件与它同模块，因此能调用其包内可见的成员。
  */
 object BotEventDispatcherAccessor {
     fun dispatchGroupMessage(message: String, groupId: Long, userId: Long) {

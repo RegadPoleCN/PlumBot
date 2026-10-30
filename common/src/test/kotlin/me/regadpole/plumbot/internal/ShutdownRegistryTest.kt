@@ -23,9 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/**
- * 关闭钩子登记处：必须"跑全、跑完即清、互不牵连"。
- */
+/** 关闭钩子登记处：必须"跑全、跑完即清、互不牵连"。 */
 class ShutdownRegistryTest {
 
     @AfterTest

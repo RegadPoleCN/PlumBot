@@ -28,10 +28,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * R02 验收：**连接状态机**。
+ * **连接状态机**：固定迁移路径与"失败不留中间态"。
  *
- * 取代语义含糊的布尔值：`true` 曾同时表示"在线"与"已加载但正在重连"，
- * 于是"消息发不出去"时对外仍报"已连接"。这里把迁移路径与"失败不留中间态"固定下来。
+ * 布尔值无法表达"已加载但正在重连"，曾让"消息发不出去"时对外仍报"已连接"。
  */
 class AdapterStateMachineTest {
 

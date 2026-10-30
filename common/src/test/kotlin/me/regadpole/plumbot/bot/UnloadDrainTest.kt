@@ -25,13 +25,11 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * A10 / R10 验收：**关闭时的"有界排空"**。
+ * 关闭时的**有界排空**。
  *
- * 背景：停服公告本身就是异步出图任务。修复前 `shutdown()` 派发后立刻 `cancel()`，
- * 通知随时可能被取消 —— 表现为"停服公告有时发得出去、有时发不出去"。
- * 而排空又必须**有界**：渲染卡住时不能把平台关服线程一起拖死。
- *
- * 测试用**与生产完全相同**的派发路径（`launchTracked`），因此断言的是真实行为而非测试专用逻辑。
+ * 停服公告本身就是异步出图任务：`shutdown()` 派发后若立刻 `cancel()`，通知随时可能被取消
+ * （表现为"停服公告有时发得出去、有时发不出去"）；但排空必须**有界**，渲染卡住时不能把
+ * 平台关服线程一起拖死。测试走**与生产相同**的派发路径（`launchTracked`），断言真实行为。
  */
 class UnloadDrainTest {
 
@@ -76,8 +74,7 @@ class UnloadDrainTest {
         // 并行跑全量测试时 JIT/GC 会让单次测量偏高，卡太紧会变成假失败。
         assertTrue(elapsed < 10_000, "排空必须有硬上限（配置 2.5s），实测 ${elapsed}ms，不得拖住关服线程")
 
-        // **取消是异步的**：cancel() 返回后协程的 finally 不一定已经执行。
-        // 之前直接断言会偶发失败（全量并行跑时尤其明显），这里给它一小段时间。
+        // **取消是异步的**：cancel() 返回后 finally 不一定已执行，直接断言会偶发失败（全量并行时尤甚）。
         val waitUntil = System.currentTimeMillis() + 2_000
         while (!cancelled && System.currentTimeMillis() < waitUntil) Thread.sleep(20)
         assertTrue(cancelled, "超时后剩余任务应被取消（而不是继续挂着）")

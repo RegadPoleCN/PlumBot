@@ -30,12 +30,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 /**
- * 扩展开发手册（`coding-docs/extension-guide.md`）中示例的**可编译版本**。
- *
- * 为什么需要它：文档里的示例此前与源码脱节（`PlumBotAPI.getOrNull()`、
- * 返回 `CompletableFuture` 的发送方法、`BotCapability.SEND_GROUP_MSG`、
- * `scheduler.runTaskAsynchronously` 等等全都不存在），而**文档不会被编译**，
- * 于是错误长期无人发现。把示例固化成本文件后，任何 API 改名/改签名都会让
+ * 扩展开发手册（`coding-docs/extension-guide.md`）中示例的**可编译版本**：文档不会被编译，
+ * 示例与源码脱节时错误长期无人发现；固化成本文件后，任何 API 改名/改签名都会让
  * `:common:compileTestKotlin` 直接失败，文档与代码不可能再各说各话。
  *
  * 维护约定：改**文档示例**时同步改这里；只引用公开契约（`:api` 与 `:common` 的 @PublicApi 面）。
@@ -43,10 +39,10 @@ import kotlin.time.Duration.Companion.seconds
 @Suppress("unused")
 object ExtensionGuideSnippets {
 
-    /** ① 可空获取 API 实例（不是 `PlumBotAPI.getOrNull()`）。 */
+    /** ① 可空获取 API 实例。 */
     fun apiOrNull(): PlumBotAPI? = PlumBotApiProvider.getInstanceOrNull()
 
-    /** ② 能力位名称（不是 `SEND_GROUP_MSG` / `SEND_IMAGE`）。 */
+    /** ② 能力位名称。 */
     fun declaredCapabilities(): Set<BotCapability> = setOf(
         BotCapability.GROUP_MESSAGE_SEND,
         BotCapability.IMAGE_SEND,
@@ -54,7 +50,7 @@ object ExtensionGuideSnippets {
         BotCapability.GROUP_MEMBER_QUERY,
     )
 
-    /** ③ 绑定查询是 **suspend** 函数（不是 `CompletableFuture`，也没有 `getBindingByPlayer`）。 */
+    /** ③ 绑定查询是 **suspend** 函数。 */
     suspend fun bindingOf(api: PlumBotAPI, playerName: String): Long? = api.getBindingUser(playerName)
 
     suspend fun bindingOf(api: PlumBotAPI, uuid: UUID): Long? = api.getBindingUser(uuid)
@@ -69,14 +65,11 @@ object ExtensionGuideSnippets {
             event.message
         }
 
-    /** ⑤ 调度：平台契约是 `runAsync` / `runLater(Duration)`（不是 `runTaskAsynchronously`）。 */
+    /** ⑤ 调度：平台契约是 `runAsync` / `runLater(Duration)`。 */
     fun runAsync(context: PlatformContext, body: () -> Unit): PlatformTaskHandle =
         context.scheduler.runAsync(body)
 
-    /**
-     * 注意 `Duration` 是 **`kotlin.time.Duration`**（用 `2.seconds` 这种写法），
-     * 不是 `java.time.Duration` —— 传错类型编译期就会失败。
-     */
+    /** `Duration` 是 **`kotlin.time.Duration`**（`2.seconds`），不是 `java.time.Duration` —— 传错编译期即失败。 */
     fun runLater(context: PlatformContext, body: () -> Unit): PlatformTaskHandle =
         context.scheduler.runLater(2.seconds, body)
 }

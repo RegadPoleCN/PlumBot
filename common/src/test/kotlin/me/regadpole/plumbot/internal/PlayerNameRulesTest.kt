@@ -23,11 +23,8 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /**
- * 玩家名校验规则的**行为**边界（A05）。
- *
- * 「规则只有一份定义」这条断言已迁到构建期 `checkSingleDefinitions`
- * —— 那是源码扫描，放在构建期比放在 JVM 测试里更合适（不依赖测试工作目录，也不占测试预算）。
- * 这里只留行为断言。
+ * 玩家名校验规则的**行为**边界：「规则只有一份定义」由构建期 `checkSingleDefinitions` 源码扫描
+ * 保证（不依赖测试工作目录），这里只留行为断言。
  */
 class PlayerNameRulesTest {
 

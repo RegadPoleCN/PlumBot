@@ -30,13 +30,11 @@ import kotlin.test.Test
 import kotlin.test.assertTrue
 
 /**
- * A19 验收：**词库抓取的真实网络分支**（用本地 HTTP 服务器）。
+ * **词库抓取的真实网络分支**（本地 HTTP 服务器）。
  *
- * 为什么这里能用本地服务器（而 A18 不能）：词库抓取走的是普通 `HttpURLConnection`，
- * **不受** `SafeHttp` 的"仅 https + 拒绝内网/回环"约束 —— 因此 `http://127.0.0.1:port`
- * 是合法源地址，真实分支可以被完整执行。
- *
- * 覆盖：① 200 正常 JSON 生效；② 非 200 降级读历史快照；③ 坏响应（HTML/空体）**不覆盖快照**。
+ * 词库抓取走普通 `HttpURLConnection`，**不受** `SafeHttp` 的"仅 https + 拒绝内网/回环"约束，
+ * 因此 `http://127.0.0.1:port` 是合法源地址，真实分支可被完整执行。覆盖：200 正常 JSON 生效、
+ * 非 200 降级读历史快照、坏响应（HTML/空体）**不覆盖快照**。
  */
 class FilterThesaurusNetworkTest {
 
@@ -51,7 +49,6 @@ class FilterThesaurusNetworkTest {
         me.regadpole.plumbot.internal.HealthCounters.reset()
     }
 
-    /** 起一个本地源站；[body] 为响应体，[status] 为响应码，[delayMs] 用于模拟慢响应/超时。 */
     private fun serve(
         status: Int = 200,
         body: String = "{}",

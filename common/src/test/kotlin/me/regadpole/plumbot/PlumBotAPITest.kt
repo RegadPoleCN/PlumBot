@@ -52,7 +52,6 @@ class PlumBotAPITest {
     fun `subscribeGroupMessage and unregisterAllFor cleans listeners on plugin disable`() {
         val plugin = TestPlugin()
         var invocations = 0
-        // Subscribe via the dispatcher directly using plugin binding
         val handle = me.regadpole.plumbot.bot.BotEventDispatcher.registerGroupMessageHandler {
             invocations++
         }
@@ -61,7 +60,6 @@ class PlumBotAPITest {
         BotEventDispatcherAccessor.dispatchGroupMessage("hello", 1L, 2L)
         assertEquals(1, invocations)
 
-        // Simulate external plugin unload
         me.regadpole.plumbot.bot.BotEventDispatcher.unregisterAllFor(plugin)
 
         BotEventDispatcherAccessor.dispatchGroupMessage("hello", 1L, 2L)
@@ -90,7 +88,6 @@ class PlumBotAPITest {
         me.regadpole.plumbot.bot.BotEventDispatcher.registerGroupMessageHandler {
             throw RuntimeException("boom")
         }
-        // Must not throw
         BotEventDispatcherAccessor.dispatchGroupMessage("hello", 7L, 8L)
     }
 }
