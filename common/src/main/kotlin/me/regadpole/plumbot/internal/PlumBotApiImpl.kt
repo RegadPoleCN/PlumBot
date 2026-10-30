@@ -40,7 +40,7 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
     override val currentBotId: String
         get() = BotProvider.getBot()?.metadata?.type ?: "unknown"
 
-    /** @deprecated 见 `PlumBotAPI.isBotConnected`（D8 弃用周期）。 */
+    /** @deprecated 见 `PlumBotAPI.isBotConnected`；旧入口只保留一个发布周期。 */
     @Deprecated("语义含糊，请改用状态查询 API")
     override val isBotConnected: Boolean
         // R02：语义收紧为「**在线**」。此前只要 Bot 已加载就返回 true，

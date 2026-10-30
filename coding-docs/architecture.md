@@ -86,7 +86,7 @@ QQ 侧到游戏侧的路径：
 1. 各平台监听器把事件交给 `GameEventBridge`，覆盖聊天、进服、退服、换服、死亡、成就、踢出。
 2. 桥接层统一做开关判断（如 `feature.message.enable`、`feature.message.to_group`、`joinProxy`、`leaveProxy`）、去格式化、词库过滤与消息模板渲染。
 3. 出图时交给 `ServerMessageSender.broadcastRendered`：一次渲染得到字节，多个群复用同一份，某个群发送失败只降级该群。
-4. 登录时由 `PlayerLoginService` 做白名单校验，缓存优先、有界等待、失败即拒绝（见决策 D17），避免数据库抖动把所有人放进来。
+4. 登录时由 `PlayerLoginService` 做白名单校验，缓存优先、有界等待、失败即拒绝，避免数据库抖动把所有人放进来。
 
 跨平台差异通过能力枚举表达：`PlatformCapability`（如换服广播）与 `BotCapability`（如发图、拉群名片）在调用前检查，缺失能力时明确报错或降级，而不是让业务代码在运行期撞 `UnsupportedOperationException`。第三方插件只能通过 `PlumBotAPI` 与监听器接入，不能直接持有适配器实例。
 
@@ -101,10 +101,10 @@ QQ 侧到游戏侧的路径：
 ## 数据与持久化
 
 - 连接参数在 `datasource.yml`，模式由 `database.mode` 决定（`sqlite` 或 `mysql`）；未知值回落 SQLite 并记 ERROR，SQLite 路径支持 `%plugin_folder%` 变量。
-- 绑定关系是跨群共享的核心数据，表里以可空的 `source_group` 标记来源群；退群解绑只删除来源为本群的行（D2）。
+- 绑定关系是跨群共享的核心数据，表里以可空的 `source_group` 标记来源群；退群解绑只删除来源为本群的行。
 - 进服时若绑定行缺少玩家 UUID 会补写，避免同名玩家换号后失效；退群事件由内置处理器按来源群解绑。
-- 白名单登录校验读绑定与群成员缓存，缓存 TTL 与陈旧复用策略见 D17；数据库不可用时按失败处理，不放行。
-- 远程控制台的命令审计写入日志通道而不是业务库，粒度由 `remote_console.log_commands` 控制（D9）。
+- 白名单登录校验读绑定与群成员缓存，缓存 TTL 与陈旧复用策略以 `common` 的登录服务常量为准；数据库不可用时按失败处理，不放行。
+- 远程控制台的命令审计写入日志通道而不是业务库，粒度由 `remote_console.log_commands` 控制。
 
 ## 渲染子系统
 

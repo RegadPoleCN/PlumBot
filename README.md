@@ -98,7 +98,6 @@ PlumBot/
 ## 文档
 
 - [architecture.md](coding-docs/architecture.md)：模块分层与依赖方向
-- [decisions.md](coding-docs/decisions.md)：架构决策与理由
 - [render.md](coding-docs/render.md)：渲染门户、route 与协议
 - [playwright.md](coding-docs/playwright.md)：Playwright 安装与排障
 - [adding-platform.md](coding-docs/adding-platform.md)：接入新宿主平台

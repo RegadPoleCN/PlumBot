@@ -2,7 +2,7 @@
 
 `render/` 把业务数据变成发进 QQ 的图片，并统一收口所有出图路径（纯文本卡片、状态板、头像）。它不依赖平台适配层，适配层也只经门户接口取字节。
 
-面向核心维护者与平台适配者。配置键与默认值以 `common/src/main/resources/config.yml` 的 `render:` 段为准；为什么这样取舍见 [decisions.md](decisions.md)，本文不重复决策编号。
+面向核心维护者与平台适配者。配置键与默认值以 `common/src/main/resources/config.yml` 的 `render:` 段为准；为什么这样取舍见 [architecture.md](architecture.md)。
 
 > **出图开关只有一套**：每个功能只有 `render.outputs.<gate>` 一个键（共 13 个），`feature.*` 只留 `enable` 与业务参数；默认关闭的是 `load`、`message`、`joinAndLeave`、`death`、`advancement`、`kick`、`text`。
 >
