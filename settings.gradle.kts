@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 RegadPoleCN
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 dependencyResolutionManagement {
     @Suppress("UnstableApiUsage")
     repositories {

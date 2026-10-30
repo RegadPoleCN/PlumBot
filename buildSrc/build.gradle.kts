@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 RegadPoleCN
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 plugins {
     // `kotlin-dsl`：约定插件放在 src/main/kotlin/*.gradle.kts，由各模块的 build.gradle.kts 按需应用。
     `kotlin-dsl`

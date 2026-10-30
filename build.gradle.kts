@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2026 RegadPoleCN
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 
 group = "me.regadpole"
