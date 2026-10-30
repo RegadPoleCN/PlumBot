@@ -1,12 +1,12 @@
 dependencyResolutionManagement {
 
-    // Use Maven Central and the Gradle Plugin Portal for resolving dependencies in the shared build logic (`buildSrc`) project.
+    // buildSrc 的依赖从 Maven Central 解析。
     @Suppress("UnstableApiUsage")
     repositories {
         mavenCentral()
     }
 
-    // Reuse the version catalog from the main build.
+    // 复用主构建的版本目录（gradle/libs.versions.toml）。
     versionCatalogs {
         create("libs") {
             from(files("../gradle/libs.versions.toml"))

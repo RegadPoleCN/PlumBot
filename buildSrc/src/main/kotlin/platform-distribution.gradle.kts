@@ -14,14 +14,15 @@ tasks.shadowJar {
         exclude(dependency("com.mojang:brigadier"))
     }
 
+    // 第三方库共 6 条 relocate 规则，统一搬进 $relocateRoot，避免与宿主或其他插件撞包。
+    // Adventure（net.kyori.*）是显式例外：既不打包也不重定位 —— Paper/Leaf、Velocity 自带 kyori，
+    // 插件直接用宿主类（Component 才能跨 API 边界互通）；Spigot/Hytale 等不带 kyori 的宿主
+    // 由 Libby 在启动时按原包名装入（见 KyoriSupport）。
     relocate("com.sksamuel.aedile", "$relocateRoot.com.sksamuel.aedile")
     relocate("com.github.benmanes.caffeine", "$relocateRoot.com.github.benmanes.caffeine")
     relocate("com.zaxxer.hikari", "$relocateRoot.com.zaxxer.hikari")
     relocate("com.alessiodp.libby", "$relocateRoot.com.alessiodp.libby")
     relocate("me.lucko.commodore", "$relocateRoot.me.lucko.commodore")
-    // Adventure（net.kyori.*）不再随产物打包，也不再重定位：
-    // Paper/Leaf、Velocity 自带 kyori，插件直接使用宿主类（组件才能跨 API 边界互通）；
-    // Spigot/Hytale 这类不带 kyori 的宿主由 Libby 在启动时装入（见 KyoriSupport）。
     relocate("org.bstats", "$relocateRoot.org.bstats")
 
     minimize {

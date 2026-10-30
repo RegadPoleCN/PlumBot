@@ -25,7 +25,7 @@ dependencyResolutionManagement {
         }
         maven {
             name = "hytale"
-            url = uri("https://maven.hytale.com/release") // Or "hytale-pre-release" for pre-release versions
+            url = uri("https://maven.hytale.com/release") // 预发布版本改用 "hytale-pre-release"
         }
         maven {
             name = "ArikSquad"
@@ -38,7 +38,6 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
-// 模块清单
 include(":api")
 include(":render")
 include(":common") 
