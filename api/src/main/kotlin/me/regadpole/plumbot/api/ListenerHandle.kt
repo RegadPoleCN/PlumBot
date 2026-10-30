@@ -19,10 +19,8 @@
 package me.regadpole.plumbot.api
 
 /**
- * Handle returned from event subscription APIs.
- *
- * Implementations **SHALL** make [close] idempotent: calling [close] multiple
- * times MUST NOT throw and MUST NOT duplicate-side effects.
+ * 事件订阅返回的句柄。
+ * 实现**必须**保证 [close] 幂等：重复调用不得抛异常，也不得产生重复副作用。
  */
 @PublicApi
 fun interface ListenerHandle {

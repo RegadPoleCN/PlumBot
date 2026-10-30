@@ -21,11 +21,8 @@ package me.regadpole.plumbot.api.event
 import me.regadpole.plumbot.api.PublicApi
 
 /**
- * Immutable payload representing a group message received by the bot.
- *
- * Third-party plugins receive instances of this class via
- * [me.regadpole.plumbot.PlumBotAPI.subscribeGroupMessage]. All fields are stable;
- * additional fields MAY be added in future minor versions.
+ * 群消息事件的不可变载荷，经 [me.regadpole.plumbot.api.PlumBotAPI.subscribeGroupMessage] 投递。
+ * 现有字段语义稳定；后续小版本只追加字段，不改变既有字段含义。
  */
 @PublicApi
 data class GroupMessageEvent(
@@ -37,10 +34,8 @@ data class GroupMessageEvent(
 )
 
 /**
- * Immutable payload representing a group member decrease event.
- *
- * Third-party plugins receive instances of this class via
- * [me.regadpole.plumbot.PlumBotAPI.subscribeGroupMemberDecrease].
+ * 群成员减少事件（退群/被移出）的不可变载荷，
+ * 经 [me.regadpole.plumbot.api.PlumBotAPI.subscribeGroupMemberDecrease] 投递。
  */
 @PublicApi
 data class GroupMemberDecreaseEvent(

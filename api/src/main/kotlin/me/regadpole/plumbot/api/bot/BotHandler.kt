@@ -35,10 +35,9 @@ interface BotHandler {
     fun onUserDecrease(groupId: Long, userId: Long)
 
     /**
-     * 释放处理器持有的资源（协程作用域等）。
-     *
-     * 由适配器在 [IBot.shutdown] 时调用；默认无操作，第三方实现可忽略。
-     * 内置实现会在此取消出图/状态查询协程作用域 —— 否则 Bot 反复启停会持续泄漏线程。
+     * 释放处理器持有的资源（协程作用域等）。默认无操作，第三方实现可忽略。
+     * 由适配器在 [IBot.shutdown] 时调用；内置实现在此取消出图/状态查询作用域，
+     * 否则 Bot 反复启停会持续泄漏线程。
      */
     fun shutdown() {
     }

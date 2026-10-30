@@ -19,10 +19,8 @@
 package me.regadpole.plumbot.api
 
 /**
- * Platform-neutral view of a host plugin.
- *
- * Adding a new platform means adding an adapter wrapping the platform's
- * native plugin object. Third-party plugins keep using this contract.
+ * 宿主插件的平台中立视图。
+ * 接入新平台只需新增一层适配器包装平台原生插件对象；第三方插件始终面向本契约。
  */
 @PublicApi
 interface Plugin {

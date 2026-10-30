@@ -18,10 +18,7 @@
 
 package me.regadpole.plumbot.api
 
-/**
- * Public API contract annotations for PlumBot.
- */
-
+/** 公开契约注解：`@PublicApi` / `@StableApi` 承诺跨版本兼容，`@ExperimentalApi` 需调用方 opt-in。 */
 @PublicApi
 @Retention(AnnotationRetention.RUNTIME)
 @Target(
@@ -46,9 +43,8 @@ annotation class PublicApi
 annotation class StableApi
 
 /**
- * 标记该 API 处于实验性孵化阶段。
- * 基于 Kotlin 官方标准 [RequiresOptIn]，调用方在编译期必须显式添加 `@OptIn(ExperimentalApi::class)`，
- * 否则 Kotlin 编译器将直接发出编译警告。
+ * 标记实验性 API：基于 [RequiresOptIn]，调用方必须显式 `@OptIn(ExperimentalApi::class)`，
+ * 否则编译器发出警告（Level.WARNING，非错误）。
  */
 @RequiresOptIn(
     level = RequiresOptIn.Level.WARNING,

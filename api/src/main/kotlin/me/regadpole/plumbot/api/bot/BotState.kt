@@ -21,12 +21,10 @@ package me.regadpole.plumbot.api.bot
 import me.regadpole.plumbot.api.StableApi
 
 /**
- * Bot 的连接状态（R02）。
+ * Bot 的连接状态。
  *
- * ## 为什么需要枚举而不是一个 `isConnected` 布尔值
- * 旧接口只有一个布尔值，于是"**已加载但正在重连**"与"**在线**"无法区分：
- * 使用者看到 `true` 就以为一切正常，实际消息可能一直发不出去。
- * 状态机把这件事显式化，也让"为什么没反应"变得可诊断。
+ * ## 为什么用枚举而不是 `isConnected` 布尔值
+ * 布尔值无法区分"已加载但正在重连"与"在线"：看到 `true` 就以为正常，实际消息可能发不出去。
  *
  * ```
  * INIT ──start()──▶ CONNECTING ──连接成功──▶ ONLINE

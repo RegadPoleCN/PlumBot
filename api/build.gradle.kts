@@ -3,8 +3,7 @@ plugins {
 }
 
 dependencies {
-    // Adventure 由宿主提供（Paper/Velocity 自带），或在缺少时由 Libby 运行期装载
-    // （见 KyoriSupport）；因此只编译期可见，不再随 api 模块打进产物。
+    // Adventure 由宿主提供（Paper/Velocity 自带），缺失时由 Libby 运行期装载（见 KyoriSupport），故仅 compileOnly。
     compileOnly(libs.adventureApi)
     api(libs.kotlinxCoroutines)
     api(libs.kotlinxDatetime)
@@ -12,10 +11,9 @@ dependencies {
 
 /**
  * API 契约检测器（纯函数，便于用负例自检）。
- *
- * 规则：`:api` 下每个 Kotlin 源码文件都必须带公开 API 注解
- * （`@PublicApi` / `@StableApi` / `@ExperimentalApi`），以下两处为历史豁免：
- * - `fun interface PlatformTaskHandle`：平台任务句柄，跨模块实现由平台提供；
+ * 规则：`:api` 下每个 Kotlin 源码文件都必须带 `@PublicApi` / `@StableApi` / `@ExperimentalApi`。
+ * 两条豁免保留为兼容兜底：
+ * - `fun interface PlatformTaskHandle`（文件现已带注解，豁免不再必需）；
  * - `val Int.ticks`：单位扩展属性，随接口一起暴露。
  *
  * @return 违规描述列表（空表示通过）
@@ -41,8 +39,7 @@ tasks.register("checkApiContract") {
 
     doLast {
         if (selfTest) {
-            // 负例自检：检测器的每条判定分支都必须被覆盖，否则"漏报"会让契约静默失效。
-            // 运行方式：gradlew :api:checkApiContract -PapiContractSelfTest=true
+            // 负例自检：每条判定分支都必须被覆盖，否则"漏报"会让契约静默失效。运行：gradlew :api:checkApiContract -PapiContractSelfTest=true
             val negatives = listOf(
                 "未加注解的类型" to "package me.regadpole.plumbot.api\n\nclass Foo",
                 "注解只出现在行注释里" to "package x\n\n// @PublicApi\nclass Foo",
