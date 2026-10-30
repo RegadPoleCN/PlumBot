@@ -1,276 +1,122 @@
 # PlumBot 附属插件与外部扩展开发手册
 
-本文档面向希望在自己的 Minecraft 插件中集成 PlumBot、调用群互通能力、监听 Bot 事件，或编写自定义第三方 Bot 适配器的开发者。
+本文面向三种需求：在自己的插件里调用 PlumBot 的群互通能力、订阅 Bot 事件、实现第三方 Bot 适配器。
 
-> ## ⚠️ 勘误（2026-10-09，以源码为准）
->
-> 本文部分示例**与当前源码不符**，按原样照抄会编译失败。已确认的错误与正确写法如下（完整重写待办，见 `review/unresolved-issues.md` 的 U05）：
->
-> | 文中写法 | 实际 API |
-> |---|---|
-> | `PlumBotAPI.getOrNull()` | **不存在**。可空获取入口是 `PlumBotApiProvider.getInstanceOrNull()` |
-> | `api.getBindingByPlayer(uuid)`、`getBindingsByUser(...)` | **不存在**。实际为 `getBindingUser(playerName: String)` / `getBindingUser(uuid: UUID)` / `getBindingAccounts(userId: Long)` |
-> | 发送方法返回 `CompletableFuture` | 实际是 **`suspend` 函数**（`IBot` 的发送/查询能力均为挂起函数） |
-> | `import me.regadpole.plumbot.api.bot.AbstractBotAdapter` | 包名错误。它在 **`:common`**：`me.regadpole.plumbot.bot.AbstractBotAdapter`（不在 `:api` 契约内） |
-> | `BotCapability.SEND_GROUP_MSG` / `SEND_IMAGE` | 实际枚举名为 `GROUP_MESSAGE_SEND` / `IMAGE_SEND`（另有 `GROUP_MESSAGE_RECEIVE` / `GROUP_MEMBER_QUERY` 等） |
-> | `registry.registerExternalFactory(...)` 返回 `false` 表示失败 | 实际**失败时抛异常**，成功返回 `true` |
-> | `PlumBotAPI.getExtensionRegistry()`、`unregisterAllFor(...)` | 前者不存在；注销在 `BotEventDispatcher.unregisterAllFor(plugin)` |
-> | `IBot` 的 `runTaskAsynchronously` / `runTaskLater` | 实际为 `PlatformScheduler.runAsync` / `runLater` |
->
-> 另：`:render` 的门户类型对扩展**不公开**，扩展只能经 `PlumBotAPI` 与事件接口交互。
+文中示例都有**可编译版本**：[`common/src/test/kotlin/me/regadpole/plumbot/docs/ExtensionGuideSnippets.kt`](../common/src/test/kotlin/me/regadpole/plumbot/docs/ExtensionGuideSnippets.kt)。该文件随 `./gradlew :common:compileTestKotlin` 编译，API 改名或改签名会先让它编译失败。以它为准，本文只解释用法。
 
----
+## 一、依赖接入
 
-## 📦 1. 依赖接入
+本仓库**不发布到 Maven 中央**，没有 `maven-publish` 配置，不存在 `me.regadpole.plumbot:api:<version>` 这类坐标。可用方式只有两种。
 
-PlumBot 将对外公开契约完全隔离在独立的 `:api` 模块中，外部插件**仅需且只能依赖 `:api` 模块**，无需依赖重型的 `:common` 或 `:bukkit`。
+### 1. 编译期：把发布产物当文件依赖
 
-### Gradle (Kotlin DSL)
+`./gradlew dist` 在根目录 `dist/` 生成 `PlumBot-Bukkit.jar`、`PlumBot-Velocity.jar`、`PlumBot-Hytale.jar`。产物里已包含 `me.regadpole.plumbot.api` 包（`:common` 以 `api(project(":api"))` 声明，Shadow 一并打入），直接引用 jar 即可：
+
 ```kotlin
-repositories {
-    mavenCentral()
-    // 若使用本地版本或私有仓库，请配置对应 Maven URL
-}
-
 dependencies {
-    // 仅依赖公开 API 契约，版本号请填入当前发布的具体版本（如 3.0.0 或 3.0.1-beta1）
-    compileOnly("me.regadpole.plumbot:api:<version>")
+    compileOnly(files("libs/PlumBot-Bukkit.jar")) // 只用于编译，不进入你的产物
 }
 ```
 
-### `plugin.yml` (Bukkit 宿主声明)
+必须 `compileOnly` 而不是 `implementation`：把 api 类打进自己的 jar，同一份接口会被两个 ClassLoader 各加载一次，拿到的实例与你声明的接口不是同一个类型，表现为 `ClassCastException`。编译用的 jar 要与服务器上运行的 PlumBot 是同一构建产物：当前版本 `3.0.0-beta1`（`gradle.properties`），`:api` 接口仍可能变动，升级 PlumBot 后要用新的 `dist/` 产物重新编译。
+
+### 2. 运行期：普通插件依赖
+
 ```yaml
-name: MyAwesomePlugin
+name: MyPlugin
 version: 1.0.0
-main: com.example.plugin.MyPlugin
-# 声明软依赖或硬依赖
+main: com.example.MyPlugin
 depend: [PlumBot]
 ```
 
----
+Bukkit 侧插件名是 `PlumBot`（见 [`bukkit/src/main/resources/plugin.yml`](../bukkit/src/main/resources/plugin.yml)）。只是可选集成时用 `softdepend`，并且必须判空取 API。
 
-## 🔑 2. 获取 `PlumBotAPI` 实例
+## 二、取 API 实例
 
-`PlumBotAPI` 采用面向服务架构（Service-Oriented Architecture），本身为一个 `@StableApi interface`。提供了多种标准获取途径：
+两个入口都在 `me.regadpole.plumbot.api`：
 
-### 途径 A：跨平台静态入口（推荐最简）
-```kotlin
-import me.regadpole.plumbot.api.PlumBotAPI
+- `PlumBotAPI.get()`：未初始化时抛 `IllegalStateException`，消息为 `PlumBotAPI 尚未初始化！请确保 PlumBot 已正确加载且处于已启用状态。`
+- `PlumBotApiProvider.getInstanceOrNull()`：未初始化返回 `null`。
 
-// 获取当前全局绑定的 API 实现实例（若 PlumBot 尚未就绪将抛出 IllegalStateException）
-val api: PlumBotAPI = PlumBotAPI.get()
+没有 `PlumBotAPI.getOrNull()`。`depend` 声明依赖时直接 `get()`；`softdepend` 或在自己 `onEnable` 早期调用，先 `getInstanceOrNull()` 判空。
 
-// 安全获取（未就绪时返回 null）
-val safeApi: PlumBotAPI? = PlumBotAPI.getOrNull()
-```
+Bukkit 还可以走服务管理器（`PlumBotBukkit` 在 `onEnable` 里注册了 `PlumBotAPI`）：`Bukkit.getServicesManager().getRegistration(PlumBotAPI::class.java)?.provider`。Velocity 侧在 `ProxyInitializeEvent` 之后同样 `PlumBotAPI.get()`（`PlumBotVelocity` 已注册）。
 
-### 途径 B：Bukkit 服务管理器（Bukkit 标准做法）
-```kotlin
-import me.regadpole.plumbot.api.PlumBotAPI
-import org.bukkit.Bukkit
+## 三、发送与查询
 
-val registration = Bukkit.getServicesManager().getRegistration(PlumBotAPI::class.java)
-val api: PlumBotAPI? = registration?.provider
-```
-
-### 途径 C：Velocity 代理端插件获取
-在 Velocity 代理端插件中，同样在 `ProxyInitializeEvent` 触发后直接调用跨平台门面：
-```kotlin
-import me.regadpole.plumbot.api.PlumBotAPI
-
-// Velocity 插件可在代理端全局初始化后直接安全调用
-val api: PlumBotAPI = PlumBotAPI.get()
-```
-
----
-
-## 🚀 3. 核心功能调用示例
-
-### 1) 发送群消息与广播
-所有的发送方法均是非阻塞异步执行，并返回标准的 `CompletableFuture`：
+`PlumBotAPI` 的发送、绑定、成员查询方法全部是 **`suspend` 函数**，返回 `Unit` 或具体值，不返回 `CompletableFuture`：
 
 ```kotlin
-val api = PlumBotAPI.get()
-
-// 1. 发送纯文本群消息
-api.sendGroupMessage(groupId = 123456789L, message = "服务器 TPS 当前为 20.0")
-    .thenAccept { println("消息发送成功！") }
-    .exceptionally { err -> 
-        println("发送失败: ${err.message}")
-        null 
-    }
-
-// 2. 向所有配置文件中配置的已挂载群广播消息
-api.broadcastGroupMessage("服务器将在 10 分钟后例行维护。")
-
-// 3. 发送群图片
-val imageFile = File(dataFolder, "ranking.png")
-api.sendGroupImage(groupId = 123456789L, image = imageFile)
-```
-
-### 2) 玩家绑定关系查询 (Whitelist & Binding)
-```kotlin
-import java.util.UUID
-
-// 通过游戏内玩家 UUID 查询绑定的 QQ 号
-api.getBindingByPlayer(player.uniqueId).thenAccept { binding ->
-    if (binding != null) {
-        player.sendMessage("您绑定的 QQ 账号为: ${binding.userId}")
-    } else {
-        player.sendMessage("您尚未绑定任何 QQ 账号！")
-    }
-}
-
-// 通过 QQ 号查询绑定的游戏账号
-api.getBindingsByUser(123456789L).thenAccept { bindings ->
-    println("该 QQ 绑定了 ${bindings.size} 个游戏角色: ${bindings.map { it.playerName }}")
+scope.launch {
+    val api = PlumBotAPI.get()
+    api.sendGroupMessage(groupId = 123456789L, message = "服务器 TPS 当前为 20.0")
+    api.sendGroupImage(groupId = 123456789L, imageFile = File(dataFolder, "ranking.png"))
+    api.broadcastToAllGroups("服务器将在 10 分钟后例行维护。") // 方法名是 broadcastToAllGroups
 }
 ```
 
----
+完整清单照抄 [`api/src/main/kotlin/me/regadpole/plumbot/api/PlumBotAPI.kt`](../api/src/main/kotlin/me/regadpole/plumbot/api/PlumBotAPI.kt)，常用的几组：
 
-## 🎧 4. 监听与订阅 Bot 事件
+- **发送**：`sendGroupMessage(groupId, message, asImage = false)`、`sendGroupMessageAt(groupId, userId, message)`、`sendGroupMessageAtAll(groupId, message)`、`sendUserMessage(userId, message, asImage = false)`、`sendGroupImage(groupId, imageFile)` / `sendGroupImage(groupId, imageBytes)`、`broadcastToAllGroups(message, asImage = false)`
+- **绑定**：`getBindingUser(playerName): Long?`、`getBindingUser(uuid: UUID): Long?`、`getBindingAccounts(userId): Map<String, UUID?>`、`addBinding(userId, playerName, uuid = null): Boolean`、`removeBinding(playerName): Boolean`、`isPlayerWhitelisted(playerName): Boolean`
+- **鉴权与属性**：`isBotAdmin(userId)`、`getGroupMemberInfo(groupId, userId): MemberInfo?`、`isGroupAdmin(groupId, userId)`、`boundGroupIds: Set<Long>`、`currentBotId: String`
+- **Java 调用方**：用 `*Async` 重载，返回 `CompletableFuture`，如 `sendGroupMessageAsync(groupId, message)`、`broadcastToAllGroupsAsync(message)`、`getBindingUserAsync(playerName)`
 
-PlumBot 提供了类型安全的事件监听机制。为了**杜绝插件重载 (`/reload`) 导致的内存泄漏**，强烈建议将监听器与附属插件的生命周期绑定。
+## 四、订阅事件
 
-### 1) 订阅群消息事件
 ```kotlin
 import me.regadpole.plumbot.api.Plugin
 import me.regadpole.plumbot.api.event.GroupMessageEvent
 
-// 将自己的 Bukkit 插件包装为 PlumBot 能够识别的 Plugin 凭据
+// 把自己的插件包成 PlumBot 认识的插件凭据，注销时用它定位
 val pluginHandle = object : Plugin {
     override val name: String = this@MyPlugin.name
     override val version: String = this@MyPlugin.description.version
     override val isEnabled: Boolean get() = this@MyPlugin.isEnabled
 }
 
-// 订阅事件：传入 pluginHandle 可以在你的插件 disable 时自动注销监听，零泄漏风险！
 val handle = api.subscribeGroupMessage(pluginHandle) { event: GroupMessageEvent ->
-    println("收到群 [${event.groupId}] 成员 [${event.userId}] 的消息: ${event.message}")
-    
-    if (event.message == "ping") {
-        api.sendGroupMessage(event.groupId, "pong!")
-    }
+    println("群 [" + event.groupId + "] 成员 [" + event.userId + "]：" + event.message)
 }
-
-// 如果需要手动注销（可选，close 操作具备幂等性）：
-handle.close()
+handle.close() // 可选，close() 幂等
 ```
 
----
+要点：`subscribeGroupMemberDecrease(pluginHandle) { event -> ... }` 结构相同；回调在触发它的 Bot 线程上同步执行，不在 Bukkit 主线程，要改世界状态先切回宿主主线程；回调里要调 `suspend` 方法就自己开协程，不要阻塞回调线程。
 
-## 🔌 5. 编写与注册自定义 BotAdapter
+注销有两条路径：自己的 `close()`，以及宿主插件 disable 时 Bukkit 的 `PluginDisableEvent`（[`bukkit/.../listener/PluginListener.kt`](../bukkit/src/main/kotlin/me/regadpole/plumbot/bukkit/listener/PluginListener.kt) 调 `BotEventDispatcher.unregisterAllFor(plugin)` 与 `api.extensionRegistry.unregisterAllFor(plugin)`）。重载频繁的场景两条都要在。
 
-如果你需要接入不支持的聊天协议平台（如 KOOK、Telegram、Discord 或自定义协议），可以实现自己的 BotAdapter 并注册进 PlumBot。
+## 五、自定义 Bot 适配器
 
-### 第一步：实现 `IBot`
+只有接入新协议（KOOK、Telegram、Discord 等）才需要，三步。
+
+**1. 实现 `IBot`**（`me.regadpole.plumbot.api.bot.IBot`）：至少 `metadata`、`start(): IBot`、`shutdown()`、`sendGroupMsg(targetId, message)`、`sendGroupImage(targetId, imageFile): Boolean`、`getGroupName(groupId)`、`checkUserInGroup(userId, groupId)`。生命周期方法名是 `start()` / `shutdown()`，没有 `doStart()` / `doShutdown()`。想省掉群缓存、出图协程与渲染降级，可以继承 `AbstractBotAdapter` —— 它在 `:common` 的 `me.regadpole.plumbot.bot` 包，不在 `:api`。
+
+**2. 实现 `BotFactory`**：
+
 ```kotlin
-import me.regadpole.plumbot.api.bot.AbstractBotAdapter
-import me.regadpole.plumbot.api.bot.BotAdapterMetadata
-import me.regadpole.plumbot.api.bot.BotCapability
-import me.regadpole.plumbot.api.platform.PlatformContext
-import java.util.concurrent.CompletableFuture
-
-class MyCustomBotAdapter(
-    override val context: PlatformContext,
-    override val metadata: BotAdapterMetadata
-) : AbstractBotAdapter() {
-
-    override fun doStart() {
-        // 初始化并启动你的底层客户端连接
-    }
-
-    override fun doShutdown() {
-        // 断开连接，释放资源
-    }
-
-    override fun sendGroupMsg(groupId: Long, msg: String): CompletableFuture<Boolean> {
-        // 调用三方 SDK 发送文本消息
-        return CompletableFuture.completedFuture(true)
-    }
-
-    override fun fetchMember(groupId: Long, userId: Long): CompletableFuture<MemberInfo?> {
-        // 拉取成员信息
-        return CompletableFuture.completedFuture(null)
-    }
-}
-```
-
-### 第二步：实现 `BotFactory`
-```kotlin
-import me.regadpole.plumbot.api.bot.BotFactory
-import me.regadpole.plumbot.api.bot.BotAdapterMetadata
-import me.regadpole.plumbot.api.bot.BotCapability
-import me.regadpole.plumbot.api.platform.PlatformContext
-
-object MyCustomBotFactory : BotFactory {
-    override val metadata: BotAdapterMetadata = BotAdapterMetadata(
+object MyBotFactory : BotFactory {
+    override val metadata = BotAdapterMetadata(
         type = "my-bot",
-        displayName = "My Custom Bot",
-        capabilities = setOf(
-            BotCapability.SEND_GROUP_MSG,
-            BotCapability.SEND_IMAGE
-        )
+        displayName = "My Bot",
+        capabilities = setOf(BotCapability.GROUP_MESSAGE_SEND, BotCapability.IMAGE_SEND)
     )
 
-    override fun create(context: PlatformContext): IBot {
-        return MyCustomBotAdapter(context, metadata)
-    }
+    override fun create(context: PlatformContext): IBot = MyBot(context, metadata)
 }
 ```
 
-### 第三步：注册到运行期注册表
-```kotlin
-val registry = api.getExtensionRegistry()
-val success = registry.registerExternalFactory(MyCustomBotFactory, pluginHandle)
-if (success) {
-    println("自定义 Bot 适配器注册成功！可在 config.yml 中配置 bot.type: my-bot 使用")
-}
-```
+能力位枚举名是 `GROUP_MESSAGE_SEND`、`USER_MESSAGE_SEND`、`IMAGE_SEND`、`GROUP_MEMBER_QUERY`、`GROUP_MEMBER_CHECK`、`GROUP_MESSAGE_RECEIVE`、`GROUP_MEMBER_DECREASE_RECEIVE`，没有 `SEND_GROUP_MSG` / `SEND_IMAGE`。`BotAdapterMetadata` 另有 `supportedPlatforms` 与 `requiredPlugins`（都默认空集），`BotProvider.loadBot` 会按这两项校验。
 
----
+**3. 注册**：`val ok = api.extensionRegistry.registerExternalFactory(MyBotFactory, pluginHandle)`。成功返回 `true`；type 与已注册者（含内置的 `onebot`、`miraimc`）冲突时**抛 `AdapterRegistrationException`**，不是返回 `false`，用 `runCatching` 包住。注册后把 `config.yml` 的 `bot.type` 改成 `my-bot`，重启或 `/plumbot reload` 生效。
 
-## 🧪 6. 单元测试与 Mock 指南
+## 六、单元测试
 
-得益于当前版本的 `PlumBotAPI` 是纯接口契约设计，外部附属插件在编写单元测试时**完全无需启动真实的 Minecraft 服务端或 PlumBot**，直接使用 MockK 即可轻松模拟：
+`PlumBotAPI` 是纯接口，不必起服务端，`mockk` 之后注入全局实例即可（`PlumBotApiProvider.register(mockk<PlumBotAPI>(relaxed = true))`，测试后 `PlumBotApiProvider.unregister()`）。`suspend` 方法用 `runTest` 驱动（`kotlinx-coroutines-test`），校验用 `coVerify`。
 
-```kotlin
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
-import me.regadpole.plumbot.api.PlumBotAPI
-import me.regadpole.plumbot.api.PlumBotApiProvider
-import org.junit.jupiter.api.AfterEach
-import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Test
-import java.util.concurrent.CompletableFuture
+## 七、排障三点
 
-class MyPluginLogicTest {
+1. **`NoSuchMethodError` / `NoClassDefFoundError`**：编译用的 api jar 与服务器上的 PlumBot 不是同一构建产物。换成当前的 `dist/` jar 重新编译，不要留着旧的缓存依赖。
+2. **能力缺失、调用没反应**：先确认 Bot 在线（`currentBotId`）与账号在群里的权限（`isGroupAdmin`、`getGroupMemberInfo`）。`BotCapability` 只声明适配器支持什么，不代表运行期一定可用。`isBotConnected` 已废弃，不要用它判断。
+3. **加载顺序**：`depend: [PlumBot]` 保证 PlumBot 先 enable，`get()` 可直接用；`softdepend` 时先用 `getInstanceOrNull()` 判空，PlumBot 未启用或已卸载都能安全跳过。
 
-    private lateinit var mockApi: PlumBotAPI
-
-    @BeforeEach
-    fun setup() {
-        mockApi = mockk(relaxed = true)
-        every { mockApi.sendGroupMessage(any(), any()) } returns CompletableFuture.completedFuture(true)
-        
-        // 绑定 Mock 实例
-        PlumBotApiProvider.register(mockApi)
-    }
-
-    @AfterEach
-    fun tearDown() {
-        PlumBotApiProvider.unregister()
-    }
-
-    @Test
-    fun testSendMessageOnPlayerJoin() {
-        // 执行你的插件业务逻辑
-        PlumBotAPI.get().sendGroupMessage(12345L, "玩家加入了游戏")
-
-        // 验证是否正确调用了 PlumBot 的发送能力
-        verify(exactly = 1) { mockApi.sendGroupMessage(12345L, "玩家加入了游戏") }
-    }
-}
-```
+相关文档：[`adding-platform.md`](adding-platform.md)（接入新宿主平台）、[`internal-dev.md`](internal-dev.md)（内部实现流程）。

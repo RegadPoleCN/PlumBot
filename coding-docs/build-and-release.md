@@ -1,123 +1,104 @@
-# PlumBot 构建与工程化发布规范
+# PlumBot 构建与发布
 
-本文档面向所有参与编译、测试与 CI/CD 维护的开发者，详细阐述 PlumBot 的构建逻辑体系、多平台产物归集流水线与代码质量守护任务。
+改构建、跑 CI、发版本以 `buildSrc/`、根 `build.gradle.kts` 和 `.github/workflows/` 为准；本文与之冲突时看代码。
 
----
+## buildSrc 约定插件
 
-## 🛠️ 1. Gradle `buildSrc` 约定插件体系
+### `kotlin-jvm`
 
-为了消除各子模块 `build.gradle.kts` 中冗余重复的构建配置，项目在 `buildSrc/` 中抽象出了两组正交的 **Convention Plugins（预编译脚本插件）**：
+所有子模块（`:api`、`:render`、`:common`、`:adapter:*`、`:bukkit`、`:velocity`、`:hytale`）都应用：
 
-### 1) `kotlin-jvm`（基础 JVM 约定插件）
-* **定位**：供所有子模块（`:api`, `:render`, `:common`, `:adapter:*`, `:bukkit`, `:velocity`, `:hytale`）应用。
-* **主要职责**：
-  - 自动引入 Kotlin JVM 插件；
-  - 强制编译工具链为 **JDK 25**（`jvmToolchain(25)`）—— 产物 class 文件版本为 **69**，**JDK 21 连产物都无法加载**，请勿按旧文档使用 21；
-  - 配置基于 `JUnitPlatform` 的单测运行器，并开启直观的控制台测试状态日志；
-  - 生成 `BuildConstants`（包名 `me.regadpole.plumbot.internal` 声明为任务输入，生成前清空输出目录，避免旧包名的 class 残留进产物）。
+- Kotlin JVM + `jvmToolchain(25)`：产物 class 版本 69，JDK 21 及以下加载不了。
+- `Test` 走 `JUnitPlatform`，`java.io.tmpdir` 指到 `<module>/build/tmp/test-jvm`，测试结束递归删除。
+- `generateBuildConstants` 按需生成 `me.regadpole.plumbot.internal.BuildConstants`（`VERSION`、`NAME`）。模块要在自己的 `build.gradle.kts` 里声明 `extra["plumbotBuildConstants"] = true` 才会生成（目前只有 `:velocity` 需要，把版本喂给 `@Plugin`）。全模块都生成会让同名类在 shading 时相撞。
 
-> 注：旧文档所称"配置全局源码字符集为 UTF-8"**并不存在**（构建脚本中没有任何 charset/encoding 配置），已删除该描述。
+### `platform-distribution`
 
-### 2) `platform-distribution`（平台分发约定插件）
-* **定位**：仅供**平台宿主分发模块**（`:bukkit`, `:velocity`, `:hytale`）应用。
-* **主要职责**：
-  - 自动引入 `com.gradleup.shadow` 插件并挂载至 `assemble` 依赖链；
-  - 归一化最终产物命名格式（移除冗余的 `-all` 分类器后缀）；
-  - **依赖重定向（Relocation 隔离）**：由单一真源 `relocateRoot = "me.regadpole.plumbot.lib"` 派生全部规则 ——
-    Aedile、Caffeine、HikariCP、Libby、Commodore、Adventure、**bStats**（共 7 条）；
-    新增库时只改这一处，运行期 Libby 的 relocate 目标必须与它逐字一致；
-  - `minimize` 排除 `org.bstats:*`，并排除 `com.mojang:brigadier`（宿主自带）；
-  - 自动剔除发布包中无效的数字签名与元数据文件（`META-INF/*.SF`, `*.DSA`, `*.RSA`）。
+只给 `:bukkit`、`:velocity`、`:hytale`：
 
----
+- 应用 `com.gradleup.shadow`，`shadowJar` 挂进 `assemble`，`archiveClassifier` 置空（产物不带 `-all`）。
+- 重定位到 `me.regadpole.plumbot.lib`，共 6 条：Aedile（`com.sksamuel.aedile`）、Caffeine（`com.github.benmanes.caffeine`）、HikariCP（`com.zaxxer.hikari`）、Libby（`com.alessiodp.libby`）、Commodore（`me.lucko.commodore`）、bStats（`org.bstats`）。
+- **Adventure 不在重定位列表里，是被显式排除的**：`net.kyori.*` 既不打包也不改包名。Paper/Leaf 与 Velocity 宿主自带 kyori，插件直接用宿主类——打进去的 `Component` 和宿主的不是同一个类；Spigot/Hytale 这类不带 kyori 的宿主由 `KyoriSupport` 判定后交给 Libby 按原包名装入。
+- `minimize` 排除 `org.bstats:*`；`dependencies` 排除 `com.mojang:brigadier`（宿主自带）；剔除 `META-INF/*.SF`、`*.DSA`、`*.RSA`（shading 后签名失效，留着会让宿主拒绝加载）。
 
-## 📦 2. 统一产物收集流水线 (`:dist` 任务)
+## dist：收集发布产物
 
-在支持多平台的架构下，若各模块产物分散在各自子目录（如 `bukkit/build/libs/`），CI 脚本与发布流程将极易碎片化。为此根工程声明了统一聚合任务：
+根工程的 `Copy` 任务（`group = distribution`，`destinationDir = dist`）对每个应用了 shadow 的平台模块 `from(shadowJar)`，`./gradlew dist` 后得到 `dist/PlumBot-Bukkit.jar`、`dist/PlumBot-Velocity.jar`、`dist/PlumBot-Hytale.jar`。
 
-### 运行方式
-```bash
-# 执行多平台发布包统一构建与收集
-./gradlew dist
-```
+文件名不含版本（三个模块都 `archiveVersion.set("")`），所以 `releases/latest/download/PlumBot-Bukkit.jar` 这类链接永远有效；代价是版本只能进产物里查，发布流水线因此会解包断言。
 
-### 执行逻辑
-1. 遍历所有应用了 ShadowJar 插件的平台子模块；
-2. 触发对应的 `shadowJar` 任务生成生产发布包；
-3. 将最终发布包自动复制到项目根目录下的 **`dist/`** 目录：
-   ```
-   PlumBot/
-   └── dist/
-       ├── PlumBot-Bukkit.jar     # 用于 Paper/Spigot 实体后端子服
-       ├── PlumBot-Velocity.jar   # 用于 Velocity 跨服代理端
-       └── PlumBot-Hytale.jar     # 用于 Hytale 官方实体服务端
-   ```
+## 校验任务
 
----
+`check` 聚合的校验（`build.yml` 与 `release.yml` 跑的也是它）：
 
-## 🛡️ 3. API 契约静态守护机制 (`:api:checkApiContract`)
+| 任务 | 归属 | 校验什么 |
+|---|---|---|
+| `test` | 各模块 | 单元测试 |
+| `:api:checkApiContract` | `:api` | `:api` 每个文件都标了公开 API 注解 |
+| `checkRenderBoundaries` | 根 | 模块边界不越级 |
+| `checkRenderProtocol` | 根 | 渲染协议清单与代码、配置一致 |
+| `checkRuntimeLibraries` | 根 | `compileOnly` 依赖运行期都装得上 |
+| `checkSingleDefinitions` | 根 | 只该有一份的定义没被复制 |
 
-为了避免开发人员在维护中无意中将实现类暴露到 `:api` 模块，或者意外修改标记了 `@StableApi` 的契约签名，项目内置了契约校验任务：
+根工程的四个校验通过 `subprojects { plugins.withId("base") { tasks.named("check") { dependsOn(...) } } }` 挂到每个模块的 `check` 上，`:api:checkApiContract` 由 `:api` 自己挂，`checkRelocation` 不在链上（见下）。
+
+**`checkApiContract`**：按**文件**判定，不是按类或按包——`:api` 下每个 `.kt` 文件剥离注释后必须出现 `@PublicApi` / `@StableApi` / `@ExperimentalApi` 之一；两处硬编码豁免（`fun interface PlatformTaskHandle`、`val Int.ticks`）；不校验包名，也不要求必须用 `@StableApi`。先剥注释是为了防止"注解只写在注释里"骗过校验。失败原因基本只有一个：新增文件忘打注解。改检测逻辑必须跑负例自检 `./gradlew :api:checkApiContract -PapiContractSelfTest=true`（4 个负例 + 4 个正例）。
+
+**`checkRenderBoundaries`**：三条规则——适配层不得出现任何 `import me.regadpole.plumbot.render`；`:render` 的 9 个内部类型（`TextToImg`、`ThemeManager`、`AwtImageRenderer`、`PlaywrightImageRenderer`、`PayloadGovernor`、`RenderSecurity`、`AvatarComposer`、`ImageRenderManager`、`ImageRenderer`）不得被跨模块引用，**注释里提到也算**；`:api` 不得依赖渲染实现。失败原因：图省事直接 `new ThemeManager`，绕过门户。
+
+**`checkRenderProtocol`**：`render/src/main/resources/render-protocol.json` 是单一真源。校验 route 集合与 `RenderRoute` 枚举双向一致；每条 route 必须声明非空 `featureGate`、`defaultEngine` 和 `payload`，且 `payload` 严格是 `{ text: string, title: string?, data: object }`；文本样式还要在协议清单、`config.yml`、AWT 引擎默认值、运行时载体之间四方一致。前端源码不在构建期读——协议号与 route 集合靠运行时 manifest 握手（对不上报 `PW_TEMPLATE_INVALID`）。渲染细则见 [render.md](./render.md)。
+
+**`checkRuntimeLibraries`**：读 `common/src/main/kotlin/me/regadpole/plumbot/internal/RuntimeLibraries.kt` 里的 groupId/artifactId，与所有子模块的 `compileOnly` 声明做差集，差额必须落在带理由的豁免表里（spigot-api、`com.hypixel.hytale:Server`、velocity-api、MiraiMC 的三个坐标、按需装载的 playwright）。解析失败或一个 `compileOnly` 都没读到时直接失败（防空转）。失败原因：加了 `compileOnly` 依赖却没进 `RuntimeLibraries`——编译期毫无提示，运行期 `NoClassDefFoundError`。
+
+**`checkSingleDefinitions`**：扫描 `common/src/main/kotlin` 与 `api/src/main/kotlin`，要求玩家名校验正则 `[a-zA-Z0-9_.]{3,16}` 出现且仅出现一次（应在 `PlayerNameRules`）。失败原因：把规则又抄了一份——两份会各自演化，出现"群里能绑、走 API 绑不上"。目录缺失或一个文件都没扫到同样判失败。
+
+**`checkRelocation`**：**不在 `check` 链上**（依赖 `dist` 产物）。断言三个包里不含 `top/`、不含 `net/kyori/`、也不含 `me/regadpole/plumbot/lib/net/kyori/`；`com/google/gson` 允许保留原前缀。`dist` 是空的会直接报"dist/ 下没有产物，请先运行 gradlew dist"。失败原因：某个依赖把 Adventure 传递带进了产物，典型症状是 Velocity 上 `/plumbot status` 抛 `NoClassDefFoundError`。
+
+## 常用命令
 
 ```bash
-# 执行公开 API 契约静态校验
-./gradlew :api:checkApiContract
-```
-
-### 规则判定矩阵
-1. **公开 API 纯粹性**：`:api` 模块下的所有公共类型必须且只能位于 `me.regadpole.plumbot.api.*` 包命名空间下。
-2. **注解标注完整性**：公共类型必须显式打上 `@StableApi` 或 `@PublicApi` 注解。
-3. **零内部包侵入**：严禁在 `:api` 模块中导入或暴露 `me.regadpole.plumbot.internal.*` 内部包下的符号。
-
-如果校验不通过，构建将直接中断并给出具体的违规类名与修复指引。
-
----
-
-## 🧱 3.1 渲染子系统边界与协议守护（`checkRenderBoundaries` / `checkRenderProtocol`）
-
-渲染子系统采用**统一门户**：其他模块只能经 `RenderPortal` 对话，不得引用 `:render` 的内部类型。该纪律由两个机械校验任务保证 —— 二者**已随 `check` 一起执行**（挂在各模块 `check` 上），因此 `./gradlew check` 即包含它们：
-
-```bash
-./gradlew check                       # 等价于 test + checkApiContract + 下列两个检查
-./gradlew checkRenderBoundaries checkRenderProtocol   # 单独运行
-```
-
-**`checkRenderBoundaries` 规则矩阵**
-
-1. **适配层零依赖**：`adapter/**` 不得出现任何 `me.regadpole.plumbot.render` 导入（出图统一由门户负责）。
-2. **跨模块禁引用内部类型**：`:api` / `:common` / 各宿主模块不得引用 `TextToImg`、`ThemeManager`、各驱动、`ImageRenderManager` 等内部类型 —— 含**注释中的提及**。
-3. **`:api` 不得依赖渲染实现**。
-4. **公开发布面必须带契约注解**：`:render` 中任何非 `internal` 的顶层声明，其所在文件必须含 `@PublicApi` / `@StableApi`。
-
-**`checkRenderProtocol` 规则矩阵**
-
-1. `render/src/main/resources/render-protocol.json` 的 route 集合与 Kotlin `RenderRoute` 枚举**双向一致**；
-2. 每条 route 均声明 `featureGate` / `defaultEngine` / 非空 `payload`；
-3. 若本地检出了独立前端源码到 `web/`（不随本仓库提交），其 SDK 协议版本与 route 集合必须与清单一致；
-4. 在同样前提下，模板路由路径必须覆盖全部协议 route 且逐字一致；额外路径仅允许开发画廊 `preview`，并显式禁止历史写法 `list`；
-5. 文本可读性规则四方一致：协议清单 ↔ `config.yml` ↔ `TextToImg.Style.DEFAULT` ↔ `RenderPortal.RenderTextStyle`。
-
-> 前端源码不在本仓库跟踪范围内；未检出时规则 3/4 自动跳过。
-
-> 详见 **[渲染子系统规范](./render.md)**。
-
----
-
-## 🚀 4. 日常高频构建命令速查
-
-```bash
-# 1. 快速编译全模块（推荐日常编码中使用）
-./gradlew compileKotlin compileTestKotlin
-
-# 2. 离线执行全量测试与全部契约/边界检查（check 已包含三个检查任务）
-./gradlew test check --offline
-
-# 2b. 契约检测器自检（负例回归，改动 checkApiContract 后必须跑）
-./gradlew :api:checkApiContract -PapiContractSelfTest=true
-
-# 3. 产生最终可发布的各平台 Jar 文件（输出到 dist/ 目录）
-./gradlew dist --offline
-
-# 4. 全量清理构建缓存与中间产物
+./gradlew check                 # 测试 + 全部校验任务（CI 用的就是它）
+./gradlew dist checkRelocation   # 出包并断言重定位（发布门禁）
+./gradlew :common:test           # 单模块测试
 ./gradlew clean
 ```
+
+> 旧文档写的 `./gradlew test check --offline` 与 CI 不符：CI **不用** `--offline`。本地缓存齐全时加 `--offline` 能让构建完全不联网，但新环境照抄会失败。
+
+## 版本与发布
+
+`gradle.properties` 的 `version` 是唯一真源；`-Pversion=x.y.z` 可在不改文件的情况下覆盖（流水线用它和 tag 对表）。注入位置：
+
+| 产物清单 | 注入方式 |
+|---|---|
+| `bukkit/src/main/resources/plugin.yml` | `processResources` expand `version` |
+| `hytale/src/main/resources/manifest.json` | `processResources` expand `"Version"` |
+| Velocity | `:velocity` 没有 `resources`；`@Plugin(version = BuildConstants.VERSION)` 由 kapt 生成 `velocity-plugin.json` |
+
+所以发布流水线只解包断言 Bukkit 的 `plugin.yml` 和 Hytale 的 `manifest.json`。
+
+### 发布流水线（`release.yml`）
+
+触发：推 `v*` tag，或手动 `workflow_dispatch` 填版本。每一步都是门禁：
+
+1. 解析版本并校验 semver（`x.y.z` 或 `x.y.z-suffix`），非法直接 `::error`。
+2. 断言 `gradle.properties` 的 `version` 和 tag 一致。
+3. `./gradlew --no-daemon check`。
+4. 四个负例自检：`-PrenderProtocolSelfTest=true`、`-PrenderBoundarySelfTest=true`、`-PapiContractSelfTest=true`、`-PruntimeLibrarySelfTest=true`。
+5. `./gradlew --no-daemon -Pversion=$V dist checkRelocation`。
+6. 解包断言两个清单里的版本号等于 `$V`。
+7. 生成 `SHA256SUMS.txt`（三个 jar + `render-protocol.json`）。
+8. 上传 artifact（保留 30 天），用 `softprops/action-gh-release` 发 Release；版本号含 `-` 自动标 prerelease。
+
+`build.yml` 在 `v3` 分支和 PR 上跑 `./gradlew check` 与 `./gradlew dist checkRelocation`，同样出 `SHA256SUMS.txt` 和 `render-protocol.json`，artifact 保留 14 天。提交信息带 `[ci skip]` / `[skip ci]` / `***NO_CI***` 会跳过。
+
+### 与 PlumBot-Web 的对接
+
+前端工作区不在本仓库，由独立仓库发布两样东西：
+
+| 产物 | 分发 | 插件侧消费点 |
+|---|---|---|
+| `plumbot-web-sdk` | npm 包 | 模板构建期依赖 |
+| 官方模板（单文件 HTML） | PlumBot-Web 的 GitHub Release 资产 | `render.playwright.template_url` 默认指向 `releases/latest/download/index.html` |
+
+模板 release **不要标 prerelease**：`releases/latest` 不指向 prerelease，标错会让默认 `template_url` 404，`engine: playwright` 下报 `PW_TEMPLATE_MISSING`。仓库发布的 `render-protocol.json` 是协议的权威快照，PlumBot-Web 靠人工 PR 同步它。

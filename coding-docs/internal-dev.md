@@ -1,180 +1,94 @@
-# PlumBot 内部核心开发手册
+# PlumBot 内部核心开发
 
-本文档面向 PlumBot 仓库维护者与核心贡献者，阐述如何在 `:common` 模块新增端到端功能闭环、扩展配置与数据库，以及接入新服务端平台。
+面向仓库维护者：在 `:common` 里加一条端到端功能要动哪些文件、本地怎么跑、哪些坑会静默失败。平台接入（`PlatformContext` 实现、插件入口装配）见 [adding-platform.md](./adding-platform.md)，对外 API 契约见 [extension-guide.md](./extension-guide.md)。事实以当前源码为准。
 
-> ## ⚠️ 勘误（2026-10-09，以源码为准）
->
-> 文中示例存在以下**会直接编译失败**的写法（完整重写待办，见 `review/unresolved-issues.md` 的 U05）：
->
-> | 文中写法 | 实际 API（已核对源码） |
-> |---|---|
-> | `context.scheduler.runTaskAsynchronously { }` | `PlatformScheduler` **没有**该方法。实际接口为 `runSync` / `runAsync` / `runLater(Duration)` / `runLaterAsync(Duration)` / `runRepeating(...)` / `runRepeatingAsync(...)`。`runTaskAsynchronously` 只是 Bukkit 实现内部调用的 Bukkit API，不属于平台契约 |
-> | `import me.regadpole.plumbot.utils.ComponentUtils.escapeMiniMessageTags` | `ComponentUtils.kt` 是**顶层函数文件**（编译为 `ComponentUtilsKt`），不是 `object`。应 `import me.regadpole.plumbot.utils.escapeMiniMessageTags` 等 |
-> | `BotCapability.SEND_GROUP_MSG` | 实际枚举名 `GROUP_MESSAGE_SEND`（另有 `IMAGE_SEND` / `GROUP_MESSAGE_RECEIVE` / `GROUP_MEMBER_QUERY`） |
-> | 数据库示例中的方法名 | 以 `IDatabase` 为准：`getByUser` / `getByName` / `getById` / `getByPlayerUuid` / `addBind` / **`addBindIfAbsent`（幂等写入，返回 false 表示该角色名已存在）** / `removeBindByNum` / `removeBindByUser` / `removeBind` / `setUUID`；`getConnection()` 仅供内部事务与测试 |
->
-> 另：`AbstractBotAdapter` 位于 `:common`（`me.regadpole.plumbot.bot`），**不在 `:api` 契约内**；适配层不得引用 `:render` 的任何类型（由 `checkRenderBoundaries` 机械校验）。
+## 新增一条功能的链路
 
----
+### 配置与消息模板
 
-## 🛠️ 1. 新增功能端到端全流程 (Feature Workflow)
+- `common/src/main/resources/config.yml`：功能开关与参数，沿用 `feature.<功能>.<选项>` 的现有层级，不要平铺到顶层。
+- `common/src/main/resources/messages.yml`：MiniMessage 模板。键名就是 `Messages` 对象的字段名，`MessagesBinder` 用 `java.lang.reflect` 按名字覆盖（不用 kotlin-reflect，否则 Shadow minimize 后抛 `KotlinReflectionNotSupportedError`）。缺键时字段保留 `<missing:xxx>` 默认值，所以新消息必须同时加字段和 yml 键。
+- 结构变更（改名、挪层级）要加一步 `ConfigMigration` 并把 `ConfigMigrator.CONFIG_VERSION` +1；只新增键不用写迁移，`ConfigMigrator.completeMissingDefaults(configFile, "/config.yml")` 会用插件内模板补齐缺失节点，配置版本高于当前代码时直接跳过、不降级。
+- 路径里的 `%plugin_folder%` 由各加载点自行替换成插件数据目录，不是全局预处理。
 
-在 PlumBot 中新增一个玩家或群成员可见的交互功能（如群指令响应、游戏事件联动），标准流程分为 4 步：
+### 文本安全
 
-### 第一步：声明配置与消息模板
-1. **`common/src/main/resources/config.yml`**：在对应节点下增加功能开关与配置参数。
-2. **`common/src/main/resources/messages.yml`**：定义反馈消息模板，支持 MiniMessage 标签格式（如 `<gray>[<aqua>PlumBot</aqua>]</gray> <yellow>%msg%</yellow>`）。
-3. **配置迁移感知 (`ConfigMigrator`)**：
-   在 `common/.../internal/config/ConfigMigrator.kt` 中登记新字段，确保旧服热升级时自动补全默认配置项而不破坏用户原有文件。
+外部输入（群消息、玩家名、原始聊天）进 MiniMessage 之前必须转义，否则 `<click:run_command:...>` 这类标签会被当真执行：
 
-### 第二步：文本安全与渲染 (防越权注入)
-当外部群消息需要转发或渲染到 Minecraft 游戏内时，**必须调用标签转义工具**：
 ```kotlin
-import me.regadpole.plumbot.utils.ComponentUtils.escapeMiniMessageTags
-import me.regadpole.plumbot.utils.ComponentUtils.getComponentFromMiniMsg
+import me.regadpole.plumbot.utils.asMiniMessage
+import me.regadpole.plumbot.utils.escapeMiniMessage
 
-// ❌ 错误示范：未经转义直接拼接用户输入，会导致玩家利用 <click:run_command:/op> 实施提权
-val rawMini = "<gray>$user: $untrustedUserInput</gray>"
-
-//  正确示范：外部不可信文本强制转义
-val safeMini = "<gray>${escapeMiniMessageTags(user)}: ${escapeMiniMessageTags(untrustedUserInput)}</gray>"
-val component = getComponentFromMiniMsg(safeMini)
-context.sendMessage(component)
+context.sendMessage("<gray>${user.escapeMiniMessage()}: ${text.escapeMiniMessage()}</gray>".asMiniMessage())
 ```
 
-### 跨服换服广播 (Proxy Server Switch)
-在代理端（如 Velocity）环境下，捕获玩家跨服跳转时，调用 `GameEventBridge.onChangeServer` 触发群广播，底层自动由 `PlatformCapability.SERVER_SWITCH_BROADCAST` 守卫：
-```kotlin
-eventBridge.onChangeServer(playerName, previousServerName, currentServerName)
-```
+`ComponentUtils.kt` 是顶层函数文件，import 直接指向函数名：`escapeMiniMessage()`、`asMiniMessage()`、`Component.toLegacyAmpersand()`、`Component.toPlainText()`、`String.stripMinecraftFormatting()`。旧名 `escapeMiniMessageTags` / `getComponentFromMiniMsg` / `getLegacyFromComponent` / `getPlainTextFromComponent` 仍在（内部转调新名），新代码不要再用。
 
-### 控制台回显双通道捕获 (`OutputCapturingBuffer`)
-执行远程指令（`/cmd`）时，为实现 ANSI 剥除、字数截断并兼顾字符串与 Adventure Component，统一采用 `common/utils/OutputCapturingBuffer` 包装平台的 CommandSender/CommandSource：
-```kotlin
-val capturer = OutputCapturingBuffer(originalAudience)
-// 通道 1: 纯字符串输出
-capturer.appendString(legacyOutput)
-// 通道 2: Adventure Component 输出
-capturer.sendMessage(componentOutput)
-// 导出最终回显文本
-val finalOutput = capturer.getResult()
-```
+### 群指令
 
-### 第三步：注册群响应指令 (`DefaultBotHandler`)
-在 `common/.../listener/DefaultBotHandler.kt` 的 `init` 块中通过轻量 DSL 注册指令：
+指令表在 `common/src/main/kotlin/me/regadpole/plumbot/listener/DefaultBotHandler.kt` 的 `buildCommands()`，每条是一个私有 `CommandRegistration(keys, feature, regex, payload, handler)`：
+
 ```kotlin
-registerCommand(
-    CommandRegistration(
-        keys = context.config.getStringList("command", "myfeature", "alias"),
-        feature = "myfeature",
-        regex = { trigger, _ -> """^$trigger\s+(?<arg>\S+)$""" },
-        payload = { trigger, _, msg -> msg.removePrefix(trigger).trim() },
-        handler = { payload, groupId, userId ->
-            // 校验 Bot 适配器是否声明了所需能力
-            bot.requireCapability(BotCapability.SEND_GROUP_MSG)
-            
-            // 执行具体业务逻辑并回复群消息
-            bot.sendMsg(true, groupId, "执行完成: $payload")
-        }
-    )
+CommandRegistration(
+    keys = config.getStringList("command.myfeature"),
+    feature = "myfeature",
+    regex = { prefix, key -> "^${Regex.escape(prefix)}${Regex.escape(key.orEmpty())}\\s+(.+)$" },
+    payload = { prefix, key, message ->
+        message.replaceFirst(Regex("^${Regex.escape(prefix)}${Regex.escape(key.orEmpty())}\\s+"), "")
+    },
+    handler = { text, groupId, _ -> myFeatureService.handle(text, groupId) }
 )
 ```
 
----
+- `handler` 签名是 `(payload: String, groupId: Long, userId: Long) -> Unit`；发消息是四参 `bot.sendMsg(isGroup = true, targetId = groupId, message = text, isPic = false)`。没有三参重载，也没有 `registerCommand` DSL。
+- 能力用枚举 `BotCapability.GROUP_MESSAGE_SEND` / `USER_MESSAGE_SEND` / `IMAGE_SEND` / `GROUP_MESSAGE_RECEIVE`，先 `requireCapability` 再用（不满足抛 `IllegalStateException`）。没有 `SEND_GROUP_MSG`。
+- 指令表带别名指纹缓存，`/plumbot reload` 后自动重建；不要把 `context.config` 缓存成构造期常量。
 
-## 💾 2. 数据库与持久层扩展
+### 数据库
 
-数据库组件统一抽象在 `me.regadpole.plumbot.api.database` 与 `me.regadpole.plumbot.database`。
+接口在 `api/src/main/kotlin/me/regadpole/plumbot/api/database/IDatabase.kt`，实现基类 `AbstractBindingDatabase`（TabooLib Table DSL + Hikari；表名必须走构造参数，做成抽象属性会在构造期 NPE）。
 
-### 1) 架构设计
-- **`IDatabase`**：数据库操作接口，定义在 `:api` 模块。
-- **`AbstractBindingDatabase`**：底层基于 TabooLib Database + HikariCP/SQLite 的异步抽象基类。
-- **`DatabaseProvider`**：全局数据持久层门面，单例管理连接生命周期与线程调度。
+- 查询照 `getByName` 的写法：`table.select(dataSource) { where { "player_name" eq cleanName } }` 之后立刻 `Binding.of(...).firstOrNull()`。单行 `ResultSet` 在迭代结束时就关闭，延后映射会抛 `SQLException: ResultSet closed`。
+- 幂等写入用 `addBindIfAbsent(user, name[, sourceGroup])`，返回 `false` 表示角色名已被占用；有名额上限的场景用 `addBindIfAbsentWithinLimit(...)`（名额校验与插入在同一事务内，先查后插会超卖）。
+- 写入后调用 `BindingLookupCache.invalidate(name)`，否则登录校验要等到 TTL 过期。
+- `getConnection()` 返回 `DataSource`，只供内部事务与测试。
 
-### 2) 新增查询/操作方法规范
-1. 在 `api/.../database/IDatabase.kt` 中声明方法契约：
-   ```kotlin
-   fun getRecordByCustomKey(key: String): CompletableFuture<Binding?>
-   ```
-2. 在 `common/.../database/AbstractBindingDatabase.kt` 中编写 SQL 实现：
-   ```kotlin
-   override fun getRecordByCustomKey(key: String): CompletableFuture<Binding?> {
-       return table.select(dataSource) {
-           where { "custom_key" eq key }
-       }.firstOrNull { Binding.of(this) }
-   }
-   ```
-3. 领域模型映射采用强类型构造器 `Binding.of(resultSet)`，严禁直接在业务层直接解包原始 JDBC 游标。
+### 缓存与调度
 
----
+- 通用缓存 `DefaultBotCache`（`common/src/main/kotlin/me/regadpole/plumbot/cache/BotCache.kt`）基于 Aedile/Caffeine：10 分钟刷新、30 分钟过期，同时给挂起与 `CompletableFuture` 两套入口（`getAsync`/`get`/`refresh`/`invalidate`/`invalidateAll`）。加载失败会自动 `invalidate` 再抛，外面不要再包一层重试。
+- 调度一律走 `context.scheduler`，全部返回 `PlatformTaskHandle`：
 
-## ⚡ 3. 异步调度与缓存规范
-
-### 1) 协程缓存体系 (`DefaultBotCache` & `DefaultGroupMemberCache`)
-底层基于 `Caffeine` + `Aedile` 协程挂起加载扩展：
-- 禁止在 Minecraft 主线程或事件监听器中调用阻塞方法（如 `.get().get()` 或 `.join()`）。
-- 优先使用挂起函数 `getAsync(key)`。在非协程环境中使用 `get(key)` 返回的 `CompletableFuture` 处理异步链。
-
-### 2) 任务调度器 (`PlatformScheduler`)
-跨平台调度必须通过 `PlatformContext.scheduler` 完成：
 ```kotlin
-// 异步执行耗时 I/O 任务
-context.scheduler.runTaskAsynchronously {
-    // 耗时网络请求或数据库操作
-}
-
-// 延迟调度任务 (使用 Kotlin Duration)
-context.scheduler.runTaskLater(10.seconds) {
-    // 延迟逻辑
-}
+context.scheduler.runAsync { /* 阻塞 IO */ }          // 异步泳道
+context.scheduler.runLater(10.seconds) { /* 回主线程 */ }
+val handle = context.scheduler.runRepeating(0.seconds, 30.seconds) { /* ... */ }
+handle.cancel()
 ```
 
----
+回主线程只有 `runSync`；`runLaterAsync` 是"延迟 + 异步"。时间扩展在 `SchedulerExtensions.kt`：`Int.ticks` / `Long.ticks`（1 tick = 50ms）、`Duration.toTicks()`。
 
-## 🔌 4. 接入新游戏服务端平台 (如 Velocity / Fabric)
+## 远程指令回显
 
-得益于 PlumBot 高度内聚的 `PlatformContext` 设计，接入一个全新平台只需在子模块中实现以下组件：
+`/cmd` 的回显不能靠包装 `ConsoleCommandSender`：Paper 的 `VanillaCommandWrapper` 会把源换回真实控制台，包装器被丢弃，原生指令输出只进后台日志。`BukkitEchoExecutor` 因此走通道候选链 `paper_feedback` → `plugin_command` → `console`（log4j2 appender / latest.log 旁路兜底）。
 
-### 1) 实现 `PlatformContext`
-实现位于 `me.regadpole.plumbot.api.platform.PlatformContext` 的全部接口：
-```kotlin
-class VelocityPlatformContext(
-    private val server: ProxyServer,
-    override val config: PlatformConfig,
-    override val datasource: PlatformConfig,
-    override val dataDirectory: Path,
-    override val scheduler: PlatformScheduler,
-    override val playerService: PlatformPlayerService
-) : PlatformContext {
+两条纪律：`EchoSession` 只入队原始 `Component`，投影（Legacy 序列化、`Language` 首次解析）推迟到 `snapshot()` 在 Finalizer 线程执行 —— 这些静态初始化很重，压在主线程就是卡 tick；`BukkitPlatformContext.warmUpEcho()` 在 `onEnable` 的异步泳道预热一次，把通道反射探测与类加载提前。观测点是 `/plumbot doctor echo` 输出的 `main=…ms(prepare=…ms dispatch=…ms)`。
 
-    override val platformType: PlatformType = PlatformType.VELOCITY
+## 本地调试
 
-    override val supportedCapabilities: Set<PlatformCapability> = setOf(
-        PlatformCapability.CHAT_RECEIVE,
-        PlatformCapability.CHAT_BROADCAST,
-        PlatformCapability.COMMAND_DISPATCH
-    )
+1. `./gradlew dist`，把 `dist/PlumBot-Bukkit.jar`（或 Velocity/Hytale 包）丢进服务端插件目录，重启。
+2. 首启生成 `plugins/PlumBot/{config.yml,messages.yml,datasource.yml}`；每次 `loadConfig()` 都先跑迁移补全再 `YamlConfigurator.createConfig`。
+3. `/plumbot reload`（`plumbot.admin`）= `loadConfig` + debug 重载 + 渲染配置与字体 + 词库异步重载。**不重建 bot 连接、不切数据库** —— 改 `bot`、`database` 段必须重启服务端。
+4. 诊断：`/plumbot status`、`/plumbot doctor render`、`/plumbot doctor echo`、`/plumbot render install`（装 Chromium 驱动）。
+5. 测试：`./gradlew check`；单模块 `./gradlew :common:test`。
 
-    override fun log(level: LogLevel, message: String) {
-        // 调用平台 Logger 输出
-    }
+### 日志与 debug
 
-    override fun sendMessage(message: Component) {
-        // 使用 Adventure 广播全代理服务器
-        server.sendMessage(message)
-    }
+`config.yml` 末尾的 `debug` 节点：`debug.enable`（默认 `false`）、`debug.file`（默认 `%plugin_folder%/debug.log`）、`debug.save_interval`（`0` 实时写入，`>=1` 用 `runRepeatingAsync` 批量落盘）。`DebugProvider.isEnabled` 只在真正加载成功时为 `true`，平台层据此把 DEBUG 映射成控制台可见的 INFO；写盘失败打到 stderr 的 `[PlumBot-Debug]`。日志文件只在 `debug.enable: true` 时创建。
 
-    override fun isPluginAvailable(name: String): Boolean {
-        return server.pluginManager.isLoaded(name)
-    }
-}
-```
+## 常见坑
 
-### 2) 平台生命周期装配
-在平台插件入口处（如 `@Plugin` 类中）：
-1. 加载配置文件，实例化 `PlatformContext`。
-2. 调用 `DatabaseProvider.start(...)` 初始化数据库。
-3. 注册内置 Bot 工厂：`BotProvider.registerFactory(OneBotFactory)`。
-4. 注册外部 API 实例：`PlumBotApiProvider.register(PlumBotApiImpl(context))`。
-5. 启动 Bot 客户端：`PlumBot.loadBot()`。
-6. 在卸载回调中调用 `disable()`，优雅关闭网络与数据库连接。
+- **配置缓存**：`/plumbot reload` 会换成新的 config 实例。`private val config = context.config` 这类快照永远读旧值，必须写 getter（`val config get() = context.config`，见 `BotCommandService`）。
+- **类加载器**：插件类与资源只走插件 classloader；Libby 装入的运行期库在独立 `IsolatedClassLoader`。宿主自带的 API（尤其 Adventure）不要打进产物 —— 打进去的 `Component` 与宿主不是同一个类。
+- **关闭时序**：`disable()` 的顺序由依赖决定：bot → 渲染门户 `shutdownAndAwait` → 数据库 → 任务 → debug → `ShutdownRegistry`。门户的 `shutdown` 是 fire-and-forget，不等它，平台会先关掉 classloader、回收线程之后才执行 `PlaywrightImpl.close()`，线上表现为 `The plugin classloader for PlumBot has thrown a zip file error.`；等待超时则 WARN "Render portal shutdown timed out"。
+- **主线程纪律**：`onEnable` 里不做阻塞 IO。数据库初始化、bot 连接、渲染引擎重建、字体读取都在异步泳道，主线程只做配置注入（`applyRenderConfig` 只做 `configure()`）。
+- **测试临时目录**：`kotlin-jvm` 把所有模块的 `java.io.tmpdir` 指到 `<module>/build/tmp/test-jvm`，`Test` 结束递归删除。用 `Files.createTempDirectory(...)` 即可，别靠 `deleteOnExit()`（对非空目录无效）。
