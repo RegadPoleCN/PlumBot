@@ -22,22 +22,19 @@ import me.regadpole.plumbot.render.RenderRoute
 import org.spongepowered.configurate.CommentedConfigurationNode
 
 /**
- * 旧版 `config.yml` → `config_version = 2` 的就地迁移。
- *
- * 由 [ConfigMigrator] 在补齐默认值之前按版本调用；本步骤负责 1 → 2。
- * 2 版开发期曾短暂把出图开关放在 `feature.<功能>.pic`，因此同一套逻辑也用于
- * 把这种未发布的结构归一化到最终布局，且**不改变版本号**。
+ * 旧版 `config.yml` → `config_version = 2` 的就地迁移，由 [ConfigMigrator] 在补默认值前按版本
+ * 调用。2 版开发期曾把出图开关放在 `feature.<功能>.pic`，因此同一套逻辑也负责把这种未发布的
+ * 结构归一化到最终布局（**不改变版本号**）。
  *
  * 处理五类历史遗留：
  * 1. `feature.img.*` → `render.*`（含 `file` → `font`）；
- * 2. 出图开关散落在 `feature.img.views.<route>.pic` 与 `feature.<功能>.pic` 两处
- *    → 合并为唯一的 `render.outputs.<功能>`（任一为 true 即保留出图）；
+ * 2. 出图开关散落在 `feature.img.views.<route>.pic` 与 `feature.<功能>.pic` 两处 → 合并为唯一的
+ *    `render.outputs.<功能>`（任一为 true 即保留出图）；
  * 3. `feature.avatarCard.pic` / 2 版开发期的 `feature.avatar.pic` → `render.outputs.avatar`；
  * 4. `feature.cmdPrefix` / 顶层 `keys` → `command.prefix` / `command.keys`；
  * 5. 删除 `feature.help` / `feature.kick` 等只承载出图开关的伪功能段。
  *
- * 迁移只改写旧结构；新键的默认值由模板合并补齐，因此升级后仍保留原来的行为。
- * 已存在的新键优先，避免覆盖用户在当前版本中显式设置的值。
+ * 只改写旧结构，新键默认值由模板合并补齐；已存在的新键优先，不覆盖用户显式设置的值。
  */
 internal object LegacyConfigMigration : ConfigMigration {
 
@@ -60,10 +57,8 @@ internal object LegacyConfigMigration : ConfigMigration {
     private const val VER = "ver"
 
     /**
-     * 判断配置里是否还残留旧结构。
-     *
-     * `ConfigMigrator` 用它决定是否对已经标记为 2 版的配置执行兼容归一化；
-     * 新结构不应命中任何一项。
+     * 是否还残留旧结构（`ConfigMigrator` 据此决定对已标记 2 版的配置要不要做兼容归一化；
+     * 新结构不应命中任何一项）。
      */
     internal fun hasLegacyLayout(root: CommentedConfigurationNode): Boolean {
         if (!root.node(FEATURE, IMG).virtual()) return true
@@ -79,9 +74,7 @@ internal object LegacyConfigMigration : ConfigMigration {
             .any { !root.node(FEATURE, it, PIC).virtual() }
     }
 
-    /**
-     * @return true 表示配置文件被改写（调用方据此决定是否落盘）
-     */
+    /** @return true 表示配置被改写（调用方据此决定是否落盘） */
     override fun migrate(root: CommentedConfigurationNode): Boolean {
         var modified = false
 
@@ -98,12 +91,9 @@ internal object LegacyConfigMigration : ConfigMigration {
     }
 
     /**
-     * 旧版每个功能的实际出图状态：`views.<route>.pic`，或回落到
-     * `feature.<功能>.pic`（与原门控逻辑一致；两者都缺失时不生成新键，
-     * 让模板默认值决定）。
-     *
-     * 头像没有视图路由：1 版由 `avatarCard.pic` 控制，2 版开发期由
-     * `feature.avatar.pic` 控制，两者都按旧值读取。
+     * 旧版每个功能的实际出图状态：`views.<route>.pic`，缺失时回落到 `feature.<功能>.pic`
+     * （与原门控逻辑一致；两者都不存在时不生成新键，交给模板默认值）。头像没有视图路由，
+     * 1 版由 `avatarCard.pic`、2 版开发期由 `feature.avatar.pic` 控制。
      */
     private fun legacyImageSwitches(root: CommentedConfigurationNode): Map<String, Boolean> {
         val switches = mutableMapOf<String, Boolean>()
@@ -128,10 +118,8 @@ internal object LegacyConfigMigration : ConfigMigration {
     }
 
     /**
-     * `feature.img.*` → `render.*`。
-     *
-     * 跳过 `pic`（已并入 `render.outputs`）与逐路由 `scale_factor`
-     * （已废弃，只有全局值生效）。目标已存在的键优先，不覆盖新结构。
+     * `feature.img.*` → `render.*`：跳过 `pic`（已并入 `render.outputs`）与逐路由
+     * `scale_factor`（已废弃，只有全局值生效）。目标已存在的键优先，不覆盖新结构。
      */
     private fun migrateRenderSection(root: CommentedConfigurationNode): Boolean {
         val old = root.node(FEATURE, IMG)
@@ -166,9 +154,8 @@ internal object LegacyConfigMigration : ConfigMigration {
     }
 
     /**
-     * 把旧版实际状态写成唯一的功能开关。
-     *
-     * 即使结果是 false 也要落键，避免模板默认值把它打开；目标已存在时保留新值。
+     * 把旧版实际状态写成唯一的功能开关：即使结果是 false 也要落键，避免模板默认值把它打开；
+     * 目标已存在时保留新值。
      */
     private fun applyImageSwitches(
         root: CommentedConfigurationNode,

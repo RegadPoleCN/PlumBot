@@ -27,9 +27,7 @@ import java.util.concurrent.CompletableFuture
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.toJavaDuration
 
-/**
- * 通用缓存抽象，结合 [com.sksamuel.aedile.core.LoadingCache] 实现挂起函数与 CompletableFuture 双契约。
- */
+/** 通用缓存抽象：同时提供挂起函数与 `CompletableFuture` 两套契约（底层为 aedile 的 `LoadingCache`）。 */
 interface BotCache<K : Any, V : Any> {
 
     suspend fun getAsync(key: K): V
@@ -45,9 +43,6 @@ interface BotCache<K : Any, V : Any> {
     fun invalidateAll()
 }
 
-/**
- * [BotCache] 的默认实现，基于 [com.sksamuel.aedile.core.LoadingCache]。
- */
 open class DefaultBotCache<K : Any, V : Any>(
     private val loader: (K) -> CompletableFuture<V>
 ) : BotCache<K, V> {

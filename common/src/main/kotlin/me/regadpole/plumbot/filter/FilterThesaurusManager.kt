@@ -51,22 +51,20 @@ class FilterThesaurusManager(private val context: PlatformContext) {
     private val reloadScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private companion object {
-        /** 单个云端源的响应体上限：词库 JSON 远小于此，超限即视为异常响应（A19）。 */
+        /** 单个云端源的响应体上限：词库 JSON 远小于此，超限即视为异常响应。 */
         const val MAX_SOURCE_BYTES = 8L * 1024 * 1024
     }
 
     init {
-        // 兜底登记：管理器由各平台创建并放进 FilterManagerHolder，
-        // 但不是所有平台都会在停用时调用 shutdown()。
+        // 兜底登记：管理器由各平台创建，但并非所有平台停用时都会调用 shutdown()。
         ShutdownRegistry.register(this) { shutdown() }
     }
 
     /**
-     * 非阻塞重载：在插件自有的 IO 作用域上派发。
+     * 非阻塞重载：派发到插件自有的 IO 作用域。
      *
-     * 取代三端平台原先的 `platformScheduler.runAsync { runBlocking { reload() } }` 写法 ——
-     * 后者会把**平台调度线程整段占住**（词库需要下载/解析多个远程文件，可能耗时数秒），
-     * 期间该平台的所有调度任务都被阻塞。
+     * 不能用平台调度器包 `runBlocking`：词库要下载/解析多个远程文件（可能耗时数秒），会把
+     * **平台调度线程整段占住**，期间该平台的所有调度任务都被阻塞。
      */
     fun reloadAsync() {
         reloadScope.launch {
@@ -208,9 +206,8 @@ class FilterThesaurusManager(private val context: PlatformContext) {
             if (connection.responseCode in 200..299) {
                 val jsonText = readBounded(connection, MAX_SOURCE_BYTES)
                 if (jsonText == null) {
-                    // 超过上限：**不落盘、不采用**，直接降级读快照。
-                    // 此前是 `inputStream.readText()` 全量读入内存 —— 一个异常大的响应就能把堆吃光，
-                    // 而源地址虽然由管理员配置，却仍是"外部输入"。
+                    // 超过上限：**不落盘、不采用**，直接降级读快照。不能像 `readText()` 那样全量读入内存
+                    // —— 一个异常大的响应就能把堆吃光，而源地址虽由管理员配置，却仍属"外部输入"。
                     log(
                         LogLevel.WARN,
                         "[PlumBot] 云端源响应超过上限（${MAX_SOURCE_BYTES / 1024 / 1024}MB），将尝试读取本地缓存。($url)"
@@ -218,13 +215,11 @@ class FilterThesaurusManager(private val context: PlatformContext) {
                     connection.disconnect()
                 } else {
                     val words = parseWordsFromJson(jsonText)
-                    // 只有解析出内容才覆盖快照：把坏响应（HTML 错误页 / 空体）写进缓存，
-                    // 会让"离线降级"这条退路也一起失效。
+                    // 只有解析出内容才覆盖快照：把坏响应（HTML 错误页 / 空体）写进缓存会让"离线降级"这条退路一起失效。
                     if (words.isEmpty()) {
                         log(LogLevel.WARN, "[PlumBot] 云端源响应解析为空，保留本地快照不覆盖 ($url)")
-                        // 注意：**不能在这里 return**（原实现在此处返回空集）——那样快照文件虽然保住了，
-                        // 却没有任何人去读它，本次 reload 的词库会变成空集，过滤静默失效。
-                        // 正确做法是继续往下走"降级读历史快照"，与"非 200"分支保持同一语义。
+                        // **不能在这里 return**：那样快照虽保住却没人读，本次 reload 的词库会变成空集，
+                        // 过滤静默失效。必须继续往下走"降级读历史快照"，与"非 200"分支保持同一语义。
                     } else {
                         ThesaurusCache.writeAtomically(cacheFile, jsonText)
                         return words
@@ -251,7 +246,6 @@ class FilterThesaurusManager(private val context: PlatformContext) {
 
     /**
      * **有界读取**响应体：声明长度超限直接拒绝（不读入内存），声明不可信时按实际读取量兜底。
-     *
      * 返回 null 表示超限或读取失败 —— 调用方应据此降级读快照，而不是采用半截内容。
      */
     private fun readBounded(connection: HttpURLConnection, maxBytes: Long): String? {
@@ -303,8 +297,7 @@ class FilterThesaurusManager(private val context: PlatformContext) {
         return when (action) {
             FilterAction.BLOCK -> {
                 if (logMatches) {
-                    // 脱敏：只记录命中词与长度，**不落原文** ——
-                    // 默认 log_matches=true，旧实现会把整条用户消息写进控制台日志。
+                    // 脱敏：只记命中词与长度，**不落原文**（log_matches 默认 true，落原文等于把用户消息写进日志）。
                     log(LogLevel.INFO, "[敏感词拦截] 命中词: $matchedWords | 原文长度: ${rawText.length}")
                 }
                 FilterProcessResult(isBlocked = true, matchedWords = matchedWords, sanitizedText = "")
@@ -325,20 +318,17 @@ class FilterThesaurusManager(private val context: PlatformContext) {
     }
 }
 
-/**
- * 内部单例持有器，供聊天桥接服务获取敏感词过滤器。
- */
+/** 供聊天桥接服务获取敏感词过滤器的持有器。 */
 object FilterManagerHolder {
     @Volatile
     var manager: FilterThesaurusManager? = null
 }
 
 /**
- * 词库快照的**原子落盘**。
+ * 词库快照的**原子落盘**：先写临时文件再 move 覆盖。
  *
- * 旧实现直接 `writeText` 覆盖快照：进程在写一半时退出、或并发重载同时写同一文件，
- * 都会留下半个 JSON。而这份快照正是"云端不可达时的降级数据源"——
- * 它坏掉等于把离线退路一起毁掉。
+ * 直接 `writeText` 覆盖时，进程写到一半退出或并发重载同时写同一文件都会留下半个 JSON；
+ * 而这份快照正是"云端不可达时的降级数据源"，坏掉等于把离线退路一起毁掉。
  */
 internal object ThesaurusCache {
 
@@ -367,9 +357,8 @@ internal object ThesaurusCache {
 /**
  * 本次重载"一个词都没拿到"时是否应保留旧词库。
  *
- * 保留的条件很窄：**之前确实有词库**、**这次解析出 0 个词**、**配置了云端源**——
- * 即"有源可取却取不到"（网络全挂、返回体损坏）。若用户本来就没配置任何源，
- * 说明是主动清空，应当照常置空而不是把旧词库一直挂着。
+ * 条件很窄：**之前确实有词库**、**这次解析出 0 个词**、**配置了云端源**，即"有源可取却取不到"
+ * （网络全挂、返回体损坏）。用户本来就没配源时属于主动清空，应照常置空。
  */
 internal fun shouldKeepPreviousMatcher(
     previousExists: Boolean,

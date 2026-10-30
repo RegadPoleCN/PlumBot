@@ -21,10 +21,7 @@ package me.regadpole.plumbot.bot
 import me.regadpole.plumbot.api.bot.BotCapability
 import me.regadpole.plumbot.api.bot.IBot
 
-/**
- * Throws [IllegalStateException] if the adapter that created this bot
- * does not declare the requested [capability].
- */
+/** 适配器未声明 [capability] 时抛 [IllegalStateException]。 */
 fun IBot.requireCapability(capability: BotCapability) {
     if (capability !in metadata.capabilities) {
         throw IllegalStateException(

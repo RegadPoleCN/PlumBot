@@ -24,26 +24,22 @@ import me.regadpole.plumbot.api.bot.BotExtensionRegistry
 import me.regadpole.plumbot.api.bot.BotFactory
 
 /**
- * Runtime registry for **third-party** bot adapters.
+ * 第三方 bot 适配器的运行期注册表。
  *
- * Unlike the compile-time registration used by the built-in adapters
- * ([OneBotFactory], [MiraiMCFactory]), this registry accepts
- * [me.regadpole.plumbot.bot.BotFactory] instances supplied at runtime and
- * records the originating [Plugin] so they can be deregistered when the
- * plugin is disabled.
+ * 内置适配器由宿主在启动时通过 [BotProvider.registerFactory] 登记；本注册表接受运行期传入的
+ * [BotFactory] 并记录来源 [Plugin]，插件被禁用时可整批注销。
  *
- * The registry wraps [BotProvider]'s underlying [BotRegistry] so that all
- * factories (built-in or external) share the same `type` namespace. A duplicate
- * type registration is rejected with `false` and a WARN log entry — the
- * built-in adapter always wins so the host server stays in a known state.
+ * 它与 [BotProvider] 底层的 [BotRegistry] 共用同一个 `type` 命名空间：重复的 type 会被拒绝并抛
+ * [me.regadpole.plumbot.api.exception.AdapterRegistrationException]；内置适配器优先，宿主因此
+ * 始终处于已知状态。
  *
- * Obtain via [PlumBotAPI.getExtensionRegistry].
+ * 通过 [me.regadpole.plumbot.api.PlumBotAPI.extensionRegistry] 获取。
  */
 @PublicApi
 class DefaultBotExtensionRegistry internal constructor(
     private val provider: BotProvider,
 ) : BotExtensionRegistry {
-    /** Tracks (type, plugin) → factory for batch cleanup on plugin disable. */
+    /** (type, plugin) → factory，供插件禁用时整批注销。 */
     private val registrations: MutableMap<Pair<String, Plugin>, BotFactory> = linkedMapOf()
     private val lock = Any()
 
@@ -63,7 +59,7 @@ class DefaultBotExtensionRegistry internal constructor(
                     "Type '$type' already registered by ${existingType.second.name}"
                 )
             }
-            // Built-in factories do not appear in `registrations`; check provider directly.
+            // 内置 factory 不在此表中，需直接问 provider。
             val builtIn = runCatching { provider.availableAdapters() }
                 .getOrDefault(emptyList())
                 .any { it.type.equals(type, ignoreCase = true) }
@@ -84,18 +80,14 @@ class DefaultBotExtensionRegistry internal constructor(
     }
 
     /**
-     * Unregister a single external factory by type and originating plugin.
-     *
-     * @return `true` if a registration was removed, `false` otherwise.
+     * 按 type 与来源 [Plugin] 注销单个外部 factory；没有对应登记时返回 `false`。
      */
     @PublicApi
     override fun unregisterExternalFactory(type: String, plugin: Plugin): Boolean {
         val key = type.lowercase() to plugin
         synchronized(lock) {
             val factory = registrations.remove(key) ?: return false
-            // Only remove from the provider if no other plugin owns this type — i.e. the
-            // entry was truly external. If a built-in of the same type is also registered
-            // we keep the provider's view intact.
+            // 仅当没有其他插件仍持有该 type 时才从 provider 注销，否则会连带删掉别人的 factory。
             val stillOwned = registrations.any { it.key.first == type.lowercase() }
             val wasBuiltin = runCatching { provider.availableAdapters() }
                 .getOrDefault(emptyList())
@@ -110,14 +102,11 @@ class DefaultBotExtensionRegistry internal constructor(
     }
 
     /**
-     * Unregister every factory that was registered by [plugin]. Invoked by
-     * Bukkit's `PluginDisableEvent` to keep the registry clean when a third-party
-     * plugin unloads.
+     * 注销 [plugin] 登记过的全部 factory，由宿主在插件禁用（Bukkit 的 `PluginDisableEvent`）时调用。
      *
-     * Note: this **does not** unload any currently-running bot owned by the
-     * factory, leaving shutdown decisions to the main host plugin.
+     * **不会**停掉 factory 正在托管的 bot —— 停机决策留给宿主插件。
      *
-     * @return number of registrations removed.
+     * @return 被注销的登记数量
      */
     @PublicApi
     override fun unregisterAllFor(plugin: Plugin): Int {
@@ -125,9 +114,7 @@ class DefaultBotExtensionRegistry internal constructor(
             val keys = registrations.keys.filter { it.second == plugin }
             if (keys.isEmpty()) return 0
             keys.forEach { registrations.remove(it) }
-            // Group remaining types: only call unregisterFactory for types where this
-            // plugin was the sole owner, so built-ins and other plugins' factories
-            // survive.
+            // 只注销本插件独占的 type，内置与其他插件的 factory 必须保留。
             val remainingTypes = registrations.keys.map { it.first }.toSet()
             val myTypes = keys.map { it.first }
             myTypes.forEach { type ->
@@ -146,16 +133,14 @@ class DefaultBotExtensionRegistry internal constructor(
         plugin?.log(me.regadpole.plumbot.internal.LogLevel.DEBUG, message)
     }
 
-    /**
-     * Snapshot of registered (type, plugin) pairs. Useful for diagnostics / tests.
-     */
+    /** 已登记 (type, plugin) 的快照，供诊断与测试使用。 */
     @PublicApi
     override fun snapshot(): List<Pair<String, Plugin>> = synchronized(lock) {
         registrations.keys.toList()
     }
 
     private fun warn(message: String) {
-        // Use the attached plugin logger if available; fall back to stderr.
+        // 有主插件时走它的 logger，否则退回 stderr。
         val plugin = BotEventDispatcher.attachedPlugin
         if (plugin != null) {
             plugin.log(me.regadpole.plumbot.internal.LogLevel.WARN, message)

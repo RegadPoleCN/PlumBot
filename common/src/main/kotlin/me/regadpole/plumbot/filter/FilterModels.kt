@@ -18,9 +18,7 @@
 
 package me.regadpole.plumbot.filter
 
-/**
- * 命中敏感词后的处理动作
- */
+/** 命中敏感词后的处理动作。 */
 enum class FilterAction {
     BLOCK,
     REPLACE;
@@ -33,18 +31,14 @@ enum class FilterAction {
     }
 }
 
-/**
- * 过滤处理结果
- */
+/** 过滤处理结果。 */
 data class FilterProcessResult(
     val isBlocked: Boolean,
     val matchedWords: List<String>,
     val sanitizedText: String
 )
 
-/**
- * 云端词库 JSON 对应实体
- */
+/** 云端词库 JSON 对应实体。 */
 data class CloudDatabase(
     val lastUpdateDate: String? = null,
     val words: List<String> = emptyList()

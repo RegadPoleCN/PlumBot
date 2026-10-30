@@ -21,10 +21,10 @@ package me.regadpole.plumbot.internal
 import me.regadpole.plumbot.bot.BotProvider
 
 /**
- * bStats「适配器类别」上报（决策：chart 做**适配器类别**）。
+ * bStats「适配器类别」上报（chart 维度即适配器类别）。
  *
- * 为什么需要：bStats 只能告诉我们装了多少台服务器，不能说明**用户在用什么接入方式**
- * （OneBot 正向 vs MiraiMC 桥接）—— 而这直接决定适配器层的维护优先级。
+ * bStats 只能说明装了多少台服务器，说明不了**用户在用哪种接入方式**（OneBot 正向 vs MiraiMC
+ * 桥接），而后者直接决定适配器层的维护优先级。
  *
  * 只上报**类别名**（`onebot` / `miraimc` / `unknown`），不含群号、账号、服务器名等任何标识信息。
  */
@@ -35,9 +35,8 @@ object AdapterTelemetry {
     /**
      * 当前适配器类别；未加载时返回 `unknown`。
      *
-     * 简化说明：此前还接受"配置里的 bot.type"作为回退，但那是**推测性**分支
-     * （没有证据表明配置与实际加载会不一致，而 bStats 的 chart 是在运行期周期性求值的，
-     * 那时适配器早已加载）。只保留一个来源，避免为不存在的场景维护两条路径。
+     * 只从实际加载的适配器取：配置里的 `bot.type` 是**推测性**回退 —— bStats 的 chart 在运行期
+     * 周期求值，那时适配器早已加载，没有证据表明两者会不一致。单一来源更省维护。
      */
     fun current(): String =
         BotProvider.getBot()?.metadata?.type?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: UNKNOWN

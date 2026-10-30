@@ -21,11 +21,9 @@ package me.regadpole.plumbot.internal
 /**
  * 运行时通过 Libby 下载的依赖版本。
  *
- * 本文件中所有版本号均为 [gradle/libs.versions.toml] 中对应库版本的镜像，
- * 修改时必须同步更新 gradle/libs.versions.toml，以保证编译期依赖与运行时下载依赖一致。
- *
- * 清单只覆盖 `common/build.gradle.kts` 中 `compileOnly` 的运行期库；Kotlin 标准库/协程
- * 由产物内联（不在此列）。各库的传递依赖**不随 POM 解析**，需要什么必须显式列出。
+ * 所有版本号都是 [gradle/libs.versions.toml] 中对应库版本的镜像，修改时必须同步更新，以保证编译期
+ * 依赖与运行时下载一致。清单只覆盖 `common/build.gradle.kts` 中 `compileOnly` 的运行期库
+ * （Kotlin 标准库/协程由产物内联）；各库的传递依赖**不随 POM 解析**，需要什么必须显式列出。
  */
 object RuntimeLibraryVersions {
     const val SQLITE_JDBC = "3.49.0.0"
@@ -43,8 +41,8 @@ object RuntimeLibraryVersions {
     const val JAVA_WEBSOCKET = "1.5.7"
 
     /**
-     * Adventure（kyori）版本：只在宿主不带 kyori 时由 Libby 装载（见 [KyoriSupport]）。
-     * 这三个版本与 `gradle/libs.versions.toml` 的 adventureVersion / examination 版本同步。
+     * Adventure（kyori）版本：只在宿主不带 kyori 时由 Libby 装载（见 [KyoriSupport]），与
+     * `gradle/libs.versions.toml` 的 adventureVersion / examination 版本同步。
      */
     const val ADVENTURE = "4.21.0"
     const val EXAMINATION_API = "1.3.0"
@@ -52,19 +50,18 @@ object RuntimeLibraryVersions {
     /**
      * 缓存（[me.regadpole.plumbot.cache.DefaultBotCache] 等）使用。
      *
-     * 注意：aedile-core 自身也引用 caffeine（其 POM 声明 caffeine 3.1.8 为 compile 依赖），
-     * 而运行期关闭了传递解析，因此 caffeine 必须在清单里**显式装载并重定位**：
-     * 产物里对这些类的引用已被改写为 `me.regadpole.plumbot.lib.com.github.benmanes.caffeine...`。
-     * 升级 aedile 时必须同步核对它声明的 caffeine 版本。
+     * aedile-core 自身也引用 caffeine（POM 声明 3.1.8 为 compile 依赖），而运行期关闭了传递解析，
+     * 因此 caffeine 必须在清单里**显式装载并重定位**，产物里对这些类的引用已改写为
+     * `me.regadpole.plumbot.lib.com.github.benmanes.caffeine...`。升级 aedile 时必须同步核对
+     * 它声明的 caffeine 版本。
      */
     const val AEDILE = "2.0.3"
     const val CAFFEINE = "3.1.8"
 
     /**
-     * Playwright（高清渲染引擎）。
-     *
-     * **仅在 `engine=playwright` 且真正出图时**才由 [me.regadpole.plumbot.render.RenderLibraryLoader]
-     * 按需下载并装载 —— 默认 `engine=awt` 时零下载、零装载、类不加载。
+     * Playwright（高清渲染引擎）：**仅在 `engine=playwright` 且真正出图时**才由
+     * [me.regadpole.plumbot.render.RenderLibraryLoader] 按需下载装载 —— 默认 `engine=awt` 时
+     * 零下载、零装载、类不加载。
      */
     const val PLAYWRIGHT = "1.49.0"
 }

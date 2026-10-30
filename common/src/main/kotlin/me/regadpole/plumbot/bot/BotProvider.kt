@@ -38,9 +38,7 @@ object BotProvider {
 
     private var hasLoaded = false
 
-    /**
-     * @deprecated 零调用成员：请改用 `getBot() != null` 判断（D8 弃用周期，主版本内保留）。
-     */
+    /** @deprecated 零调用成员：请改用 `getBot() != null` 判断（主版本内保留）。 */
     @Deprecated("改用 getBot() != null")
     val isReady: Boolean
         get() = hasLoaded && bot != null
@@ -50,10 +48,9 @@ object BotProvider {
     }
 
     /**
-     * Unregister a single bot factory by its [BotAdapterMetadata.type]. Returns
-     * `true` if a factory was removed, `false` otherwise. Used by third-party
-     * extension cleanup paths that need to remove specific adapters without
-     * nuking the entire registry.
+     * 按 [BotAdapterMetadata.type] 注销单个 factory：供第三方扩展精确清理，不必清空整个注册表。
+     *
+     * @return 确实删除了 factory 时返回 `true`，否则 `false`
      */
     fun unregisterFactory(type: String): Boolean {
         val key = type.lowercase()
@@ -120,9 +117,8 @@ object BotProvider {
     /**
      * 卸载当前 Bot。
      *
-     * **无条件尝试释放**：此前的实现要求 `bot != null && hasLoaded` 才调用 `shutdown()`，
-     * 而"加载过程中失败"会留下 `bot` 已赋值、`hasLoaded=false` 的半初始化实例
-     * （连接与协程作用域都还在），于是它永远不会被回收。
+     * **无条件尝试释放**：加载失败会留下 `bot` 已赋值、`hasLoaded=false` 的半初始化实例
+     * （连接与协程作用域都还在），若以 `hasLoaded` 为条件调用 `shutdown()`，它就永远不会被回收。
      */
     fun unloadBot() {
         val current = bot
@@ -132,8 +128,7 @@ object BotProvider {
         runCatching { current?.shutdown() }
             .onFailure { System.err.println("[PlumBot] Bot 卸载失败：${it.message ?: it.javaClass.simpleName}") }
 
-        // Public-API listener cleanup. Public-API handles returned by
-        // PlumBotAPI.subscribeXxx are best-effort closed via this hook.
+        // 顺带清理 Public-API 监听器：PlumBotAPI.subscribeXxx 返回的 handle 在此尽力关闭。
         BotEventDispatcher.clearAllListeners()
     }
 

@@ -61,9 +61,7 @@ class AhoCorasickMatcher(words: Collection<String>) {
         }
     }
 
-    /**
-     * 单次扫描文本，获取所有命中的敏感词区间及匹配词汇
-     */
+    /** 单次扫描文本，返回所有命中的敏感词区间（含区间内原文）。 */
     fun match(text: String): List<MatchSpan> {
         val spans = mutableListOf<MatchSpan>()
         val lowerText = text.lowercase()
@@ -89,14 +87,11 @@ class AhoCorasickMatcher(words: Collection<String>) {
         return spans
     }
 
-    /**
-     * 对命中的敏感词执行原地脱敏替换（处理区间重叠并替换为 replacement 字符串）
-     */
+    /** 按命中区间脱敏替换；区间重叠时先合并，避免替换错位。 */
     fun replace(text: String, replacement: String): String {
         val spans = match(text)
         if (spans.isEmpty()) return text
 
-        // 区间合并，避免多个词重叠时替换错位
         val mergedSpans = mergeSpans(spans)
         val sb = StringBuilder()
         var lastIndex = 0

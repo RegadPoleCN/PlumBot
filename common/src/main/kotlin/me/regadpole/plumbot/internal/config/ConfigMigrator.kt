@@ -41,14 +41,11 @@ object ConfigMigrator {
     private val migrations: List<ConfigMigration> = listOf(LegacyConfigMigration)
 
     /**
-     * 按 `config_version` 升级旧结构，再用内置模板补齐缺失的节点。
+     * 按 `config_version` 升级旧结构，再用内置模板补齐缺失节点。版本缺失视为 1；版本高于当前
+     * 代码时不改写，避免旧插件把新配置降级。
      *
-     * 版本缺失视为 1（本版本之前的所有配置）；版本高于当前代码时不做任何改写，
-     * 避免旧插件把新配置降级。
-     *
-     * 2 版在开发期短暂使用过 `feature.<功能>.pic` 结构。正式版仍固定为 2，
-     * 因此对已标记 2、但还残留旧键的配置执行一次[LegacyConfigMigration] 归一化，
-     * 版本号保持不变；新结构不会命中。
+     * 2 版开发期曾用过 `feature.<功能>.pic` 结构，因此对已标记 2 但仍残留旧键的配置再跑一次
+     * [LegacyConfigMigration] 归一化（版本号不变，新结构不会命中）。
      *
      * @return true 代表发生了迁移或补全并成功写回
      */

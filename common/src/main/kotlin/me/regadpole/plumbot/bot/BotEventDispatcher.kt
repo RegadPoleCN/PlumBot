@@ -27,10 +27,7 @@ import me.regadpole.plumbot.internal.LogLevel
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 
-/**
- * Unified event dispatcher for bot-side incoming events (group messages,
- * group member decrease).
- */
+/** bot 侧入站事件（群消息、群成员减少）的统一分发入口。 */
 object BotEventDispatcher {
 
     private val groupMessageHandlers: MutableList<(GroupMessageEvent) -> Unit> = CopyOnWriteArrayList()
@@ -70,8 +67,7 @@ object BotEventDispatcher {
     }
 
     fun dispatchGroupMessage(messageRaw: String, groupId: Long, senderId: Long) {
-        // 内置 handler 与"第三方监听器"必须互相隔离：内置 handler 抛异常（例如数据库挂了）
-        // 不能阻止事件送达注册方，否则一个业务错误会让所有扩展静默收不到消息。
+        // 内置 handler 与第三方监听器互相隔离：内置 handler 抛异常（如数据库挂了）不能让事件送不到注册方，否则一次业务错误就会让所有扩展静默收不到消息。
         runCatching { BotProvider.getBot()?.handler?.onGroupMessage(messageRaw, groupId, senderId) }
             .onFailure { logListenerFailure("内置 GroupMessage handler", it) }
 
@@ -87,12 +83,9 @@ object BotEventDispatcher {
 
     fun dispatchUserDecrease(groupId: Long, userId: Long) {
         val bot = BotProvider.getBot()
-        // 先失效适配器的本地成员缓存，再走业务处理。
-        //
-        // 放在这里（而不是各适配器的监听器里）是因为三个监听器都汇聚到本方法：
-        // 只需一处即可对所有适配器生效，也不会因将来新增适配器而遗漏。
-        // 背景：此前 OneBot 的监听器自己失效了缓存，两个 MiraiMC 监听器没有，
-        // 于是 MiraiMC 下退群者会在缓存 TTL（30 分钟）内继续被判为"仍在群内"。
+        // 先失效适配器的本地成员缓存，再走业务处理。所有适配器的监听器都汇聚到本方法，一处失效
+        // 即可对全部生效，也不会因新增适配器而遗漏；若交给各适配器自行失效，漏掉一处就会让退群者
+        // 在缓存 TTL（30 分钟）内仍被判为"仍在群内"。
         runCatching { bot?.invalidateGroupMember(groupId, userId) }
             .onFailure { logListenerFailure("成员缓存失效", it) }
         runCatching { bot?.handler?.onUserDecrease(groupId, userId) }
