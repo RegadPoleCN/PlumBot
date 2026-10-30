@@ -1,100 +1,31 @@
 # PlumBot 开发与架构文档
 
-本文档集合面向 PlumBot 核心维护者、代码贡献者以及**第三方附属插件（Third-party Plugin）**开发者。旨在以最简洁、严谨、可靠的形式阐述系统架构与开发指南。
+面向核心维护者、代码贡献者与第三方附属插件开发者。结构、时序与契约以 [架构概览](architecture.md) 为准，历史决策与已知限制见 [决策记录](decisions.md)。
 
----
+## 文档索引
 
-## 📚 文档导航
-
-整个开发文档体系由 6 篇正交文档构成，按需查阅：
-
-| 文档 | 面向对象 | 核心内容 |
+| 文档 | 面向对象 | 内容 |
 |---|---|---|
-| **[本文 (README.md)](#)** | 全员 | 架构分层拓扑、模块职责、公开 API 契约分级、Bot 能力与兼容矩阵 |
-| **[附属插件开发手册](./extension-guide.md)** | 外部开发者 | 接入 `:api`、获取 `PlumBotAPI`、收发消息、事件监听、扩展 BotAdapter、轻量单元测试 Mock |
-| **[内部核心开发手册](./internal-dev.md)** | 内部维护者 | 新增端到端功能/指令闭环、消息与 MiniMessage 安全转义、数据库持久层扩展、远程控制台与换服广播 |
-| **[渲染子系统规范](./render.md)** | 核心维护者 / 平台适配者 | 渲染门户纪律、路由表、协议清单与握手、Playwright 按需装载与浏览器三级链、头像管线、安全基线、明确降级项 |
-| **[新平台接入技术规范](./adding-platform.md)** | 架构师 / 平台适配者 | 以 Bukkit 为黄金蓝图的 7 大核心构件拆解、生命周期时序与完备性核对清单 |
-| **[构建与发布规范](./build-and-release.md)** | 全员 / DevOps | Gradle `buildSrc` 双约定插件架构、统一产物输出 (`./gradlew dist`)、契约守护校验 |
+| [架构概览](architecture.md) | 全员 | 模块分层与依赖方向、启动关停时序、消息与事件流转、渲染子系统数据流、构建发布链路、公开 API 契约分级 |
+| [决策记录](decisions.md) | 贡献者 / 服主 | 已定架构决策及其理由、已知限制与残余风险（含 DNS 重绑定声明）、明确不做的事 |
+| [渲染子系统规范](render.md) | 核心维护者 / 平台适配者 | 渲染门户纪律、协议与路由、头像与模板管线、并发与降级、安全边界 |
+| [Playwright 运维手册](playwright.md) | 服主 / 二次分发者 | 驱动安装、`PW_` 错误码（唯一真源）、`render doctor` 诊断、镜像与沙箱排障 |
+| [新平台接入指南](adding-platform.md) | 平台适配者 | 接入清单、约定插件与依赖别名、装配时序、能力补齐与核对 |
+| [附属插件开发手册](extension-guide.md) | 外部开发者 | 依赖与本仓库不发布 Maven 的事实、`PlumBotAPI` 用法、事件监听、能力校验、可编译样例 |
+| [内部核心开发手册](internal-dev.md) | 内部维护者 | 调试流程、`debug` 开关、配置缓存与类加载器坑、关闭时序 |
+| [构建与发布规范](build-and-release.md) | 全员 / DevOps | `buildSrc` 约定插件、`dist` 产物、四个校验任务、版本号与发布流程 |
 
----
+仓库根目录另有 [CHANGELOG.md](../CHANGELOG.md)、[CONTRIBUTING.md](../CONTRIBUTING.md)、[SECURITY.md](../SECURITY.md)。
 
-## 🏗️ 整体架构拓扑与分层职责
+## 阅读路径
 
-PlumBot 采用标准的**分层门面 + 适配器架构（Layered Facade & Adapter Architecture）**，各模块具备严格的物理边界与单向依赖规则：
+- **只想装和调**：仓库根 [README](../README.md) → 渲染出问题看 [Playwright 运维手册](playwright.md)。
+- **要写附属插件**：[架构概览](architecture.md) 的契约分级 → [附属插件开发手册](extension-guide.md) → [决策记录](decisions.md) 里与 API 稳定性相关的条目。
+- **要改核心**：[架构概览](architecture.md) → [内部核心开发手册](internal-dev.md) → [构建与发布规范](build-and-release.md)。
+- **要接新平台**：[新平台接入指南](adding-platform.md) → [架构概览](architecture.md) 的时序与能力枚举。
 
-```
-           [ 第三方附属插件 / External Plugins ]
-                           │
-                           │ 仅依赖公开契约
-                           ▼
-┌────────────────────────────────────────────────────────┐
-│  :api (公开契约层，Zero Legacy Debt)                    │
-│  - 根包路径: me.regadpole.plumbot.api.*                │
-│  - 纯接口业务门面: PlumBotAPI                           │
-│  - 领域模型: BotModels, PlatformModels, Binding        │
-│  - 事件体系: BotEvents (GroupMessageEvent 等)           │
-└──────────────────────────▲─────────────────────────────┘
-                           │ 接口实现与依赖注入
-┌──────────────────────────┴─────────────────────────────┐
-│  :common (核心领域实现，纯 JVM 平台无关)                │
-│  - 包路径: me.regadpole.plumbot.*                      │
-│  - 文本安全与过滤: AhoCorasickMatcher (AC自动机脱敏)   │
-│  - 协程缓存: BotCache, GroupMemberCache (Caffeine)     │
-│  - 持久层: DatabaseProvider, AbstractBindingDatabase  │
-│  - 指令与消息分发: BotCommandService, DefaultBotHandler│
-│  - 跨平台回显捕获: OutputCapturingBuffer (双通道拦截)   │
-└──────────────▲──────────────────────────▲──────────────┘
-               │ 宿主接入                 │ 协议挂载
-┌──────────────┴──────────────┐ ┌─────────┴──────────────┐
-│  :bukkit / :velocity 宿主实现│ │  :adapter:* (Bot 协议适配)│
-│  - BukkitPlatformContext    │ │  - :adapter:onebot     │
-│  - VelocityPlatformContext  │ │    (WebSocket 协程全异步)│
-│  - Libby 动态多源回退链加载  │ │  - :adapter:miraimc    │
-│  - 服务发现与全生命周期管理  │ │    (Mirai 原生桥接服务)│
-└─────────────────────────────┘ └────────────────────────┘
-```
+## 维护约定
 
-### 模块边界守则
-1. **`:api` 模块纯粹度**：严禁引入任何具体服务实现或包含重度依赖的第三方库（仅允许 `adventure-api` 与 `kotlinx-datetime` 等基础契约库）。任何对外公开类型必须冠以 `me.regadpole.plumbot.api.*`。
-2. **`:common` 平台无关性**：严禁出现任何特定游戏服务端（如 Bukkit/Paper 或 Velocity）的类导入。所有平台能力均通过 `PlatformContext` 抽象注入。
-3. **`:adapter:*` 隔离性**：每个适配器只负责将外部 IM 协议转化为 PlumBot 标准事件和消息模型，不可直接耦合具体游戏业务逻辑。**适配层零依赖 `:render`** —— 出图统一由渲染门户负责，适配器只负责"把字节发出去"。
-4. **渲染门户唯一性**：`:render` 之外的其他模块**不得引用其内部类型**（`TextToImg`、各驱动、`ThemeManager` 等全部为 `internal`），只能经 `RenderProvider` / `RenderPortal` 对话；适配层对其依赖数为 0。该约束由 `checkRenderBoundaries` 与 `checkRenderProtocol` 两个 Gradle 任务机械校验，已接入 CI。详见 **[渲染子系统规范](./render.md)**。
-
----
-
-## 📜 公开 API 契约分级 (API Surface)
-
-为保证第三方生态的稳定性，PlumBot 在 `:api` 模块通过自定义注解显式声明契约稳定性等级。Gradle 在构建时会自动执行 `:api:checkApiContract` 任务进行静态扫描（检测前会先剥离注释，避免"注释里的注解"蒙混过关；可用 `-PapiContractSelfTest=true` 跑负例自检）。
-
-> 注意：`AbstractBotAdapter` **不在 `:api`**，它位于 `:common`（`me.regadpole.plumbot.bot.AbstractBotAdapter`），因此不参与上面的契约分级；扩展作者若直接继承它，需自行承担 `:common` 内部实现变动风险。
-
-| 契约注解 | 稳定性承诺 | 代表性接口 / 类型 |
-|---|---|---|
-| **`@StableApi`** | **长期稳定**。发版后不破坏二进制兼容，严禁无故修改签名或删除方法。 | `PlumBotAPI`<br>`IBot`<br>`BotFactory`<br>`PlatformContext`<br>`PlatformScheduler`<br>`PlatformPlayerService` |
-| **`@PublicApi`** | **公开可用**。主版本号内保证兼容，允许合理扩展新方法与新模型。 | `BotAdapterMetadata`<br>`BotCapability`<br>`MemberInfo`<br>`PlatformCapability`<br>`PlatformType` (`BUKKIT`, `VELOCITY` 等)<br>`LogLevel`<br>`Binding`<br>`IDatabase`<br>`ListenerHandle`<br>`Plugin`<br>`GroupMessageEvent`<br>`GroupMemberDecreaseEvent` |
-| **内部实现** | **严禁外部引用**。随时可能发生变动或重构，外部调用后果自负。 | 所有位于 `me.regadpole.plumbot.internal.*` 下的类，以及 `:common` 内部类。 |
-
----
-
-## 🤖 Bot 能力模型与兼容矩阵
-
-不同的 Bot 框架具备不同的协议特性（例如：某些协议无法拉取群成员名片，某些协议不支持发送图片）。为了防止业务层出现盲目调用导致的运行时崩溃，PlumBot 采用 **能力声明（BotCapability）守卫机制**。
-
-### 1. 核心能力枚举 (`me.regadpole.plumbot.api.bot.BotCapability`)
-- `GROUP_MESSAGE_SEND`: 支持发送普通群文本消息。
-- `USER_MESSAGE_SEND`: 支持发送好友私聊消息。
-- `IMAGE_SEND`: 支持在群/私聊内发送图片。
-- `GROUP_MEMBER_QUERY`: 支持拉取群成员名片与昵称信息。
-- `GROUP_MEMBER_CHECK`: 支持校验指定用户是否在群内。
-- `GROUP_MESSAGE_RECEIVE`: 支持监听并接收群消息。
-- `GROUP_MEMBER_DECREASE_RECEIVE`: 支持监听群成员退群/被踢事件。
-
-### 2. 官方适配器能力支持矩阵
-
-| 适配器类型 (`type`) | 运行传输协议 | `GROUP_MESSAGE_SEND` | `IMAGE_SEND` | `GROUP_MEMBER_QUERY` | 支持平台矩阵 |
-|---|---|:---:|:---:|:---:|---|
-| **`onebot`** | 经 AOneBot 客户端以**正向 WebSocket** 连接 OneBot 实现（**无反向实现**） | ✅ | ✅ | ✅ | **Bukkit / Velocity** (全跨平台支持) |
-| **`miraimc`** | MiraiMC 本地桥接服务 | ✅ | ✅ | ✅ | **Bukkit / Velocity** (双端均原生支持) |
-
-> 业务层在调用特定功能（如根据群名片识别玩家）前，应先通过 `bot.metadata.capabilities` 校验是否声明了对应能力。
+1. 文档只描述当前代码；与代码冲突以代码为准，改代码时同步改文档。
+2. 不写内部工单编号、阶段称呼与一次性性能采样；这类信息留在提交信息或 PR 里。
+3. KDoc 写「为什么」与契约边界，复述签名的注释不写。

@@ -139,6 +139,18 @@ QQ 侧到游戏侧的路径：
 
 头像单独一条管线：`AvatarResolver` 从玩家档案解析皮肤纹理，`MinecraftSkinCropper` 裁出头像层，`AvatarCache` 落盘缓存并按 TTL 与文件上限修剪（默认 2048 个文件、168 小时）；远端域名需通过 `render.avatar.domains` 白名单放行，单层与总量受 800 毫秒、3000 毫秒预算约束。渲染健康状态由 `renderHealth()` 与 `metrics()` 暴露，`/plumbot render doctor` 据此输出引擎可用性、失败冷却剩余时间与最近失败原因。
 
+## 公开 API 契约分级
+
+`:api` 里每个公开声明都必须标注稳定性等级，由 `:api:checkApiContract` 按文件校验（剥离注释后必须出现下列注解之一；两处硬编码豁免：`fun interface PlatformTaskHandle` 与 `val Int.ticks`）。
+
+| 注解 | 承诺 | 代表类型 |
+|---|---|---|
+| `@StableApi` | 发版后不破坏二进制兼容，禁止无故改签名或删方法 | `PlumBotAPI`、`IBot`、`PlatformContext`、`PlatformScheduler`、`PlatformPlayerService` |
+| `@PublicApi` | 主版本内兼容，允许新增方法 | `Binding`、`BotCapability`、`PlatformCapability`、`MemberInfo`、`IDatabase`、`GroupMessageEvent` |
+| `@ExperimentalApi` | 可随时变更，第三方使用需自担风险 | 标注为实验性的新增契约 |
+
+`me.regadpole.plumbot.internal.*` 与各模块内部类不在契约内。`AbstractBotAdapter` 位于 `:common` 而非 `:api`，继承它的扩展自行承担实现变动风险。
+
 ## 构建与发布链路
 
 `buildSrc` 提供两个约定插件，各模块只声明差异：
