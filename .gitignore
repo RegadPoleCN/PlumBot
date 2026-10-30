@@ -1,28 +1,25 @@
+# 构建产物
 .gradle
 build/
 /dist/
+.kotlin
+out/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-# 代码知识图谱索引（本地索引，不入库）
-.codegraph/
-# 临时工作区
-.tmp/
-
-### IntelliJ IDEA ###
-# 个人 IDE 配置整体忽略：仓库只保留编辑器无关的设置
-.idea/
-*.iws
-*.iml
-*.ipr
-out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
-### Kotlin ###
-.kotlin
+# IDE 与编辑器：仓库只保留编辑器无关的设置
+.idea/
+.vscode/
+.trae/
+.omo
+*.iws
+*.iml
+*.ipr
 
-### Eclipse ###
+# Eclipse
 .apt_generated
 .classpath
 .factorypath
@@ -34,28 +31,21 @@ bin/
 !**/src/main/**/bin/
 !**/src/test/**/bin/
 
-### NetBeans ###
+# NetBeans
 /nbproject/private/
 /nbbuild/
 /nbdist/
 /.nb-gradle/
 
-### VS Code ###
-.vscode/
-
-### Mac OS ###
+# 操作系统
 .DS_Store
 
-.trae/
-.omo
-# 根目录待办清单（本地规划产物）
-/TODO.md
-# 渲染子系统规划/核对文档（本地规划产物，不入库）
-rendertodo*.md
-# 审查/修补文档集（本地评审产物，不入库）
-/coding-docs/review/
+# 本地临时产物：规划稿、审查报告、构建日志与代码索引都不入库
+.codegraph/
+.tmp/
 temp/
-# Agent Teams 审查过程产物（临时报告，不入库）
 .dsh-tmp/
-# 构建日志（本地诊断产物，不入库）
 /*.log
+/TODO.md
+rendertodo*.md
+/coding-docs/review/
