@@ -143,7 +143,7 @@ class EngineLoadGateTest {
 
         context.recordingScheduler.drainOnWorker()
 
-        assertEquals(1, loader.calls, "engine=playwright 时必须触发按需装载 —— 这正是 R17 的缺陷形态")
+        assertEquals(1, loader.calls, "engine=playwright 时必须触发按需装载，否则首帧会退化成无渲染结果")
         assertTrue(
             loader.threads.none { it === Thread.currentThread() },
             "装载必须在异步线程执行，实际线程：${loader.threads}"

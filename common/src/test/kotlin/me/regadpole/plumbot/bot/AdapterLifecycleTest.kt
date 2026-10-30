@@ -31,12 +31,11 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 /**
- * 适配器生命周期验收（A07 / A09）。
+ * 适配器生命周期：出图作用域与处理器资源都必须随关闭释放。
  *
- * - **A07**：出图作用域必须"关闭即取消并置空、下次出图拿新实例"。
- *   修复前是 `by lazy` 单例 —— 停一次 Bot 之后所有出图都会因作用域已取消而静默失败。
- * - **A09**：`shutdown()` 必须让处理器释放自持资源（内置服务的协程作用域），
- *   修复前只清空 `handler` 引用，那些作用域再也无法回收。
+ * 出图作用域"关闭即取消并置空、下次出图拿新实例"——做成 `by lazy` 单例时，停一次 Bot 后所有
+ * 出图都会因作用域已取消而静默失败；`shutdown()` 必须让处理器释放自持资源（内置服务的协程
+ * 作用域），只清空 `handler` 引用的话那些作用域再也无法回收。
  */
 class AdapterLifecycleTest {
 
@@ -68,13 +67,13 @@ class AdapterLifecycleTest {
 
         bot.shutdown()
 
-        assertTrue(handler.shutdownCalled, "适配器关闭时必须调用 handler.shutdown()（A09：否则内置服务的作用域泄漏）")
+        assertTrue(handler.shutdownCalled, "适配器关闭时必须调用 handler.shutdown()，否则内置服务的作用域会泄漏")
         assertTrue(bot.doShutdownCalled, "子类关闭逻辑仍要执行")
     }
 
     @Test
     fun `shutdown before start is harmless`() {
-        // A09：未初始化就关闭（插件加载失败 / 用户禁用 Bot）不得抛错，也不得留下作用域
+        // 未初始化就关闭（插件加载失败 / 用户禁用 Bot）不得抛错，也不得留下作用域
         val bot = FakeBot(FakePlatformContext())
 
         bot.shutdown()
@@ -85,8 +84,8 @@ class AdapterLifecycleTest {
 
     @Test
     fun `events go to the new handler after a restart`() {
-        // A09 的核心意图：重启后**不得复用旧的处理器实例**（旧实例的资源已被释放，
-        // 继续持有它会让事件落进已关闭的作用域/已清空的缓存，表现为"看着在线却什么都不响应"）
+        // 重启后**不得复用旧的处理器实例**：旧实例的资源已释放，继续持有它会让事件落进
+        // 已关闭的作用域/已清空的缓存，表现为"看着在线却什么都不响应"
         val context = FakePlatformContext()
         val bot = FakeBot(context)
         BotProvider.registerFactory(object : BotFactory {
