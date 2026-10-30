@@ -1,138 +1,114 @@
 # PlumBot
 
-***升级版本时请提前备份配置文件，以防数据丢失***
+*升级版本前请先备份配置文件。*
 
-插件交流群：[825894832](http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=-PcufP7TIjLBMOte4H8bHoNmMkP5xZT0&authKey=aPKkGldknKtdCUfX7hhWMFkAOuOpOUYuNZihsUZi9DXvIHVzJhuIRLVfTdCsobZt&noverify=0&group_code=825894832)
+Minecraft 服务器与 QQ/IM 机器人双向互通插件，支持 Paper/Spigot 后端子服、Velocity 跨服代理端与 Hytale 服务端。
+
+插件交流群：825894832
 
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 [![CodeFactor](https://www.codefactor.io/repository/github/regadpolecn/plumbot/badge)](https://www.codefactor.io/repository/github/regadpolecn/plumbot)
-[![Build & Verify v3](https://github.com/RegadPoleCN/PlumBot/actions/workflows/build.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/build.yml)
+[![Build & Verify](https://github.com/RegadPoleCN/PlumBot/actions/workflows/build.yml/badge.svg)](https://github.com/RegadPoleCN/PlumBot/actions/workflows/build.yml)
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/RegadPoleCN/PlumBot/total?logo=github)](https://github.com/RegadPoleCN/PlumBot)
 [![Modrinth Downloads](https://img.shields.io/modrinth/dt/PlumBot?logo=modrinth&label=modrinth)](https://modrinth.com/plugin/plumbot)
 
-现代化、高内聚、模块化的 Minecraft 服务器与 QQ/IM 机器人双向互通插件。同时支持 **Paper/Spigot 后端子服** 与 **Velocity 跨服代理端**。
+## 特性
 
----
+- 游戏与 QQ 群双向消息转发，可按前缀过滤，转发到游戏前转义 MiniMessage 标签。
+- 白名单申请、查询与删除，进服强制校验，带登录缓存与查询超时上限。
+- 群内查询 1m/5m/15m TPS、MSPT、堆内存与在线人数（`/status`、`/tps`）。
+- 管理员远程执行服务器指令（`/cmd`），按 `admins` 鉴权、每分钟限流、输出截断与回显捕获。
+- Aho-Corasick 多模式敏感词过滤，支持云端词库与本地快照回退。
+- 图片渲染，`:render` 门户统一收口 17 条 route，AWT 与 Playwright 引擎按 route 配置。
+- `:api` 公开契约，OneBot v11 与 MiraiMC 两种协议适配。
+- SQLite / MySQL 持久化绑定数据。
 
-## ✨ 核心特性
+## 模块
 
-- **多端跨服网络架构 (Multi-Platform Host)**：
-  - **Bukkit / Paper**：单服实体服支持，覆盖死亡广播、成就广播、游戏主线程安全调度。
-  - **Velocity 3.x / 4.x**：代理端总控支持，前置白名单网关鉴权（未绑定直接在代理层切断，保护后端子服免受压测），支持子服跨服跳转群广播。
-- **多协议适配矩阵 (Adapter Architecture)**：
-  - **OneBot (v11)**：基于纯 Kotlin 协程 + 原生 WebSocket 双向通信，全结构化 JSON Segment 消息体设计，内置指数退避重连状态机与异步缓存预热（全平台跨端通用）。
-  - **MiraiMC**：通过本地桥接服务挂载 Mirai 框架，Bukkit 与 Velocity 代理端均已获得官方原生支持。
-- **纯粹公开 API 契约 (`:api`)**：
-  - 接口与实现完全物理隔离，命名空间统一为 `me.regadpole.plumbot.api.*`。
-  - 零内部实现泄露，提供自动化模块契约检查任务（`checkApiContract`），保证第三方附属插件依赖的长期稳定性。
-  - 支持 Bukkit 服务管理器（`ServicesManager`）或跨平台静态入口点（`PlumBotAPI.get()`）动态获取。
-- **远程运维与性能监控 (Remote Console & Monitoring)**：
-  - **群内性能报告 (`/status` / `/tps`)**：支持 1m/5m/15m 三段式 TPS 与平滑多级降级的 MSPT（毫秒级刻耗时采样），附带 JVM 堆内存与在线统计。
-  - **安全远程控制台 (`/cmd`)**：白名单 QQ 严格鉴权、控制台审计日志记录、主线程安全调度派发，基于 `OutputCapturingBuffer` 双通道拦截纯文本与 Adventure 组件回显。
-- **高性能敏感词过滤体系**：
-  - 基于 **Aho-Corasick (AC 自动机)** 双向多模式匹配引擎，支持本地忽略标点/白名单字符跳过。
-  - 支持多源云端敏感词库拉取与本地快照自愈回退机制。
-- **安全加固 (Security First)**：
-  - 群聊转发到游戏全链路 MiniMessage 标签严格转义，杜绝群成员利用 `<click:run_command>` 等标签在游戏控制台实施提权注入。
-- **现代异步持久层 & 协程缓存**：
-  - 数据库引擎解耦支持 SQLite 与 MySQL。
-  - 引入 `Aedile`（基于 Caffeine 的 Kotlin 协程缓存封装），消除传统阻塞等待，保证主事件循环零卡顿。
-
----
-
-## 🏗️ 模块划分
+模块划分与依赖方向（实现依赖 `:api`，宿主依赖实现，`adapter/*` 不依赖 `:render`）：
 
 ```
 PlumBot/
-├── api/            # 纯粹对外 API 契约、领域模型与事件系统 (me.regadpole.plumbot.api.*)
-├── render/         # 渲染子系统（唯一门户 RenderPortal：AWT / Playwright 双引擎、路由注册表、头像服务端合成与缓存）
-├── common/         # 平台无关核心逻辑（敏感词过滤、白名单服务、数据库持久层、命令分发、回显捕获器）
-├── bukkit/         # Paper/Bukkit 实体子服宿主实现、多源类库动态加载器
-├── velocity/       # Velocity 跨服代理端宿主实现 (支持前置白名单鉴权、跨服换服广播)
-├── hytale/         # Hytale 官方实体服务端宿主实现 (支持握手鉴权、原生外观头像解析)
+├── api/            # 公开 API 契约、领域模型与事件
+├── render/         # 渲染门户：AWT / Playwright 引擎、route 注册表、头像合成与缓存
+├── common/         # 平台无关业务核心：消息分发、白名单、敏感词、持久层、指令分发
+├── bukkit/         # Paper/Spigot 宿主
+├── velocity/       # Velocity 跨服代理宿主
+├── hytale/         # Hytale 服务端宿主
 └── adapter/
-    ├── onebot/     # 基于纯协程 WebSocket 的 OneBot v11 独立适配层 (全平台支持)
-    └── miraimc/    # MiraiMC 协议桥接适配层 (支持 Bukkit 与 Velocity)
+    ├── onebot/     # OneBot v11 适配层
+    └── miraimc/    # MiraiMC 适配层
 ```
 
-> 渲染子系统的完整规范（门户纪律、路由表、协议清单与握手、Playwright 按需装载与浏览器三级链、头像管线、安全基线、明确降级项）见 **[coding-docs/render.md](coding-docs/render.md)**。
+## 快速开始
 
----
+1. 从 [Releases](https://github.com/RegadPoleCN/PlumBot/releases) 下载对应端的 jar：`PlumBot-Bukkit.jar`、`PlumBot-Velocity.jar` 或 `PlumBot-Hytale.jar`（[Modrinth](https://modrinth.com/plugin/plumbot) 同步发布）。
+2. 放入对应服务端的插件/模块目录，启动一次生成 `config.yml`（运行需要 JDK 25）。
+3. 至少配置 `bot.onebot.address`、`bot.onebot.token`、`groups` 与 `admins`。
+4. 改配置后执行 `/plumbot reload`。
 
-## 🖼️ 图片渲染（可选）
+## 配置概述
 
-所有内置指令的出图入口统一收口到 `:render` 的**渲染门户**，共 16 条 route；引擎可按 route 单独配置。
+配置文件为插件数据目录下的 `config.yml`，各键注释见 [config.yml](common/src/main/resources/config.yml)。
 
-| 引擎 | 说明 | 依赖 |
-|---|---|---|
-| `none` | 纯文本（全局关闭出图） | 无 |
-| `awt` | JVM 轻量文本卡片（**默认**） | 无（需图形库；缺失时自动回退纯文本） |
-| `playwright` | Vue 单页模板超清卡片（按需启用；前端 SDK / 模板独立维护） | 首次约 470MB（见下） |
+| 段 | 作用 |
+|---|---|
+| `bot.type` | `onebot` 或 `miraimc`，分别对应 `bot.onebot.*` / `bot.miraimc.*` |
+| `groups` / `admins` / `command.*` | 响应的群号、可执行管理指令的 QQ 号、群指令前缀与触发词 |
+| `feature.*` | 功能开关：消息转发、白名单、进服/退服通知、状态、远程控制台 |
+| `render.*` | 出图开关 `render.outputs.<功能>`、引擎、文本样式、头像缓存 |
+| `filter.*` | 敏感词动作、云端词库地址、本地补充与豁免词 |
+| `database.*` | `sqlite`（默认）或 `mysql` 及连接参数 |
 
-配置：`render.engine` 为全局默认，`render.views.<route>.engine` 可按命令覆盖（建议 `message` 保持 `awt`，它是唯一高频路径）；每个功能是否出图由 `render.outputs.<功能>` 控制。
+## 图片渲染（可选）
 
-> 前端 SDK 与官方 Vue 模板以独立 npm package 维护，不随本仓库分发；插件通过协议清单与运行时 manifest 与其对接。
+出图入口统一收口到 `:render` 的 `RenderPortal`，共 17 条 route（含兼容旧模板的 `hytaleAvatar`）。可选引擎：
 
-### Playwright 引擎的安装
+| 引擎 | 说明 |
+|---|---|
+| `none` | 纯文本 |
+| `awt` | JVM 文本卡片，不需要浏览器 |
+| `playwright` | 浏览器渲染 Vue 单页模板卡片，按需装载 |
 
-保持默认 `engine: awt` 时**不下载、不装载、不启动任何浏览器**。
+`render.engine` 默认 `auto`：头像类 route 走 `playwright`，其余走 `awt`；`render.views.<route>.engine` 可按 route 覆盖，显式值优先。功能是否出图由 `render.outputs.<功能>` 控制。Playwright 需要 Chromium，安装与诊断：
 
-启用 `playwright` 后按**三级链**获取浏览器：① `custom_chrome_path` 指定 → ② 自动探测系统 Chrome/Edge → ③ 由 Playwright 自动下载。
+```text
+/plumbot render doctor           # 输出 PW_ 错误码、驱动与浏览器路径
+/plumbot render install          # 下载 Chromium 到 browsers_path
+/plumbot render install --force  # 强制重装
+```
 
-> ⚠️ 首次启用（走 ③）需下载 **Playwright 驱动 ~190MB + Chromium ~281MB ≈ 470MB**，请预留磁盘并在低峰期进行。
+浏览器查找顺序：`render.playwright.custom_chrome_path` → `browser_channel`（`chrome` / `msedge`）→ 系统 Chrome/Edge → `browsers_path` 下的托管 Chromium。全部未命中报 `PW_BROWSER_MISSING`，按 `render.playwright.fallback_to_awt`（默认 true）用 AWT 兜底或降级纯文本，不会在渲染线程等待下载。
 
-**推荐手动预装**（可指定镜像、并用 `--only-shell` 只取 headless shell 显著省体积）：
+离线环境可手动安装：设置 `PLAYWRIGHT_BROWSERS_PATH` 与 `PLAYWRIGHT_DOWNLOAD_HOST` 后执行 `npx --yes playwright@1.49.0 install chromium --no-shell`；或用插件已下载的 `playwright`、`driver`、`driver-bundle` 三个 jar 调 `com.microsoft.playwright.CLI install chromium --no-shell`。优先用 `/plumbot render install`。
+
+头像由服务端预取并合成为单张 `data:` URL：来源限 https 且解析后拒绝内网 IP，结果写入 `render.avatar.cache_dir`，缓存时长由 `render.avatar.cache_ttl_hours` 控制（默认 168 小时）。完整规范见 [render.md](coding-docs/render.md)；安装与 `PW_` 错误码排障见 [playwright.md](coding-docs/playwright.md)。
+
+## 构建与开发
+
+环境：JDK 25，使用仓库自带的 `./gradlew`。
 
 ```bash
-PLAYWRIGHT_BROWSERS_PATH="<插件数据目录>/playwright-browsers" \
-PLAYWRIGHT_DOWNLOAD_HOST="<你的镜像地址>" \
-java -cp "<插件数据目录>/libraries/com/microsoft/playwright/playwright/1.49.0/playwright-1.49.0.jar" \
-     com.microsoft.playwright.CLI install --only-shell chromium
+./gradlew check                 # 单元测试 + 契约/边界/协议/单一真源/装载清单校验
+./gradlew dist checkRelocation  # 构建三个产物并断言重定位结果
 ```
 
-未手动预装的服主由 ③ 自动下载兜底。`render.playwright.download_host` 可在插件内直接指定镜像。
+构建后 `dist/` 输出 `PlumBot-Bukkit.jar`、`PlumBot-Velocity.jar`、`PlumBot-Hytale.jar`。
 
-> Playwright 版本变更必须重新下载浏览器且会 GC 旧版本 —— **升级插件后首次出图会重新下载**，属预期行为。
+## 文档
 
-### 头像
+- [architecture.md](coding-docs/architecture.md)：模块分层与依赖方向
+- [decisions.md](coding-docs/decisions.md)：架构决策与理由
+- [render.md](coding-docs/render.md)：渲染门户、route 与协议
+- [playwright.md](coding-docs/playwright.md)：Playwright 安装与排障
+- [adding-platform.md](coding-docs/adding-platform.md)：接入新宿主平台
+- [extension-guide.md](coding-docs/extension-guide.md)：附属插件与外部扩展
+- [internal-dev.md](coding-docs/internal-dev.md)：内部核心开发
+- [build-and-release.md](coding-docs/build-and-release.md)：构建与发布
+- [CONTRIBUTING.md](CONTRIBUTING.md)：贡献流程
+- [SECURITY.md](SECURITY.md)：安全问题报告
+- [CHANGELOG.md](CHANGELOG.md)：版本变更
 
-头像由**服务端预取并合成**为单张成品图（`data:` URL）后下发给模板，浏览器端不做跨域取图与 canvas 合成：
+## 许可
 
-- 内置来源白名单（Mojang / crafatar / mc-heads / minotar / QQ），仅允许 https，并做**解析后 IP 判定**拒绝内网；
-- 结果写入磁盘缓存（`render.avatar.cache_dir`，默认 168 小时）；
-- Hytale 原生外观由部件化皮肤实时解析合成，**资产不随插件分发**（服务端为专有许可）。
-
----
-
-## 🚀 构建与开发
-
-### 环境要求
-- JDK 21 或更高版本
-- Gradle 9.x（推荐直接使用仓库自带的 `./gradlew`）
-
-### 常用命令
-
-```bash
-# 1. 编译全模块与测试代码
-./gradlew compileKotlin compileTestKotlin
-
-# 2. 执行全量单元测试与契约/边界静态校验
-#    checkApiContract      : `:api` 公开契约注解校验
-#    checkRenderBoundaries : 渲染门户边界（适配层零依赖 :render、跨模块禁引用内部类型、公开发布面须有注解）
-#    checkRenderProtocol   : 渲染协议清单与 Kotlin route 枚举、前端 SDK 的一致性
-./gradlew test check checkApiContract checkRenderBoundaries checkRenderProtocol
-
-# 3. 构建多平台最终全量分发包（统一归集输出到 dist/ 目录）
-./gradlew dist
-```
-
-构建完成后，`dist/` 目录将直接生成：
-- `dist/PlumBot-Bukkit.jar` (适用于 Spigot/Paper/Purpur 后端子服)
-- `dist/PlumBot-Velocity.jar` (适用于 Velocity 跨服代理端)
-- `dist/PlumBot-Hytale.jar` (适用于 Hytale 官方实体服务端)
-
----
-
-## 📄 开源许可证
-
-本项目采用 [GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE) 协议开源。
+本项目以 [GNU Affero General Public License v3.0 or later](LICENSE)（AGPL-3.0-or-later）开源。感谢所有提交 issue、PR 与使用反馈的贡献者。
