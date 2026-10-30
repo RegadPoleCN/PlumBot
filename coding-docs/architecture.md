@@ -86,7 +86,7 @@ QQ 侧到游戏侧的路径：
 1. 各平台监听器把事件交给 `GameEventBridge`，覆盖聊天、进服、退服、换服、死亡、成就、踢出。
 2. 桥接层统一做开关判断（如 `feature.message.enable`、`feature.message.to_group`、`joinProxy`、`leaveProxy`）、去格式化、词库过滤与消息模板渲染。
 3. 出图时交给 `ServerMessageSender.broadcastRendered`：一次渲染得到字节，多个群复用同一份，某个群发送失败只降级该群。
-4. 登录阶段由 `PlayerLoginService` 做白名单校验，缓存优先、有界等待、失败即拒绝（见决策 D17），避免数据库抖动把所有人放进来。
+4. 登录时由 `PlayerLoginService` 做白名单校验，缓存优先、有界等待、失败即拒绝（见决策 D17），避免数据库抖动把所有人放进来。
 
 跨平台差异通过能力枚举表达：`PlatformCapability`（如换服广播）与 `BotCapability`（如发图、拉群名片）在调用前检查，缺失能力时明确报错或降级，而不是让业务代码在运行期撞 `UnsupportedOperationException`。第三方插件只能通过 `PlumBotAPI` 与监听器接入，不能直接持有适配器实例。
 
