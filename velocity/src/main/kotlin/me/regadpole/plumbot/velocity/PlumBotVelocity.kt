@@ -129,7 +129,7 @@ class PlumBotVelocity @Inject constructor(
         }
 
         val metrics = metricsFactory.make(this, 19428)
-        // 适配器类别上报（决策：bStats chart 用适配器类别；仅类别名，无标识信息）
+        // 适配器类别上报：仅类别名，不含任何标识信息
         registerAdapterChart(metrics)
 
         val botType = config.getString("bot", "type") ?: "onebot"
@@ -161,12 +161,10 @@ class PlumBotVelocity @Inject constructor(
         // 异步预热词库：走插件自有 IO 作用域，不再占用平台调度线程
         filterManager.reloadAsync()
 
-        // 注册事件网桥
         val eventBridge = GameEventBridge(platform)
         val loginService = PlayerLoginService(platform)
         server.eventManager.register(this, VelocityServerListener(platform, eventBridge, loginService))
 
-        // 注册管理员主指令 /plumbot
         val commandManager = server.commandManager
         val commandMeta = commandManager.metaBuilder("plumbot")
             .plugin(this)
@@ -236,10 +234,10 @@ class PlumBotVelocity @Inject constructor(
 }
 
 /**
- * 注册 bStats「适配器类别」chart（决策：chart 做适配器类别）。
+ * 注册 bStats「适配器类别」chart。
  *
- * 只上报类别名（onebot / miraimc / unknown），不含任何标识信息；
- * 配置未就绪时回退到当前已加载适配器的类型。
+ * 只上报类别名（onebot / miraimc / unknown），不含任何标识信息。
+ * 取值只有一个来源：当前已加载适配器的类型（`AdapterTelemetry.current()`），无配置回退分支。
  */
 private fun registerAdapterChart(metrics: org.bstats.velocity.Metrics) {
     metrics.addCustomChart(SimplePie(AdapterTelemetry.CHART_ID) { AdapterTelemetry.current() })

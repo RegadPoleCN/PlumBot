@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap
 /**
  * Hytale 原生外观 → 头像图层。
  *
- * ## 资产策略（基线 §7.2）
+ * ## 资产策略
  *
  * **全程运行时解析，绝不随插件分发**：`Server-0.6.8.pom` 声明的是
  * *Hypixel Studios Proprietary License*，把它的 cosmetic 贴图打进 PlumBot 属许可违规。
@@ -48,14 +48,14 @@ import java.util.concurrent.ConcurrentHashMap
  * ③ 部件默认  <category>/default.png
  * ```
  *
- * ## 调用链（逐环 `javap` 实测）
+ * ## 调用链（javap 反编译确认）
  *
  * `Universe.getPlayerByUsername` → `PlayerRef.getComponent(PlayerSkinComponent.getComponentType())`
  * → `protocol.PlayerSkin`（20 个字符串字段）→ `PlayerSkin.PlayerSkinPartId.fromString`
  * → `CosmeticsModule.get().registry` 的对应部件表 → `PlayerSkinPart.textures[textureId]`
  * → `PlayerSkinPartTexture.texture`（路径）与 `baseColor`（染色）。
  *
- * ## ⚠️ 验证状态（诚实声明）
+ * ## 验证状态
  *
  * 本文件通过**编译期类型校验**，但**未在真实 Hytale 服务端上运行验证**：
  * ① asset pack 内部的贴图路径格式属于运行时数据，离线无法确认，故采用
@@ -75,7 +75,7 @@ internal object HytaleAvatarResolver {
 
     private val warned = ConcurrentHashMap.newKeySet<String>()
 
-    /** 头部相关部件：`(类别, 读取皮肤字段, 覆盖目录名)`，顺序即绘制顺序（自底向上）。 */
+    /** 头部相关部件：`(部件名, 皮肤字段名, 读取器)`，顺序即绘制顺序（自底向上）。 */
     private val HEAD_PARTS: List<HeadPart> = listOf(
         HeadPart("face", "face") { it.face },
         HeadPart("ears", "ears") { it.ears },
@@ -160,7 +160,7 @@ internal object HytaleAvatarResolver {
             else -> null
         }
 
-    /** 三段解析。 */
+    /** 覆盖 → 官方材质 → 部件默认，三段回退。 */
     private fun readAsset(texturePath: String, part: HeadPart): ByteArray? {
         val fileName = runCatching { Paths.get(texturePath).fileName?.toString() }.getOrNull()
 

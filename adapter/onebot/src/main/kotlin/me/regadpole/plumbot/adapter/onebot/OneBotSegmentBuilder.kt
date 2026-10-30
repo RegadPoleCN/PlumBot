@@ -23,12 +23,11 @@ import com.google.gson.JsonObject
 import java.util.Base64
 
 /**
- * 专为 OneBot 协议构建标准的 JSON 消息段数组（Segment Array）。
- * 彻底消除 [CQ:xxx] 字符拼接与转义问题。
+ * 构建 OneBot 协议标准的 JSON 消息段数组（Segment Array），
+ * 替代 `[CQ:xxx]` 字符串拼接，从根上避开 CQ 码转义问题。
  */
 object OneBotSegmentBuilder {
 
-    /** 纯文本消息段 */
     fun text(text: String): JsonObject = JsonObject().apply {
         addProperty("type", "text")
         add("data", JsonObject().apply {
@@ -36,7 +35,6 @@ object OneBotSegmentBuilder {
         })
     }
 
-    /** @群成员 消息段 */
     fun at(userId: Long): JsonObject = JsonObject().apply {
         addProperty("type", "at")
         add("data", JsonObject().apply {
@@ -44,7 +42,6 @@ object OneBotSegmentBuilder {
         })
     }
 
-    /** @全体成员 消息段 */
     fun atAll(): JsonObject = JsonObject().apply {
         addProperty("type", "at")
         add("data", JsonObject().apply {
@@ -52,7 +49,7 @@ object OneBotSegmentBuilder {
         })
     }
 
-    /** 图片消息段（Base64 编码，安全且免落盘） */
+    /** 图片段：Base64 内联，免落盘 */
     fun image(bytes: ByteArray): JsonObject = JsonObject().apply {
         val base64 = Base64.getEncoder().encodeToString(bytes)
         addProperty("type", "image")
@@ -61,7 +58,6 @@ object OneBotSegmentBuilder {
         })
     }
 
-    /** 快速打包为段数组 */
     fun buildArray(vararg segments: JsonObject): JsonArray = JsonArray().apply {
         segments.forEach { add(it) }
     }

@@ -28,6 +28,13 @@ import me.regadpole.plumbot.api.platform.PlatformType
 import top.alazeprt.aonebot.client.websocket.WebsocketBotClient
 import java.net.URI
 
+/**
+ * OneBot 适配器工厂：读 `bot.onebot.address` / `token` 构造 AOneBot 的 [WebsocketBotClient]，
+ * 并装配 [OneBotAdapter]；地址未带 scheme 时按 `ws://` 补全，token 为空即无鉴权连接。
+ *
+ * `create()` 不发起连接：连接在适配器 `start()` 之后由 IO 协程异步建立，初次失败只记 WARN，
+ * 之后指数退避重连，因此反向 WS 端晚启动不会让插件加载失败。
+ */
 @PublicApi
 object OneBotFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(

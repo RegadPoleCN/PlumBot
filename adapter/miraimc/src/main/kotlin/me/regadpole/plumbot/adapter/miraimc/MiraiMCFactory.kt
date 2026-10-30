@@ -26,6 +26,12 @@ import me.regadpole.plumbot.api.bot.BotFactory
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.api.platform.PlatformType
 
+/**
+ * MiraiMC 适配器工厂：声明能力集，并在 `bot.type=miraimc` 时由 `BotProvider` 装配出 [MiraiMCAdapter]。
+ *
+ * 消息经 MiraiMC 内置的 MiraiBot 会话直连、不走 OneBot，因此宿主必须加载 MiraiMC；
+ * `create()` 只做构造，Bot 未登录或不存在要到适配器 `start()` 时才抛 `IllegalStateException`。
+ */
 @PublicApi
 object MiraiMCFactory: BotFactory {
     override val metadata: BotAdapterMetadata = BotAdapterMetadata(
