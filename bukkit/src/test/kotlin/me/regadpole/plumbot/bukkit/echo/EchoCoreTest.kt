@@ -11,7 +11,7 @@ import me.regadpole.plumbot.bukkit.echo.EchoChannelSelector
 import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import me.regadpole.plumbot.bukkit.echo.config.RconSettings
 import me.regadpole.plumbot.bukkit.echo.logsource.LatestLogTail
-import me.regadpole.plumbot.bukkit.echo.RconPacketCodec
+import me.regadpole.plumbot.bukkit.echo.rcon.RconPacketCodec
 import net.kyori.adventure.text.Component
 import java.io.ByteArrayInputStream
 import java.io.EOFException

@@ -4,6 +4,8 @@
 package me.regadpole.plumbot.bukkit.echo
 
 import me.regadpole.plumbot.bukkit.echo.capture.EchoSession
+import me.regadpole.plumbot.bukkit.echo.rcon.RconEchoClient
+import me.regadpole.plumbot.bukkit.echo.rcon.RconOutcome
 
 /** 已准备好、尚未派发的一次回显通道。 */
 internal interface PreparedEcho {

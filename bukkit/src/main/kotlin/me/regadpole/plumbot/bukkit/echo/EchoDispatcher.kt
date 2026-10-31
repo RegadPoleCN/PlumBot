@@ -12,6 +12,9 @@ import me.regadpole.plumbot.bukkit.echo.capture.EchoTiming
 import me.regadpole.plumbot.bukkit.echo.config.EchoChannels
 import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import me.regadpole.plumbot.bukkit.echo.logsource.EchoLogSources
+import me.regadpole.plumbot.bukkit.echo.rcon.RconEchoClient
+import me.regadpole.plumbot.bukkit.echo.rcon.RconOutcome
+import me.regadpole.plumbot.bukkit.echo.rcon.RconResultBuilder
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformLogger
 import me.regadpole.plumbot.internal.LogLevel
 import org.bukkit.Bukkit
