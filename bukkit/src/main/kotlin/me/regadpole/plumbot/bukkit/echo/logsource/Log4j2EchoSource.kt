@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2026 RegadPoleCN
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-package me.regadpole.plumbot.bukkit.echo
+package me.regadpole.plumbot.bukkit.echo.logsource
 
+import me.regadpole.plumbot.bukkit.echo.capture.EchoSession
 import me.regadpole.plumbot.bukkit.echo.support.EchoReflection
 import java.lang.reflect.InvocationHandler
 import java.lang.reflect.Method

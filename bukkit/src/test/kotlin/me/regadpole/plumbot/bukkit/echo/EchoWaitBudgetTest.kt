@@ -3,7 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
-import me.regadpole.plumbot.bukkit.echo.echoWaitBudgetMs
+import me.regadpole.plumbot.bukkit.echo.capture.echoWaitBudgetMs
 import me.regadpole.plumbot.bukkit.echo.config.EchoChannels
 import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import me.regadpole.plumbot.bukkit.echo.config.RconSettings

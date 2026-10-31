@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+import me.regadpole.plumbot.bukkit.echo.capture.EchoSession
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.ComponentLike
 import net.md_5.bungee.api.chat.BaseComponent

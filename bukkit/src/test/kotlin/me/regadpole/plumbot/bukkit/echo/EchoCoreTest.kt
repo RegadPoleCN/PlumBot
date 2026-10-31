@@ -5,12 +5,12 @@ package me.regadpole.plumbot.bukkit.echo
 
 import me.regadpole.plumbot.api.platform.EchoCode
 import me.regadpole.plumbot.api.platform.EchoState
-import me.regadpole.plumbot.bukkit.echo.EchoResultBuilder
-import me.regadpole.plumbot.bukkit.echo.EchoSession
+import me.regadpole.plumbot.bukkit.echo.capture.EchoResultBuilder
+import me.regadpole.plumbot.bukkit.echo.capture.EchoSession
 import me.regadpole.plumbot.bukkit.echo.EchoChannelSelector
 import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import me.regadpole.plumbot.bukkit.echo.config.RconSettings
-import me.regadpole.plumbot.bukkit.echo.LatestLogTail
+import me.regadpole.plumbot.bukkit.echo.logsource.LatestLogTail
 import me.regadpole.plumbot.bukkit.echo.RconPacketCodec
 import net.kyori.adventure.text.Component
 import java.io.ByteArrayInputStream

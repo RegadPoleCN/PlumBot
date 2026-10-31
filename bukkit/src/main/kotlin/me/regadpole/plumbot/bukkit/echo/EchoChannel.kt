@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+import me.regadpole.plumbot.bukkit.echo.capture.EchoSession
 
 /** 已准备好、尚未派发的一次回显通道。 */
 internal interface PreparedEcho {
