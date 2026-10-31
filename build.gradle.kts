@@ -17,7 +17,8 @@ fun boundaryLineViolations(
     lines: List<String>,
     forbidRenderImport: Boolean,
     forbidInternals: Boolean,
-    renderInternals: List<String>
+    renderInternals: List<String>,
+    derivedInternals: List<String> = emptyList()
 ): List<String> {
     val found = mutableListOf<String>()
     lines.forEachIndexed { index, line ->
@@ -26,9 +27,22 @@ fun boundaryLineViolations(
             found += "$rel:$lineNo 适配层不得依赖 :render —— $line"
         }
         if (forbidInternals) {
+            // 核心内部类型：连注释里提及都算违规（门户纪律的硬约束）。
             renderInternals.forEach { internal ->
                 if (Regex("\\b$internal\\b").containsMatchIn(line)) {
                     found += "$rel:$lineNo 跨模块引用了 :render 内部类型 $internal —— $line"
+                }
+            }
+            // 派生内部类型（随源码自动增减）：只判代码，避免外部模块 KDoc 的正常提及被误报。
+            if (derivedInternals.isNotEmpty()) {
+                val codePart = line.substringBefore("//").let { segment ->
+                    val trimmed = segment.trim()
+                    if (trimmed.startsWith("*") || trimmed.startsWith("/*")) "" else segment
+                }
+                derivedInternals.forEach { internal ->
+                    if (Regex("\\b$internal\\b").containsMatchIn(codePart)) {
+                        found += "$rel:$lineNo 跨模块引用了 :render 内部类型 $internal —— $line"
+                    }
                 }
             }
         }
@@ -142,6 +156,7 @@ val checkRenderBoundaries = tasks.register("checkRenderBoundaries") {
 
     val rootDir = rootProject.projectDir
     doLast {
+        // 门户核心内部类型：白纸黑字的硬约束（连注释提及都算违规），不随重构漂移。
         val renderInternals = listOf(
             "TextToImg",
             "ThemeManager",
@@ -153,6 +168,44 @@ val checkRenderBoundaries = tasks.register("checkRenderBoundaries") {
             "ImageRenderManager",
             "ImageRenderer"
         )
+        // 派生内部类型：从 :render 源码自动发现，新增 internal 类型立刻纳入覆盖（只判代码）。
+        // 排除两类名字：① 其它模块自有同名声明（无法归因）；② 与核心清单重复。
+        val separator = File.separator
+        val internalDeclRe = Regex(
+            """^\s*internal\s+(?:sealed\s+|data\s+|enum\s+|value\s+|abstract\s+|open\s+|const\s+|inline\s+)*(?:class|interface|object|typealias)\s+([A-Za-z_][A-Za-z0-9_]*)""",
+            RegexOption.MULTILINE
+        )
+        val outsideDeclRe = Regex("""\b(?:class|interface|object)\s+([A-Za-z_][A-Za-z0-9_]*)""")
+        val outsideImportRe = Regex("""^import\s+([A-Za-z0-9_.]+)\.([A-Za-z_][A-Za-z0-9_]*)\s*$""", RegexOption.MULTILINE)
+        val outsideDecls = mutableSetOf<String>()
+        listOf("api", "common", "bukkit", "velocity", "hytale", "adapter").forEach { moduleName ->
+            val moduleDir = File(rootDir, moduleName)
+            if (!moduleDir.isDirectory) return@forEach
+            moduleDir.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .filterNot { it.path.contains(separator + "build" + separator) }
+                .forEach { src ->
+                    val text = src.readText()
+                    outsideDeclRe.findAll(text).forEach { outsideDecls += it.groupValues[1] }
+                    // 外部模块从第三方库导入的同名类型（如 gson 的 JsonParser）同样无法归因。
+                    outsideImportRe.findAll(text).forEach { match ->
+                        if (!match.groupValues[1].startsWith("me.regadpole.plumbot.render")) {
+                            outsideDecls += match.groupValues[2]
+                        }
+                    }
+                }
+        }
+        val boundaryRenderSrc = File(rootDir, "render/src/main/kotlin")
+        val renderInternalNames = if (boundaryRenderSrc.isDirectory) {
+            boundaryRenderSrc.walkTopDown()
+                .filter { it.isFile && it.extension == "kt" }
+                .flatMap { src -> internalDeclRe.findAll(src.readText()).map { it.groupValues[1] } }
+                .toSet()
+        } else emptySet()
+        if (renderInternalNames.isEmpty()) {
+            throw GradleException("checkRenderBoundaries: 未从 :render 源码派生出任何内部类型 —— 判失败。")
+        }
+        val derivedInternals = (renderInternalNames - renderInternals.toSet() - outsideDecls).sorted()
         val violations = mutableListOf<String>()
 
         // 负例自检：规则引擎的每条判定都必须真的能拦住违规，否则"全绿"毫无意义。
@@ -199,7 +252,8 @@ val checkRenderBoundaries = tasks.register("checkRenderBoundaries") {
                         lines = file.readLines(),
                         forbidRenderImport = forbidRenderImport,
                         forbidInternals = forbidInternals,
-                        renderInternals = renderInternals
+                        renderInternals = renderInternals,
+                        derivedInternals = derivedInternals
                     )
                 }
         }
@@ -298,6 +352,70 @@ fun yamlBlock(file: File, path: List<String>): Map<String, String>? {
 }
 
 /**
+ * `:render` 包结构的机械校验。
+ *
+ * 1. **单文件规模** —— 代码行（非空、非注释）超过阈值即失败，防止再长出千行文件；
+ * 2. **单包规模** —— 同一包（目录）内 .kt 文件数超过阈值即失败，防止回归「一个包塞全部」；
+ * 3. **根包即公开面** —— 直接位于 render 包根的文件必须携带契约注解，内部实现必须下沉到领域子包。
+ *
+ * 阈值衡量的是维护成本，不是美学：与 checkRenderBoundaries 的门户纪律互补，让结构回退在 CI 直接失败。
+ */
+val checkRenderLayout = tasks.register("checkRenderLayout") {
+    group = "verification"
+    description = "Validates :render package layout (file size, package size, public-surface root)."
+
+    val rootDir = rootProject.projectDir
+    val maxCodeLines = 600
+    val maxFilesPerPackage = 8
+    // 遗留豁免：结构整改尚未收口的超长文件。当前已收口（最大文件 < 600 代码行），保持空集，
+    // 新增长文件必须真拆，不允许往这里加名字。
+    val grandfatheredLongFiles = emptySet<String>()
+    // 根包白名单由契约注解自动判定（见规则 3），因此这里不硬编码文件名。
+    doLast {
+        val renderSrc = File(rootDir, "render/src/main/kotlin/me/regadpole/plumbot/render")
+        if (!renderSrc.isDirectory) throw GradleException("缺少 :render 源码目录: " + renderSrc.path)
+        val violations = mutableListOf<String>()
+        val contractRe = Regex("""@(?:PublicApi|StableApi|ExperimentalApi)\b""")
+        val ktFiles = renderSrc.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
+
+        // 1. 单文件规模
+        ktFiles.forEach { file ->
+            val codeLines = file.readLines().count { line ->
+                val trimmed = line.trim()
+                trimmed.isNotEmpty() && !trimmed.startsWith("//") && !trimmed.startsWith("/*") && !trimmed.startsWith("*")
+            }
+            if (codeLines > maxCodeLines && file.name !in grandfatheredLongFiles) {
+                violations += file.relativeTo(rootDir).path + ": " + codeLines + " 代码行 > " + maxCodeLines
+            }
+        }
+
+        // 2. 单包规模（按目录归组）
+        ktFiles.groupBy { it.parentFile }.forEach { (dir, files) ->
+            if (files.size > maxFilesPerPackage) {
+                violations += dir.relativeTo(rootDir).path + ": " + files.size + " 个源文件 > " + maxFilesPerPackage +
+                    " —— 请按职责拆分子包"
+            }
+        }
+
+        // 3. 根包即公开面：根包文件必须是契约类型（带 @PublicApi/@StableApi/@ExperimentalApi）
+        ktFiles.filter { it.parentFile == renderSrc }.forEach { file ->
+            if (!file.readLines().any { contractRe.containsMatchIn(it) }) {
+                violations += file.relativeTo(rootDir).path +
+                    ": render 根包只放公开契约文件，内部实现请下沉到领域子包"
+            }
+        }
+
+        if (violations.isNotEmpty()) {
+            throw GradleException(
+                "checkRenderLayout failed with " + violations.size + " violation(s):\n" +
+                    violations.joinToString("\n") { "  - " + it }
+            )
+        }
+        println("checkRenderLayout: " + ktFiles.size + " 个源文件、" +
+            ktFiles.mapNotNull { it.parentFile }.distinct().size + " 个包，布局校验通过。")
+    }
+}
+/**
  * 渲染协议清单一致性校验。
  *
  * 单一真源为 `render/src/main/resources/render-protocol.json`。本任务保证：
@@ -376,10 +494,13 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
         }
 
         // 1. 与 Kotlin 枚举双向一致
-        val enumSource = File(
-            rootDir,
-            "render/src/main/kotlin/me/regadpole/plumbot/render/RenderPortal.kt"
-        ).readText()
+        // 源码定位集中在此处：调整 :render 的包结构时只需要改这三行。
+        val renderMainSrc = File(rootDir, "render/src/main/kotlin/me/regadpole/plumbot/render")
+        val portalSourceFile = File(renderMainSrc, "RenderPortal.kt")
+        val textEngineSourceFile = File(renderMainSrc, "engine/TextToImg.kt")
+        if (!portalSourceFile.isFile) throw GradleException("缺少门户契约源码: ${portalSourceFile.path}")
+        if (!textEngineSourceFile.isFile) throw GradleException("缺少文本引擎源码: ${textEngineSourceFile.path}")
+        val enumSource = portalSourceFile.readText()
         val enumRoutes = Regex("""^\s*([A-Z][A-Z0-9_]*)\("([A-Za-z0-9_]+)",\s*("([A-Za-z0-9_]+)"|null)\)""", RegexOption.MULTILINE)
             .findAll(enumSource)
             .map { it.groupValues[2] }
@@ -447,10 +568,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             }
 
             // 4.2 引擎默认值（TextToImg.Style.DEFAULT）
-            val engineSource = File(
-                rootDir,
-                "render/src/main/kotlin/me/regadpole/plumbot/render/TextToImg.kt"
-            ).readText()
+            val engineSource = textEngineSourceFile.readText()
             val enginePlate = Regex("""plateColor\s*:\s*Color\s*=\s*Color\(0x([0-9A-Fa-f]{6})\)""")
                 .find(engineSource)?.groupValues?.get(1)?.uppercase()
             val engineText = Regex("""textColor\s*:\s*Color\s*=\s*Color\(0x([0-9A-Fa-f]{6})\)""")
@@ -469,10 +587,7 @@ val checkRenderProtocol = tasks.register("checkRenderProtocol") {
             }
 
             // 4.3 运行时载体（RenderTextStyle 默认值，配置缺失时由它兜底）
-            val portalSource = File(
-                rootDir,
-                "render/src/main/kotlin/me/regadpole/plumbot/render/RenderPortal.kt"
-            ).readText()
+            val portalSource = portalSourceFile.readText()
             val carrierBase = Regex("""baseColor:\s*String\s*=\s*"(#[0-9A-Fa-f]{6})"""")
                 .find(portalSource)?.groupValues?.get(1)?.let { normColor(it) }
             if (carrierBase != expectBase) {
@@ -726,7 +841,13 @@ val checkSingleDefinitions = tasks.register("checkSingleDefinitions") {
 subprojects {
     plugins.withId("base") {
         tasks.named("check") {
-            dependsOn(checkRenderBoundaries, checkRenderProtocol, checkRuntimeLibraries, checkSingleDefinitions)
+            dependsOn(
+                checkRenderBoundaries,
+                checkRenderProtocol,
+                checkRuntimeLibraries,
+                checkSingleDefinitions,
+                checkRenderLayout
+            )
         }
     }
 }
