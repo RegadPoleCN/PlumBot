@@ -36,15 +36,18 @@
 | `test` | 各模块 | 单元测试 |
 | `:api:checkApiContract` | `:api` | `:api` 每个文件都标了公开 API 注解 |
 | `checkRenderBoundaries` | 根 | 模块边界不越级 |
+| `checkRenderLayout` | 根 | render 包布局/文件大小 |
 | `checkRenderProtocol` | 根 | 渲染协议清单与代码、配置一致 |
 | `checkRuntimeLibraries` | 根 | `compileOnly` 依赖运行期都装得上 |
 | `checkSingleDefinitions` | 根 | 只该有一份的定义没被复制 |
 
-根工程的四个校验通过 `subprojects { plugins.withId("base") { tasks.named("check") { dependsOn(...) } } }` 挂到每个模块的 `check` 上，`:api:checkApiContract` 由 `:api` 自己挂，`checkRelocation` 不在链上（见下）。
+根工程的五个校验通过 `subprojects { plugins.withId("base") { tasks.named("check") { dependsOn(...) } } }` 挂到每个模块的 `check` 上，`:api:checkApiContract` 由 `:api` 自己挂，`checkRelocation` 不在链上（见下）。
 
 **`checkApiContract`**：按**文件**判定，不是按类或按包——`:api` 下每个 `.kt` 文件剥离注释后必须出现 `@PublicApi` / `@StableApi` / `@ExperimentalApi` 之一；两处硬编码豁免（`fun interface PlatformTaskHandle`、`val Int.ticks`）；不校验包名，也不要求必须用 `@StableApi`。先剥注释是为了防止"注解只写在注释里"骗过校验。失败原因基本只有一个：新增文件忘打注解。改检测逻辑必须跑负例自检 `./gradlew :api:checkApiContract -PapiContractSelfTest=true`（4 个负例 + 4 个正例）。
 
-**`checkRenderBoundaries`**：三条规则——适配层不得出现任何 `import me.regadpole.plumbot.render`；`:render` 的 9 个内部类型（`TextToImg`、`ThemeManager`、`AwtImageRenderer`、`PlaywrightImageRenderer`、`PayloadGovernor`、`RenderSecurity`、`AvatarComposer`、`ImageRenderManager`、`ImageRenderer`）不得被跨模块引用，**注释里提到也算**；`:api` 不得依赖渲染实现。失败原因：图省事直接 `new ThemeManager`，绕过门户。
+**`checkRenderBoundaries`**：三条规则——适配层不得出现任何 `import me.regadpole.plumbot.render`；`:render` 的内部类型不得被跨模块引用，**注释里提到也算**；`:api` 不得依赖渲染实现。内部类型清单分两层：9 个门户核心类型（`TextToImg`、`ThemeManager`、`AwtImageRenderer`、`PlaywrightImageRenderer`、`PayloadGovernor`、`RenderSecurity`、`AvatarComposer`、`ImageRenderManager`、`ImageRenderer`）是白纸黑字的硬约束，不随重构漂移；其余清单**从源码派生**——扫描 `render/src/main/kotlin` 里所有 `internal` 顶层声明（`class` / `interface` / `object` / `typealias`），再减去其它模块的同名声明（含它们从第三方库导入的同名类型，无法归因即不纳入），派生只判代码。一个内部类型都没派生出来时直接判失败（防空转）。失败原因：图省事直接 `new ThemeManager`，绕过门户。
+
+**`checkRenderLayout`**：三条布局规则——单文件**代码行**（非空、非注释）不得超过 600；同一个包（目录）里的 `.kt` 文件不得超过 8 个；直接位于 `render` 包根的文件必须带 `@PublicApi` / `@StableApi` / `@ExperimentalApi` 之一（根包即公开面，实现一律下沉到领域子包）。当前 49 个源文件、13 个包，最大文件 518 代码行，输出形如「checkRenderLayout: 49 个源文件、13 个包，布局校验通过」。超长文件的遗留豁免集当前是空集：新增长文件必须真拆，不允许往豁免里加名字。失败原因只有两个方向：往一个文件里堆职责（回到千行文件）、往一个包里平铺（回到「一个包塞实现」）。
 
 **`checkRenderProtocol`**：`render/src/main/resources/render-protocol.json` 是单一真源。校验 route 集合与 `RenderRoute` 枚举双向一致；每条 route 必须声明非空 `featureGate`、`defaultEngine` 和 `payload`，且 `payload` 严格是 `{ text: string, title: string?, data: object }`；文本样式还要在协议清单、`config.yml`、AWT 引擎默认值、运行时载体之间四方一致。前端源码不在构建期读——协议号与 route 集合靠运行时 manifest 握手（对不上报 `PW_TEMPLATE_INVALID`）。渲染细则见 [render.md](./render.md)。
 

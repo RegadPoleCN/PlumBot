@@ -12,7 +12,7 @@
 | [新平台接入指南](adding-platform.md) | 平台适配者 | 接入清单、约定插件与依赖别名、装配时序、能力补齐与核对 |
 | [附属插件开发手册](extension-guide.md) | 外部开发者 | 依赖与本仓库不发布 Maven 的事实、`PlumBotAPI` 用法、事件监听、能力校验、可编译样例 |
 | [内部核心开发手册](internal-dev.md) | 内部维护者 | 调试流程、`debug` 开关、配置缓存与类加载器坑、关闭时序 |
-| [构建与发布规范](build-and-release.md) | 全员 / DevOps | `buildSrc` 约定插件、`dist` 产物、四个校验任务、版本号与发布流程 |
+| [构建与发布规范](build-and-release.md) | 全员 / DevOps | `buildSrc` 约定插件、`dist` 产物、五个校验任务、版本号与发布流程 |
 
 仓库根目录另有 [CHANGELOG.md](../CHANGELOG.md)、[CONTRIBUTING.md](../CONTRIBUTING.md)、[SECURITY.md](../SECURITY.md)。
 

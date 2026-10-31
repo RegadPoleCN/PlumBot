@@ -36,7 +36,7 @@ tasks { shadowJar { archiveBaseName.set("PlumBot-MyPlatform"); archiveVersion.se
 4. **依赖别名**：`gradle/libs.versions.toml` 里现有的是 `libs.velocityApi`、`libs.libbyCore` / `libbyBukkit` / `libbyVelocity` / `libbyHytale`、`libs.adventureApi` 系列、`libs.bstatsBukkit` / `bstatsVelocity` / `bstatsHytale`、`sqlite` / `mysql` / `hikaricp` / `aedile` / `playwright` 等。**没有** `libs.platformApi`、`libs.libbyPlatform`、`spigot-api` —— `:bukkit` 的 Spigot API 是字面坐标 `compileOnly("org.spigotmc:spigot-api:1.13-R0.1-SNAPSHOT")`，`:hytale` 是 `compileOnly("com.hypixel.hytale:Server:+")`。宿主 API 没有现成别名就直接写字面坐标，别硬编一个不存在的。
 5. **产物名**：`shadowJar` 的 `archiveBaseName` 要唯一（现有 `PlumBot-Bukkit` / `PlumBot-Velocity` / `PlumBot-Hytale`），`archiveVersion` 清空，避免 `dist/` 里出现带版本号的文件名。
 6. **进 `dist/`**：根 `build.gradle.kts` 的 `dist` 任务（`copyDist`）会对每个应用了 `com.gradleup.shadow` 的子项目 `from(shadowJarTask)`，所以第 3、5 步做对之后 `./gradlew dist` 自动收进根目录 `dist/`，不需要改根脚本。
-7. **过 `check`**：根脚本给所有 `base` 子项目挂上 `checkRenderBoundaries`、`checkRenderProtocol`、`checkRuntimeLibraries`、`checkSingleDefinitions`，`checkRelocation` 会先跑 `dist` 再断言产物里没有未重定位的第三方包。新平台模块同样受这些约束，别用 `//noinspection` 绕。
+7. **过 `check`**：根脚本给所有 `base` 子项目挂上 `checkRenderBoundaries`、`checkRenderLayout`、`checkRenderProtocol`、`checkRuntimeLibraries`、`checkSingleDefinitions`，`checkRelocation` 会先跑 `dist` 再断言产物里没有未重定位的第三方包。新平台模块同样受这些约束，别用 `//noinspection` 绕。
 
 ## 二、边界铁律
 

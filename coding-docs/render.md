@@ -15,22 +15,30 @@
    │
    ▼
 :render  RenderProvider（唯一实例、唯一生命周期）
-           └─ RenderPortal（对外唯一入口）
-                 └─ ImageRenderManager（internal）
-                       ├─ route 注册表 + 门控 + 引擎解析
-                       ├─ 有界容量 + 同目标串行
-                       ├─ 载荷长度治理
-                       └─ 失败一律返回 RenderResult，不抛异常
+           └─ RenderPortal（对外唯一入口，根包契约）
+                 └─ ImageRenderManager（pipeline/，facade：只持有协作者并委托）
+                       └─ RenderPipeline（pipeline/flow/：render / doRender / unavailable / fallbackToAwt / governPayload）
+                             ├─ RoutePolicy（pipeline/routing/）：门控 + 引擎解析 + 超时
+                             ├─ CapacityGate（pipeline/flow/）：有界容量 + 同目标串行
+                             ├─ PayloadGovernor（pipeline/）：载荷长度治理
+                             ├─ EngineRegistry（pipeline/engines/）：引擎注册 + 指纹懒重建
+                             ├─ NoticeSink（pipeline/routing/）：降级提示去重
+                             └─ 引擎：PlaywrightImageRenderer（engine/playwright/）
+                                       或 AwtImageRenderer（engine/，兜底）
+                 · 头像 / 主题走 AvatarService、ThemeService（pipeline/assets/）
+                 · 失败一律返回 RenderResult，不抛异常
    │
    ▼
 适配层 IBot  只做「发字节」sendGroupImage / sendUserImage，或发文本
 ```
 
-四条纪律，前三条由 `build.gradle.kts` 的 `checkRenderBoundaries`（随 `check` 执行）机械校验：
+包结构（`render/src/main/kotlin/me/regadpole/plumbot/render/`，49 个源文件、13 个包）：根包只放对外契约；`pipeline/` 是编排层（`flow/` 主流程与容量、`routing/` 路由与提示、`engines/` 引擎注册与装载门、`assets/` 头像与主题服务）；`engine/` 放渲染器（`playwright/` 浏览器侧，`playwright/startup/` 启动参数与浏览器决策）；`install/` 浏览器策略、装载闸与配置指纹；`avatar/` 皮肤解析与合成；`theme/` 模板、配色与字体注入；`support/` JSON、HTTP、安全、协议规则与限额常量。依赖方向单向：根包契约 ← `support` ← `theme` ← `avatar` ← `install` ← `engine` ← `pipeline`，反向禁止。
+
+四条纪律，第 1–3 条由根 `build.gradle.kts` 的 `checkRenderBoundaries` 与 `checkRenderLayout`（随 `check` 执行）机械校验：
 
 1. **适配层零依赖 `:render`**，只把字节发出去。
-2. **其他模块不得引用渲染内部类型**：`TextToImg`、`ThemeManager`、`AwtImageRenderer`、`PlaywrightImageRenderer`、`PayloadGovernor`、`RenderSecurity`、`AvatarComposer`、`ImageRenderManager`、`ImageRenderer`。
-3. **`:api` 不得依赖渲染**；`:render` 的非 `internal` 顶层声明必须带 `@PublicApi`、`@StableApi` 或 `@ExperimentalApi`。
+2. **其他模块不得引用渲染内部类型**（`TextToImg`、`ThemeManager`、`AwtImageRenderer`、`PlaywrightImageRenderer`、`PayloadGovernor`、`RenderSecurity`、`AvatarComposer`、`ImageRenderManager`、`ImageRenderer`）：这 9 个核心类型是硬约束，其余 `internal` 顶层声明由 `checkRenderBoundaries` 从源码派生后一并纳入，注释里提到也算违规。
+3. **`:api` 不得依赖渲染**；`render` 根包只放公开契约，文件必须带 `@PublicApi`、`@StableApi` 或 `@ExperimentalApi`（`checkRenderLayout` 校验），实现类一律 `internal` 下沉到子包。
 4. **门户唯一**：平台启用时经 `RenderProvider.bootstrap(...)` 装配，禁用时 `shutdown()`；业务类不得自行构造。
 
 ### 1.1 生命周期：关闭必须异步
@@ -39,8 +47,8 @@
 
 | 位置 | 约束 |
 |---|---|
-| `ImageRenderManager.shutdown()` / 引擎重建 | 锁内只摘引用并清空表，回收任务入队 `RenderTeardown`，调用线程立即返回；门户 `shutdownAndAwait(3000)` 同步等 3 秒 |
-| 引擎 `releaseAll()` | 页面池 → context → browser → driver；先摘引用再逐步 `closeWithin(...)`，单步超时 5s / 5s / 10s / 15s |
+| `pipeline/ImageRenderManager.shutdown()` / 引擎重建 | 锁内只摘引用并清空表，回收任务入队 `pipeline/RenderTeardown`，调用线程立即返回；门户 `shutdownAndAwait(3000)` 同步等 3 秒 |
+| 引擎 `releaseAll()`（`engine/playwright/EngineLifecycle`） | 页面池 → context → browser → driver；先摘引用再逐步 `closeWithin(...)`，单步超时 5s / 5s / 10s / 15s |
 | `PlumBot.applyRenderConfig()` | 必须 `RenderProvider.getOrNull() ?: RenderProvider.bootstrap(platform)`；reload 只重新 `configure()`，引擎重建走 `reload()` 的异步路径 |
 | 回收线程 | `PlumBot-Render-Reaper`，daemon 单线程串行；单任务异常只 WARN，不中断后续任务 |
 
@@ -50,10 +58,10 @@
 
 | 环节 | 行为 |
 |---|---|
-| `configure()` | 计算 `pendingEngineFingerprint`（`RenderEngineFingerprint.of`）；启动期首次直接认领，避免首次 reload 误判 |
+| `configure()` | 计算 `pendingEngineFingerprint`（`install/RenderEngineFingerprint.of`）；启动期首次直接认领，避免首次 reload 误判 |
 | `reload()`，指纹相同 | 只打一行 INFO「渲染配置未变化」，引擎保留 |
 | `reload()`，指纹不同 | 只置 `engineResetPending`，**不关闭任何引擎** |
-| 下一次 `rendererFor()` | `applyPendingEngineReset()` 摘引用并交 `RenderTeardown` 回收（懒重建） |
+| 下一次 `rendererFor()` | `pipeline/engines/EngineRegistry` 的 `applyPendingEngineReset()` 摘引用并交 `RenderTeardown` 回收（懒重建） |
 | 主动关闭 vs 驱动崩溃 | `closingInternally` 区分两者：前者只打 INFO，后者才报「底层 Chromium 意外退出」 |
 
 指纹只收构造期一次性读取的项：`render.engine`、各 `render.views.<route>.engine`、`render.playwright` 的 theme / template_protocol / template_url / template_sha256 / dev_web_dir / scale_factor / image_format / jpeg_quality / browsers_path / custom_chrome_path / browser_channel / disable_sandbox / fallback_to_awt / render_timeout_ms / font_max_bytes / download_host，以及字体文件的路径 + 大小 + mtime。`render.outputs.*`、载荷治理阈值、`template_urls` 每次实时读取，**不入指纹**。
@@ -119,7 +127,7 @@ RenderCard(text: String, title: String? = null, data: Map<String, Any?> = emptyM
 
 **运行时握手**：模板启动时把 `window.__PLUMBOT_MANIFEST__ = {protocol, routes, sdk}` 挂到页面，插件导航后读取校验——协议版本不符则一次性 WARN 并直接降级（不白等导航超时）；目标 route 未声明则跳过渲染；旧模板无 manifest 时保持兼容。
 
-`checkRenderProtocol` 保证清单与 Kotlin `RenderRoute` 双向一致、字段齐备，且文本可读性规则在清单 / `config.yml` / 引擎默认值之间一致。前端字段漂移由运行时自检兜底：`/plumbot render doctor` 输出 `protocol fields: 17 routes, mismatches: N`。
+`checkRenderProtocol` 保证清单与 Kotlin `RenderRoute` 双向一致、字段齐备，且文本可读性规则在清单 / `config.yml` / 引擎默认值之间一致。构建期只读两处源码：`RenderPortal.kt`（`RenderRoute` 枚举）与 `engine/TextToImg.kt`（文本样式默认值），路径已收成 `renderMainSrc` / `portalSourceFile` 常量。前端字段漂移由运行时自检兜底：`/plumbot render doctor` 输出 `protocol fields: 17 routes, mismatches: N`。
 
 前端契约（SDK 与官方 Vue 模板独立 npm 发布，不随本仓库分发）：
 
@@ -133,7 +141,7 @@ RenderCard(text: String, title: String? = null, data: Map<String, Any?> = emptyM
 
 - 坐标 `com.microsoft.playwright:playwright:1.49.0`，`resolveTransitiveDependencies(true)`，**禁止 relocate**（Playwright 依赖自身原生 node driver 的路径结构）。
 - `:render` 对该依赖是 `compileOnly`，**不进 Jar**；三个平台各自实现 `RenderLibraryLoader.ensurePlaywright()` 并通过 `RenderProvider.registerLibraryLoader(...)` 注入。
-- **三道门**：注册门（`engine != playwright` 不实例化驱动）、装载门（`PlaywrightInstallGate`）、能力门（`Class.forName` 真实探测）。
+- **三道门**：注册门（`engine != playwright` 不实例化驱动，判定在 `pipeline/engines/EngineRegistry`）、装载门（`install/PlaywrightInstallGate`）、能力门（`Class.forName` 真实探测）。
 
 装载门把「要不要下载」收进一个状态机（`IDLE → RUNNING → READY | COOLING`），三条不变式：
 
@@ -184,9 +192,9 @@ RenderCard(text: String, title: String? = null, data: Map<String, Any?> = emptyM
 ⑤ 前端中性占位图
 ```
 
-三级来源统一产出 **base64 纹理属性**，所以 `base64 → JSON → textures.SKIN.url` 的解析只在 `AvatarResolver` 一处，平台层不碰 JSON。
+三级来源统一产出 **base64 纹理属性**，所以 `base64 → JSON → textures.SKIN.url` 的解析只在 `avatar/AvatarResolver` 一处，平台层不碰 JSON。
 
-下游只收两种中间表示，其余都在服务端收敛：平台图层经 `composeAvatar(有序图层)` 合成为单张 PNG data URL；绑定 QQ 头像经 `fetchAvatarAsDataUrl(url)` 走磁盘缓存后同样是 data URL；都不可用则由前端逐级降级到中性占位图。
+下游只收两种中间表示，其余都在服务端收敛：平台图层经 `avatar/AvatarComposer.composeAvatar(有序图层)` 合成为单张 PNG data URL；绑定 QQ 头像经 `fetchAvatarAsDataUrl(url)` 走磁盘缓存后同样是 data URL；都不可用则由前端逐级降级到中性占位图。
 
 | 纪律 | 值 | 理由 |
 |---|---|---|
@@ -196,8 +204,8 @@ RenderCard(text: String, title: String? = null, data: Map<String, Any?> = emptyM
 | 缓存键 | `skin:<source>:<name>` | 含来源级 |
 
 - **出口白名单只约束起点 + 仅 https（逐跳）+ 体积上限**：`render.avatar.domains` 可覆盖内置列表；不做解析后 IP 判定。
-- **磁盘缓存** `AvatarCache`：SHA-256 文件名、TTL、原子替换，`cache_dir` / `cache_ttl_hours` 可配。
-- **裁头在服务端完成**（`MinecraftSkinCropper`）：64×64 现代（面部 `(8,8)` + 外层 `(40,8)` 按 alpha 合成）、64×32 旧版无外层、128×128 按 2 倍布局，最近邻放大到 `head_size`（默认 128）。线上契约因此收敛为单张成品图，浏览器端不需要 canvas、跨域或模式嗅探。
+- **磁盘缓存** `avatar/AvatarCache`：SHA-256 文件名、TTL、原子替换，`cache_dir` / `cache_ttl_hours` 可配。
+- **裁头在服务端完成**（`avatar/MinecraftSkinCropper`）：64×64 现代（面部 `(8,8)` + 外层 `(40,8)` 按 alpha 合成）、64×32 旧版无外层、128×128 按 2 倍布局，最近邻放大到 `head_size`（默认 128）。线上契约因此收敛为单张成品图，浏览器端不需要 canvas、跨域或模式嗅探。
 
 Hytale 资产为 **Hypixel Studios 专有许可**：绝不随插件分发任何 Hytale 资产（构建断言禁止产物含 `com/hypixel/hytale/**`）；解析顺序为服主覆盖 `plugins/PlumBot/assets/characters/<category>/` → 官方 `AssetModule` → `<category>/default.png`，调用链见 `hytale/src/main/kotlin/me/regadpole/plumbot/hytale/avatar/HytaleAvatarResolver.kt`。
 
@@ -209,16 +217,16 @@ Hytale 资产为 **Hypixel Studios 专有许可**：绝不随插件分发任何 
 | ② 二进制 / 图层 | `data:` URL | 不做字符截断；按单层上限 + 总量预算 + 图层数上限判定，超限丢该层 |
 | ③ 整体预算 | payload 文本总量 | 超阈值告警 |
 
-递归穿透 `RenderCard` / `Map` / `List` / `Set` / `Array`（旧实现只处理顶层，嵌套结构完全绕过），额度由 `render.limits.*` 配置。`RenderCard.text` 是唯一正文真源，**不参与** per-field 截断（否则图片与纯文本降级会变成两套内容），只计入整体预算告警；`title` 与 `data` 内的字符串仍按上表治理。
+递归穿透 `RenderCard` / `Map` / `List` / `Set` / `Array`（旧实现只处理顶层，嵌套结构完全绕过），治理实现在 `pipeline/PayloadGovernor`，额度常量在 `support/RenderLimits`、可按 `render.limits.*` 覆盖。`RenderCard.text` 是唯一正文真源，**不参与** per-field 截断（否则图片与纯文本降级会变成两套内容），只计入整体预算告警；`title` 与 `data` 内的字符串仍按上表治理。
 
 ## 8. 安全基线
 
 | 项 | 做法 |
 |---|---|
-| `file://` 白名单 | **仅主题根目录**（旧实现放行整个数据目录，而那里存着数据库口令） |
-| 网络出口 | 起点主机白名单（精确 / 子域）+ **仅 https 逐跳**；重定向手动逐跳跟随、上限 20 跳；不做解析后 IP 判定 |
-| 模板下载 | 仅 https；体积上限；原子替换；`disconnect()`；不忽略返回值 |
-| 浏览器开关 | 已移除 `--disable-web-security` 与 `--allow-file-access-from-files`（头像改为服务端 data URL 后不需要） |
+| `file://` 白名单 | **仅主题根目录**（旧实现放行整个数据目录，而那里存着数据库口令）；判定在 `theme/ThemeManager` |
+| 网络出口 | 起点主机白名单（精确 / 子域）+ **仅 https 逐跳**；重定向手动逐跳跟随、上限 20 跳；不做解析后 IP 判定；实现在 `support/SafeHttp` |
+| 模板下载 | 仅 https；体积上限；原子替换；`disconnect()`；不忽略返回值；落地与校验在 `theme/TemplateIntegrity`、`theme/TemplateMirrors` |
+| 浏览器开关 | 已移除 `--disable-web-security` 与 `--allow-file-access-from-files`（头像改为服务端 data URL 后不需要）；开关集中在 `engine/playwright/PlaywrightSandbox` |
 
 ## 9. 明确放弃项（不留空头承诺）
 
@@ -234,12 +242,12 @@ Hytale 资产为 **Hypixel Studios 专有许可**：绝不随插件分发任何 
 ## 10. 验证
 
 ```bash
-./gradlew check          # 含 checkRenderBoundaries / checkRenderProtocol / checkRuntimeLibraries / checkSingleDefinitions
+./gradlew check          # 含 checkRenderBoundaries / checkRenderLayout / checkRenderProtocol / checkRuntimeLibraries / checkSingleDefinitions
 ./gradlew test           # :render 单测
 ./gradlew dist           # 打包；确认产物内 playwright 类数为 0
 ```
 
-三个校验任务都带负例自检（`-PrenderBoundarySelfTest=true`、`-PrenderProtocolSelfTest=true`、`-PruntimeLibrarySelfTest=true`），改规则时应跑。
+三个校验任务带负例自检（`-PrenderBoundarySelfTest=true`、`-PrenderProtocolSelfTest=true`、`-PruntimeLibrarySelfTest=true`），改规则时应跑；`checkRenderLayout` 与 `checkSingleDefinitions` 没有自检开关。
 
 **运行期验收（需真实服务器）**：
 
@@ -253,7 +261,7 @@ Hytale 资产为 **Hypixel Studios 专有许可**：绝不随插件分发任何 
 
 ## 11. 构建产物与分发
 
-**`:render` 不作为独立构件发布**：随各平台 `shadowJar` 分发（三个平台模块都显式 `implementation(project(":render"))`），`render/build/libs/render-*.jar` 只是中间产物，`dist/` 不收集。对外契约是 `render-protocol.json` 与 `RenderPortal`，分别由 `checkRenderProtocol` / `checkRenderBoundaries` 守护。
+**`:render` 不作为独立构件发布**：随各平台 `shadowJar` 分发（三个平台模块与 `:common` 都显式 `implementation(project(":render"))`），`render/build/libs/render-*.jar` 只是中间产物，`dist/` 不收集。子包划分只改变源码组织与构建期校验，运行时仍在 `me.regadpole.plumbot.render.*` 命名空间下，对外可见性不变——真正对外的是 `render-protocol.json` 与 `RenderPortal`，分别由 `checkRenderProtocol` / `checkRenderBoundaries` 守护；包布局由 `checkRenderLayout` 守护。
 
 - **Playwright 是 `compileOnly`，永不进包**（`dist` 产物内 `com/microsoft/playwright/**` 类数为 0），运行期按需下载。
 - **`BuildConstants` 只在 `:velocity` 生成**（早期每个模块各生成一份，shading 时 8 份同名类相撞）；需要它的模块在自身 `build.gradle.kts` 声明 `extra["plumbotBuildConstants"] = true`。

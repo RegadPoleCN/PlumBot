@@ -36,7 +36,7 @@ graph LR
 ```
 
 - `api`：对外契约与模型（`PlumBotAPI`、`IBot`/`BotFactory`、`PlatformContext`、`IDatabase`、事件类型）。只 `compileOnly` Adventure，运行期用 kotlinx 协程与 datetime，不依赖任何实现模块。
-- `render`：渲染门户的公开面（`RenderProvider`、`RenderPortal`、`RenderRoute`、`RenderCard`、`RenderResult`），实现类全部 `internal`；Playwright 仅 `compileOnly`，运行期按需装载。
+- `render`：渲染门户。根包只放对外契约（`RenderProvider`、`RenderPortal`、`RenderRoute`、`RenderCard`、`RenderResult`、`AvatarLayer`、`RenderHealth`、`PlaywrightInstaller`，全部带公开 API 注解），实现按职责下沉到六个子域：`pipeline/`（门面、主流程、容量、路由、引擎注册、载荷治理）、`engine/`（AWT 与 Playwright 渲染器）、`install/`（浏览器策略与装载门）、`avatar/`、`theme/`、`support/`（JSON、HTTP、安全与限额常量）。依赖方向单向：根包契约 ← `support` ← `theme` ← `avatar` ← `install` ← `engine` ← `pipeline`，反向禁止。实现类全部 `internal`；Playwright 仅 `compileOnly`，运行期按需装载。
 - `common`：生命周期、命令服务、事件桥、数据库、词库、缓存与 Bot 抽象（`AbstractBotAdapter` 也在这里）。它以 `implementation(project(":render"))` 引用渲染，因此适配层与第三方插件都看不到渲染内部类型。
 - `adapter:onebot` / `adapter:miraimc`：只依赖 `common`，负责协议收发与能力声明，不做业务判断，也不接触渲染。
 - `bukkit` / `velocity` / `hytale`：唯一的装配层，依赖 `common`、`render` 和所需适配器（Hytale 只带 OneBot），承担平台线程、命令注册、事件监听与资源归属。
@@ -114,14 +114,20 @@ QQ 侧到游戏侧的路径：
 命令 / 事件
   → ServerMessageSender.broadcastRendered（渲染一次，多群复用）
   → RenderProvider.portal.render(RenderRequest)
-  → ImageRenderManager：路由解析 → 语义容量 → 同目标串行 → 载荷治理
-  → PlaywrightImageRenderer（页面池 + 模板）  或  AwtImageRenderer（兜底）
+  → ImageRenderManager（pipeline/，facade：只持有协作者并委托）
+  → RenderPipeline（pipeline/flow/：render / doRender / unavailable / fallbackToAwt）
+       ├─ RoutePolicy（pipeline/routing/）：门控 + 引擎解析 + 超时
+       ├─ CapacityGate（pipeline/flow/）：Semaphore(2 + 6) 容量闸 + 同目标 Mutex 串行
+       ├─ PayloadGovernor（pipeline/）：载荷截断与预算
+       ├─ EngineRegistry（pipeline/engines/）：引擎注册 + 指纹懒重建
+       └─ NoticeSink（pipeline/routing/）：降级提示去重
+  → 引擎：PlaywrightImageRenderer（engine/playwright/，页面池 + 模板）  或  AwtImageRenderer（engine/，兜底）
   → PNG 字节 → IBot.sendGroupImage(ByteArray) → QQ 群图片；失败回落纯文本
 ```
 
 - 路由：`RenderRoute` 现有 17 条，映射到 `render.outputs` 的 13 个开关（`load` 覆盖进服/退服，`bind` 覆盖绑定与查询，`joinAndLeave` 覆盖进退服与换服，`avatar` 覆盖头像与旧模板头像）。`render-protocol.json` 以 `protocol=1` 声明同样的路由与 text 样式，构建期与枚举双向校验。
 - 引擎选择：`render.engine=auto`（默认）时按路由首选——头像走 Playwright，其余走 AWT；`render.views.<route>` 可逐路由覆盖引擎与超时。Playwright 失败且 `fallback_to_awt=true` 时降级 AWT，再失败降级纯文本。
-- 门户生命周期：`warmUpEngines()` 只调度装载、立即返回；`ensurePlaywrightLibrary()` 才会阻塞，供 `/plumbot render doctor|install` 使用；`reload()` 只在字体、UA、文本样式等配置指纹变化时重建引擎。
+- 门户生命周期：`warmUpEngines()` 只调度装载、立即返回；`ensurePlaywrightLibrary()` 才会阻塞，供 `/plumbot render doctor|install` 使用；`reload()` 只在字体、UA、文本样式等配置指纹变化时重建引擎；比对在 `pipeline/engines/EngineRegistry`，指纹由 `install/RenderEngineFingerprint` 计算。
 
 关键并发与容量常量（以源码为准，配置文件中的同名键只是可调覆盖）：
 
@@ -137,7 +143,7 @@ QQ 侧到游戏侧的路径：
 
 容量满时门户立即返回 `Unavailable` 并降级纯文本，不排队、不丢弃、不阻塞调用线程；同一目标（群或玩家）的渲染用 `Mutex` 串行，避免同一目标的图片乱序。载荷治理按 `render.limits` 截断正文、限制层数与二进制总量，超限部分记录指标而不是抛异常。引擎只装配 AWT，Playwright 在首次真正需要时惰性构造，避免只用 AWT 的部署在启动期就撞上 Playwright 驱动的类依赖。
 
-头像单独一条管线：`AvatarResolver` 从玩家档案解析皮肤纹理，`MinecraftSkinCropper` 裁出头像层，`AvatarCache` 落盘缓存并按 TTL 与文件上限修剪（默认 2048 个文件、168 小时）；远端域名需通过 `render.avatar.domains` 白名单放行，单层与总量受 800 毫秒、3000 毫秒预算约束。渲染健康状态由 `renderHealth()` 与 `metrics()` 暴露，`/plumbot render doctor` 据此输出引擎可用性、失败冷却剩余时间与最近失败原因。
+头像单独一条管线（`avatar/`）：`AvatarResolver` 从玩家档案解析皮肤纹理，`MinecraftSkinCropper` 裁出头像层，`AvatarCache` 落盘缓存并按 TTL 与文件上限修剪（默认 2048 个文件、168 小时）；远端域名需通过 `render.avatar.domains` 白名单放行，单层与总量受 800 毫秒、3000 毫秒预算约束。渲染健康状态由 `renderHealth()` 与 `metrics()` 暴露，`/plumbot render doctor` 据此输出引擎可用性、失败冷却剩余时间与最近失败原因。
 
 ## 公开 API 契约分级
 
@@ -162,9 +168,10 @@ QQ 侧到游戏侧的路径：
 
 产物归集由根项目的 `dist` 任务完成：三个宿主模块的 `shadowJar` 输出分别命名 `PlumBot-Bukkit`、`PlumBot-Velocity`、`PlumBot-Hytale` 并复制到 `dist/`。三个产物共享同一份 `common` 与 `render` 代码，差异只在宿主 API 与入口类；升级依赖时先改 `libs.versions.toml`，再跑校验任务确认装载清单与协议没有脱节。
 
-`check` 链上挂着四个根校验任务（另有 `:api:checkApiContract` 挂在 `:api:check`）：
+`check` 链上挂着五个根校验任务（另有 `:api:checkApiContract` 挂在 `:api:check`）：
 
-- `checkRenderBoundaries`：扫描源码，禁止适配层与宿主引用渲染内部类型，`:render` 的公开声明必须带 `@PublicApi` / `@StableApi` / `@ExperimentalApi`。
+- `checkRenderBoundaries`：扫描源码，禁止适配层与宿主引用渲染内部类型；内部类型清单 = 9 个硬编码核心类型 + 从源码派生的 `internal` 顶层声明。
+- `checkRenderLayout`：单文件代码行 ≤600、单包源文件 ≤8、根包文件必须带公开 API 注解，防结构回退成单包或千行文件。
 - `checkRenderProtocol`：`render-protocol.json`、`RenderRoute` 枚举、`config.yml` 的 `render.outputs` 与 text 样式四方一致。
 - `checkRuntimeLibraries`：`compileOnly` 声明必须能在 `RuntimeLibraries` 装载清单里找到，反之亦然；宿主提供的库与按需装载的 Playwright 在豁免表内。
 - `checkSingleDefinitions`：玩家名规则只允许一处定义，防止各服务各写一份正则。
