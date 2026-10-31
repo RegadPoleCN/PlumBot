@@ -3,8 +3,10 @@
 
 package me.regadpole.plumbot.render
 
-import me.regadpole.plumbot.api.PublicApi
 import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.api.PublicApi
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
+import me.regadpole.plumbot.render.support.RenderLimits
 
 /**
  * 门户持有者：保证 `:render` 对外**只有一个实例、一套生命周期**。
@@ -65,7 +67,7 @@ object RenderProvider {
      * @return 是否在 `timeoutMs` 内排空（未初始化时视为已排空）。
      */
     @Synchronized
-    fun shutdownAndAwait(timeoutMs: Long = DEFAULT_TEARDOWN_TIMEOUT_MS): Boolean {
+    fun shutdownAndAwait(timeoutMs: Long = RenderLimits.DEFAULT_TEARDOWN_TIMEOUT_MS): Boolean {
         val current = portal ?: return true
         portal = null
         return runCatching { current.shutdownAndAwait(timeoutMs) }.getOrDefault(false)

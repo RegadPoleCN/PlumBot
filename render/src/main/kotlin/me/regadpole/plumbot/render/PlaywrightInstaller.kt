@@ -3,7 +3,6 @@
 
 package me.regadpole.plumbot.render
 
-import me.regadpole.plumbot.api.PublicApi
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -12,6 +11,10 @@ import java.nio.file.StandardCopyOption
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import kotlin.io.path.absolutePathString
+import me.regadpole.plumbot.api.PublicApi
+import me.regadpole.plumbot.render.install.BrowserDecision
+import me.regadpole.plumbot.render.install.BrowserStrategy
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
 
 /**
  * Playwright 失败码（稳定契约，供 `/plumbot render doctor`、日志与文档引用）。
@@ -46,7 +49,7 @@ public object PlaywrightErrorCodes {
 
 /**
  * 可读的 Playwright 失败。message 同时包含 code、阶段、原因、处理建议与手动命令，
- * 便于 [me.regadpole.plumbot.render.ImageRenderManager] 现有的 WARN 打印直接给出可操作信息。
+ * 便于 [me.regadpole.plumbot.render.pipeline.ImageRenderManager] 现有的 WARN 打印直接给出可操作信息。
  */
 @PublicApi
 public class PlaywrightRenderException(

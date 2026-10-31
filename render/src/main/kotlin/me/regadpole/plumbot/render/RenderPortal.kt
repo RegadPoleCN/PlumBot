@@ -3,8 +3,9 @@
 
 package me.regadpole.plumbot.render
 
-import me.regadpole.plumbot.api.PublicApi
 import java.io.File
+import me.regadpole.plumbot.api.PublicApi
+import me.regadpole.plumbot.render.support.RenderLimits
 
 /**
  * 模板下载的默认 User-Agent。
@@ -14,9 +15,6 @@ import java.io.File
  */
 internal const val DEFAULT_RENDER_USER_AGENT =
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-
-/** 停服/重载时等待引擎拆除完成的默认上限（毫秒）。 */
-internal const val DEFAULT_TEARDOWN_TIMEOUT_MS = 3_000L
 
 /**
  * 渲染门户 —— `:render` 模块**对外唯一入口**。
@@ -118,7 +116,7 @@ interface RenderPortal {
      *
      * @param timeoutMs 最长等待毫秒数；<= 0 表示不等待（等价于 [shutdown]）。
      */
-    fun shutdownAndAwait(timeoutMs: Long = DEFAULT_TEARDOWN_TIMEOUT_MS): Boolean {
+    fun shutdownAndAwait(timeoutMs: Long = RenderLimits.DEFAULT_TEARDOWN_TIMEOUT_MS): Boolean {
         shutdown()
         return true
     }
