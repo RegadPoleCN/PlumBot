@@ -3,9 +3,10 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.support.JsonEncoder
 
 /**
  * [JsonEncoder] 契约测试。

@@ -3,8 +3,9 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.Test
+import me.regadpole.plumbot.render.engine.playwright.ScreenshotFormat
 
 /**
  * 卡片图输出格式：不引入 WebP，走"降 `scale_factor` + 可选 JPEG 档"。

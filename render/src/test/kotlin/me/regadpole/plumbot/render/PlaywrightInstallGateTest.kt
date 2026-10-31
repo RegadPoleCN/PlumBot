@@ -3,12 +3,13 @@
 
 package me.regadpole.plumbot.render
 
-import me.regadpole.plumbot.api.platform.LogLevel
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.api.platform.LogLevel
+import me.regadpole.plumbot.render.install.PlaywrightInstallGate
 
 /**
  * **装载门**（[PlaywrightInstallGate]）。

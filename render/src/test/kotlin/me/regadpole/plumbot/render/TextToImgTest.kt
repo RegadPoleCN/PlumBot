@@ -9,12 +9,13 @@ import java.awt.FontMetrics
 import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import javax.imageio.ImageIO
-import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.engine.TextToImg
 
 /**
  * [TextToImg] 的边界与颜色契约测试。

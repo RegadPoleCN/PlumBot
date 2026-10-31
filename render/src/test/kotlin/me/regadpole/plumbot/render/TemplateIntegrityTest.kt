@@ -4,11 +4,12 @@
 package me.regadpole.plumbot.render
 
 import java.nio.file.Files
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.theme.TemplateIntegrity
 
 /**
  * 模板**校验和**。

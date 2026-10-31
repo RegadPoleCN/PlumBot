@@ -3,10 +3,19 @@
 
 package me.regadpole.plumbot.render
 
-import kotlinx.coroutines.Dispatchers
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicInteger
+import javax.imageio.ImageIO
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformConfig
@@ -15,16 +24,11 @@ import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import me.regadpole.plumbot.api.platform.PlatformType
+import me.regadpole.plumbot.render.engine.ImageRenderer
+import me.regadpole.plumbot.render.engine.RenderOptions
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
+import me.regadpole.plumbot.render.pipeline.RenderMetrics
 import net.kyori.adventure.text.Component
-import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
-import java.nio.file.Path
-import java.util.concurrent.atomic.AtomicInteger
-import javax.imageio.ImageIO
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * **队列容量**与**同目标串行**。两件事必须成立：

@@ -3,11 +3,12 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.support.RenderProtocolRules
 
 /**
  * 运行时协议字段自检的行为约束。

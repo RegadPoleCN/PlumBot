@@ -3,10 +3,11 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.Test
+import me.regadpole.plumbot.render.theme.TemplateMirrors
 
 /**
  * 模板候选序列：官方直链优先，再自动补 3 个公共加速站；`template_urls` 非空即完全覆盖。

@@ -3,10 +3,11 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.pipeline.RenderBudget
 
 /**
  * `options.timeoutMs` 是**整次渲染**预算，各阶段只能花"剩余额度"。

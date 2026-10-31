@@ -3,8 +3,8 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.Test
 
 /**
  * [RenderCard.displayText] 契约测试。

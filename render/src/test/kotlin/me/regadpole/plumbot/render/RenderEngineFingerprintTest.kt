@@ -3,6 +3,14 @@
 
 package me.regadpole.plumbot.render
 
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Collections
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
+import kotlin.test.assertTrue
+import kotlin.test.Test
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformConfig
 import me.regadpole.plumbot.api.platform.PlatformContext
@@ -10,17 +18,11 @@ import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import me.regadpole.plumbot.api.platform.PlatformType
+import me.regadpole.plumbot.render.install.RenderEngineFingerprint
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
 import net.kyori.adventure.text.Component
 import org.spongepowered.configurate.ConfigurationNode
 import org.spongepowered.configurate.yaml.YamlConfigurationLoader
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.Collections
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
-import kotlin.test.assertTrue
 
 /**
  * 引擎指纹**只能是纯读**：它每执行一次都会扫 34 个配置键，任何写回都会当场改坏运行中的配置。

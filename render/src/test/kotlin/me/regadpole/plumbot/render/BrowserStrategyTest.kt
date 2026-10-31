@@ -8,11 +8,13 @@ import java.nio.file.Path
 import kotlin.io.path.createDirectories
 import kotlin.io.path.createTempDirectory
 import kotlin.io.path.writeText
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.install.BrowserDecision
+import me.regadpole.plumbot.render.install.BrowserStrategy
 
 /**
  * 浏览器获取决策测试。

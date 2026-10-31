@@ -3,6 +3,16 @@
 
 package me.regadpole.plumbot.render
 
+import java.awt.image.BufferedImage
+import java.io.ByteArrayOutputStream
+import java.nio.file.Path
+import javax.imageio.ImageIO
+import kotlin.test.AfterTest
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertTrue
+import kotlin.test.BeforeTest
+import kotlin.test.Test
 import kotlinx.coroutines.runBlocking
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformConfig
@@ -11,17 +21,11 @@ import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import me.regadpole.plumbot.api.platform.PlatformType
+import me.regadpole.plumbot.render.engine.ImageRenderer
+import me.regadpole.plumbot.render.engine.RenderOptions
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
+import me.regadpole.plumbot.render.pipeline.RenderMetrics
 import net.kyori.adventure.text.Component
-import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
-import java.nio.file.Path
-import javax.imageio.ImageIO
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 /**
  * 渲染健康计数的**分类口径**（门户是唯一计数者）。

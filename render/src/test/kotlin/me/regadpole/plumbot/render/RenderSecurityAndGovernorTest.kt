@@ -3,14 +3,16 @@
 
 package me.regadpole.plumbot.render
 
-import me.regadpole.plumbot.render.RenderSecurity.toBrowserSafeUrl
 import java.io.File
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.pipeline.PayloadGovernor
+import me.regadpole.plumbot.render.support.RenderSecurity
+import me.regadpole.plumbot.render.support.RenderSecurity.toBrowserSafeUrl
 
 /**
  * 渲染期守卫与长度治理的契约测试。

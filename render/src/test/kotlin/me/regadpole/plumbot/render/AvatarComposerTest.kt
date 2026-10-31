@@ -8,11 +8,12 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.avatar.AvatarComposer
 
 /**
  * 有序图层服务端合成的契约测试：线上契约收敛为**单张成品图**，浏览器端因此不需要 canvas、跨域与模式嗅探。

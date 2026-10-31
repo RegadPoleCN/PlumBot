@@ -6,11 +6,12 @@ package me.regadpole.plumbot.render
 import java.awt.image.BufferedImage
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.avatar.ImageDimensions
 
 /**
  * **解码前的像素尺寸校验**，防解压炸弹：体积上限拦不住"几百 KB 却声明 50000×50000"的图片。

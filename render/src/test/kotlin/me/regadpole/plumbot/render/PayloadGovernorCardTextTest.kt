@@ -3,10 +3,12 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
+import me.regadpole.plumbot.render.pipeline.PayloadGovernor
 
 /**
  * `render.limits.card_text_max` 的 fail-closed 契约。

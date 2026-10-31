@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText: 2026 RegadPoleCN
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-package me.regadpole.plumbot.render.driver
+package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.engine.playwright.PlaywrightSandbox
 
 /**
  * **沙箱默认开启，容器例外必须显式**。本机无法真的启动 Chromium，故只断言启动参数与失败判定

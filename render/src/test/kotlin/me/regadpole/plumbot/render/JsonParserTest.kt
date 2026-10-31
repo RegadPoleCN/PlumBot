@@ -3,10 +3,11 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.Test
+import me.regadpole.plumbot.render.support.JsonParser
 
 class JsonParserTest {
 

@@ -4,11 +4,12 @@
 package me.regadpole.plumbot.render
 
 import java.io.File
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.avatar.AvatarCache
 
 /**
  * 头像磁盘缓存测试：缓存是"服务端预取"能够成立的前提 —— 没有它，列表类 route 会在渲染窗口内逐张去取头像。

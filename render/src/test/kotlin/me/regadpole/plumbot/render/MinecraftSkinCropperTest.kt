@@ -7,11 +7,12 @@ import java.awt.image.BufferedImage
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.avatar.MinecraftSkinCropper
 
 /**
  * 皮肤裁头测试：裁切在服务端完成 —— 前端靠 URL 字符串嗅探决定是否裁切，

@@ -4,12 +4,13 @@
 package me.regadpole.plumbot.render
 
 import java.net.URI
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.support.SafeHttp
 
 /**
  * 准入判定：白名单只约束**起点**，跳转目标只要求 https。

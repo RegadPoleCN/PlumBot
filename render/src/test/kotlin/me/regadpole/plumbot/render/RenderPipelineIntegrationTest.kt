@@ -3,8 +3,21 @@
 
 package me.regadpole.plumbot.render
 
-import kotlinx.coroutines.Dispatchers
+import java.awt.image.BufferedImage
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.nio.file.Path
+import javax.imageio.ImageIO
+import kotlin.test.assertEquals
+import kotlin.test.assertIs
+import kotlin.test.assertNotEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+import kotlin.test.Test
 import kotlinx.coroutines.async
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformConfig
@@ -12,20 +25,10 @@ import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformType
+import me.regadpole.plumbot.render.avatar.AvatarFetcher
+import me.regadpole.plumbot.render.avatar.AvatarResolver
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
 import net.kyori.adventure.text.Component
-import java.awt.image.BufferedImage
-import java.io.ByteArrayInputStream
-import java.io.ByteArrayOutputStream
-import java.io.File
-import java.nio.file.Path
-import javax.imageio.ImageIO
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertIs
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 /**
  * **端到端集成测试**：其它单测只覆盖纯逻辑（颜色、守卫、治理、JSON、裁头、缓存），

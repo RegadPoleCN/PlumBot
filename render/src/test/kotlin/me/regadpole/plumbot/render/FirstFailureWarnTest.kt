@@ -3,14 +3,15 @@
 
 package me.regadpole.plumbot.render
 
-import me.regadpole.plumbot.api.platform.LogLevel
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.api.platform.LogLevel
+import me.regadpole.plumbot.render.avatar.FirstFailureWarn
 
 /**
  * 头像抓取的逐玩家失败降噪：只有**第一次**以 WARN 出现，后续同文本降为 DEBUG。

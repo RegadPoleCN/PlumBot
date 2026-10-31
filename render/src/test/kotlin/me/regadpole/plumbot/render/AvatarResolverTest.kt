@@ -4,10 +4,11 @@
 package me.regadpole.plumbot.render
 
 import java.util.Base64
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.avatar.AvatarResolver
 
 /**
  * 皮肤漏斗的纯函数部分：三级来源（皮肤插件 / GameProfile / 正版源）的产物统一是 **base64 纹理属性**，

@@ -3,10 +3,11 @@
 
 package me.regadpole.plumbot.render
 
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.pipeline.FailureCooldown
 
 /**
  * 失败熔断测试：没有熔断时，一个查不到皮肤的玩家会在每次列表刷新时跑满整条漏斗（最坏 3 秒），

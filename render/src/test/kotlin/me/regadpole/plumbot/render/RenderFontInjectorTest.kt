@@ -4,10 +4,11 @@
 package me.regadpole.plumbot.render
 
 import java.io.File
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.render.theme.RenderFontInjector
 
 /**
  * 页面字体注入测试（中文 / Emoji 豆腐块）：注入服主已为 AWT 配置的同一个字体，

@@ -3,17 +3,18 @@
 
 package me.regadpole.plumbot.render
 
-import me.regadpole.plumbot.api.platform.LogLevel
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URI
 import java.net.URL
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.Test
+import me.regadpole.plumbot.api.platform.LogLevel
+import me.regadpole.plumbot.render.support.SafeHttp
 
 /**
  * **逐跳链路的真实驱动**。

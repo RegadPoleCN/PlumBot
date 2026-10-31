@@ -3,6 +3,13 @@
 
 package me.regadpole.plumbot.render
 
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.Collections
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import kotlin.test.Test
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformConfig
 import me.regadpole.plumbot.api.platform.PlatformContext
@@ -10,14 +17,11 @@ import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import me.regadpole.plumbot.api.platform.PlatformType
+import me.regadpole.plumbot.render.engine.ImageRenderer
+import me.regadpole.plumbot.render.engine.RenderOptions
+import me.regadpole.plumbot.render.pipeline.ImageRenderManager
+import me.regadpole.plumbot.render.pipeline.RenderTeardown
 import net.kyori.adventure.text.Component
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.Collections
-import java.util.concurrent.atomic.AtomicInteger
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 /**
  * 引擎重建只看配置指纹，且推迟到下一次真正需要引擎时（懒重建）。
