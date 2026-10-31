@@ -56,15 +56,20 @@ class PlaywrightInstallerTest {
 
     @Test
     fun `Windows 不加 with-deps 且 only-shell 传对应参数`() {
+        // 期望值必须由同两个 File 现算 absolutePath：Windows 风格字面量在 Linux/macOS 上会被解析成
+        // "<cwd>/C:\node.exe"，直接比对字面量会让本用例只在 Windows 通过。这里只固定顺序与参数。
+        val node = File("C:\\node.exe")
+        val cli = File("C:\\package\\cli.js")
         val command = PlaywrightInstaller().buildInvocation(
-            File("C:\\node.exe"),
-            File("C:\\package\\cli.js"),
+            node,
+            cli,
             options(shell = PlaywrightShell.ONLY_SHELL, osName = "Windows 11")
         )
         assertEquals(
-            listOf("C:\\node.exe", "C:\\package\\cli.js", "install", "chromium", "--only-shell"),
+            listOf(node.absolutePath, cli.absolutePath, "install", "chromium", "--only-shell"),
             command.argv
         )
+        assertFalse(command.argv.contains("--with-deps"), "Windows 平台不得自动追加 --with-deps：$command")
     }
 
     @Test
