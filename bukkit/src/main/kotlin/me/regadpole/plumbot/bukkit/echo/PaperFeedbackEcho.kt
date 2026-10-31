@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+import me.regadpole.plumbot.bukkit.echo.config.EchoChannels
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.ComponentLike
 import org.bukkit.Bukkit

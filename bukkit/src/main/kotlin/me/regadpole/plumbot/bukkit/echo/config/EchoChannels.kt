@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 RegadPoleCN
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-package me.regadpole.plumbot.bukkit.echo
+package me.regadpole.plumbot.bukkit.echo.config
 
 /** 远程回显通道的稳定标识，与 config.yml 中的字符串一一对应。 */
 internal object EchoChannels {

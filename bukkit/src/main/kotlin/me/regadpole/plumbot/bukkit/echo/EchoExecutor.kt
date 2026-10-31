@@ -7,6 +7,7 @@ import me.regadpole.plumbot.api.platform.EchoCode
 import me.regadpole.plumbot.api.platform.EchoResult
 import me.regadpole.plumbot.api.platform.EchoState
 import me.regadpole.plumbot.api.platform.PlatformScheduler
+import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import me.regadpole.plumbot.bukkit.platform.BukkitPlatformLogger
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.internal.RemoteConsoleAudit

@@ -3,6 +3,8 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+import me.regadpole.plumbot.bukkit.echo.config.EchoChannels
+import me.regadpole.plumbot.bukkit.echo.support.EchoReflection
 import org.bukkit.Bukkit
 import java.lang.reflect.InvocationTargetException
 

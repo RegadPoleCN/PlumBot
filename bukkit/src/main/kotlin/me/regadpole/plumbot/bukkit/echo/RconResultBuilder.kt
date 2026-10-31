@@ -6,6 +6,7 @@ package me.regadpole.plumbot.bukkit.echo
 import me.regadpole.plumbot.api.platform.EchoCode
 import me.regadpole.plumbot.api.platform.EchoResult
 import me.regadpole.plumbot.api.platform.EchoState
+import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import me.regadpole.plumbot.utils.ComponentProjector
 
 internal object RconResultBuilder {

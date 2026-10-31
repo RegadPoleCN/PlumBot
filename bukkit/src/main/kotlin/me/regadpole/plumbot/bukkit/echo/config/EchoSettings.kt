@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 RegadPoleCN
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-package me.regadpole.plumbot.bukkit.echo
+package me.regadpole.plumbot.bukkit.echo.config
 
 internal data class RconSettings(
     val enabled: Boolean,

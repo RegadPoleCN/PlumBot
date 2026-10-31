@@ -11,7 +11,7 @@ import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformType
 import me.regadpole.plumbot.bukkit.echo.EchoExecutor
-import me.regadpole.plumbot.bukkit.echo.EchoSettingsReader
+import me.regadpole.plumbot.bukkit.echo.config.EchoSettingsReader
 import me.regadpole.plumbot.config.ConsoleEchoSetting
 import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.internal.LogLevel

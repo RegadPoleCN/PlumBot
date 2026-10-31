@@ -3,6 +3,8 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+import me.regadpole.plumbot.bukkit.echo.config.EchoChannels
+import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import java.util.Locale
 
 /** 通道候选顺序解析；纯函数，便于测试 forced/默认/去重。 */
