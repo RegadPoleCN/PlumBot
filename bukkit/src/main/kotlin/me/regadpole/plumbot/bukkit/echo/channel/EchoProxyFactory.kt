@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 RegadPoleCN
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-package me.regadpole.plumbot.bukkit.echo
+package me.regadpole.plumbot.bukkit.echo.channel
 
 import me.regadpole.plumbot.bukkit.echo.capture.EchoSession
 import net.kyori.adventure.text.Component
@@ -24,7 +24,7 @@ import java.lang.reflect.Proxy
  * 拦截方法按名字匹配而非精确签名，以兼容 Paper 新增的 sendRichMessage 等默认方法；
  * 其余方法委托真实 console sender，InvocationTargetException 解包后原样抛出。
  */
-internal object BukkitEchoProxyFactory {
+internal object EchoProxyFactory {
 
     fun create(real: ConsoleCommandSender, session: EchoSession, sourceId: String): ConsoleCommandSender? {
         return runCatching {

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 RegadPoleCN
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-package me.regadpole.plumbot.bukkit.echo
+package me.regadpole.plumbot.bukkit.echo.channel
 
 import me.regadpole.plumbot.api.platform.EchoCode
 import me.regadpole.plumbot.api.platform.EchoResult
@@ -99,7 +99,7 @@ internal class EchoDispatcher(
                     reasons += "proxy_sender 未启用"
                     null
                 } else {
-                    val proxy = BukkitEchoProxyFactory.create(
+                    val proxy = EchoProxyFactory.create(
                         Bukkit.getConsoleSender(),
                         session,
                         EchoChannels.PROXY_SENDER
@@ -139,7 +139,7 @@ internal class EchoDispatcher(
             reasons += "plugin_command: " + label + " 不是已注册的插件指令"
             return null
         }
-        val proxy = BukkitEchoProxyFactory.create(
+        val proxy = EchoProxyFactory.create(
             Bukkit.getConsoleSender(),
             session,
             EchoChannels.PLUGIN_COMMAND
@@ -165,7 +165,7 @@ internal class EchoDispatcher(
 
     private fun prepareConsole(session: EchoSession, settings: EchoSettings): PreparedLocalEcho {
         val real: ConsoleCommandSender = Bukkit.getConsoleSender()
-        val sender = BukkitEchoProxyFactory.create(real, session, EchoChannels.CONSOLE) ?: real
+        val sender = EchoProxyFactory.create(real, session, EchoChannels.CONSOLE) ?: real
         val sources = EchoLogSources.create(session, settings, debug)
         return PreparedLocalEcho(
             channel = EchoChannels.CONSOLE,

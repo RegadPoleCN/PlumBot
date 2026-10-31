@@ -5,6 +5,9 @@ package me.regadpole.plumbot.bukkit.echo
 
 import me.regadpole.plumbot.api.platform.EchoResult
 import me.regadpole.plumbot.bukkit.echo.capture.echoWaitBudgetMs
+import me.regadpole.plumbot.bukkit.echo.channel.EchoChannelSelector
+import me.regadpole.plumbot.bukkit.echo.channel.NmsEcho
+import me.regadpole.plumbot.bukkit.echo.channel.PaperFeedbackEcho
 import me.regadpole.plumbot.bukkit.echo.config.EchoSettings
 import me.regadpole.plumbot.utils.MinecraftTranslationSource
 import org.bukkit.Bukkit
