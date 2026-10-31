@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+
 /**
  * 按配置创建并启动控制台日志源。
  *

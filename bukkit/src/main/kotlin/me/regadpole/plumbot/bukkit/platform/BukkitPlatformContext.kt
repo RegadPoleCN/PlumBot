@@ -3,9 +3,6 @@
 
 package me.regadpole.plumbot.bukkit.platform
 
-import me.regadpole.plumbot.config.ConsoleEchoSetting
-import me.regadpole.plumbot.config.YamlConfigurator
-import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.api.platform.EchoResult
 import me.regadpole.plumbot.api.platform.EchoState
 import me.regadpole.plumbot.api.platform.PlatformCapability
@@ -13,8 +10,11 @@ import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.api.platform.PlatformScheduler
 import me.regadpole.plumbot.api.platform.PlatformType
-import me.regadpole.plumbot.bukkit.echo.BukkitEchoExecutor
+import me.regadpole.plumbot.bukkit.echo.EchoExecutor
 import me.regadpole.plumbot.bukkit.echo.EchoSettingsReader
+import me.regadpole.plumbot.config.ConsoleEchoSetting
+import me.regadpole.plumbot.config.YamlConfigurator
+import me.regadpole.plumbot.internal.LogLevel
 import net.kyori.adventure.text.Component
 import org.bukkit.Bukkit
 import java.nio.file.Path
@@ -30,7 +30,7 @@ class BukkitPlatformContext(
     val messenger: BukkitPlatformMessenger,
 ): PlatformContext {
     private val echoExecutor by lazy {
-        BukkitEchoExecutor(
+        EchoExecutor(
             settingsProvider = { EchoSettingsReader.read(config) },
             logger = this.logger,
             scheduler = this.scheduler

@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+
 /** 控制台日志旁路源（log4j2 / JUL / latest.log）。 */
 internal interface EchoSource {
     val name: String

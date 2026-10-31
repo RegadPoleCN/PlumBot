@@ -3,6 +3,10 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+import me.regadpole.plumbot.bukkit.echo.echoWaitBudgetMs
+import me.regadpole.plumbot.bukkit.echo.EchoChannels
+import me.regadpole.plumbot.bukkit.echo.EchoSettings
+import me.regadpole.plumbot.bukkit.echo.RconSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

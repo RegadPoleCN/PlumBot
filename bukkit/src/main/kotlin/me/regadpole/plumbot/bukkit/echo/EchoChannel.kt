@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.echo
 
+
 /** 已准备好、尚未派发的一次回显通道。 */
 internal interface PreparedEcho {
     val channel: String
