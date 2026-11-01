@@ -836,6 +836,49 @@ val checkSingleDefinitions = tasks.register("checkSingleDefinitions") {
 }
 
 /**
+ * CHANGELOG 与版本号的一致性：发布版本必须先在 CHANGELOG.md 里落段。
+ *
+ * 背景：release.yml 从 CHANGELOG.md 抽发布说明（body_path），一旦忘写对应段，
+ * Release 会以空 body 发出去，而 check 全绿 —— 没人会发现。把这条纪律前移到构建期。
+ *
+ * 规则：取 CHANGELOG.md 里第一条非 Unreleased 的二级段标题（形如 "## [3.0.0-beta2]"），
+ * 要求它逐字符等于 gradle.properties 的 version。开发期「版本号不动、往 Unreleased 里
+ * 堆条目」不会误报；改了 version 却没补段则直接失败。
+ */
+val checkChangelog = tasks.register("checkChangelog") {
+    group = "verification"
+    description = "Asserts the newest released CHANGELOG section matches gradle.properties version."
+
+    val changelog = layout.projectDirectory.file("CHANGELOG.md")
+    val expected = version.toString()
+
+    inputs.file(changelog)
+    inputs.property("version", expected)
+
+    doLast {
+        val file = changelog.asFile
+        if (!file.isFile) {
+            throw GradleException("checkChangelog: 找不到 ${file.path}，校验会静默通过，判失败。")
+        }
+        val released = file.readLines()
+            .filter { it.startsWith("## [") }
+            .map { it.removePrefix("## [").substringBefore("]") }
+            .firstOrNull { it != "Unreleased" }
+            ?: throw GradleException(
+                "checkChangelog: CHANGELOG.md 里没有已发布段（形如 ## [x.y.z] - YYYY-MM-DD）。"
+            )
+        if (released != expected) {
+            throw GradleException(
+                "checkChangelog failed: 最新已发布段是 [$released]，与 gradle.properties 的 version=$expected 不一致。\n" +
+                    "发布前请把 CHANGELOG.md 顶部的 ## [Unreleased] 改成 ## [$expected] - YYYY-MM-DD，并补上底部的版本链接。"
+            )
+        }
+        println("checkChangelog: 最新已发布段 [$released] 与 version 一致。")
+    }
+}
+
+
+/**
  * 与 `:api` 的 `checkApiContract`（已挂在 `:api:check`）保持一致。
  */
 subprojects {
@@ -846,7 +889,8 @@ subprojects {
                 checkRenderProtocol,
                 checkRuntimeLibraries,
                 checkSingleDefinitions,
-                checkRenderLayout
+                checkRenderLayout,
+                checkChangelog
             )
         }
     }

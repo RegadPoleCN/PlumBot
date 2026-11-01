@@ -115,12 +115,34 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Extract release notes from CHANGELOG
+        shell: bash
+        run: |
+          set -euo pipefail
+          V="${{ steps.v.outputs.version }}"
+          # 抽 "## [$V]" 整段：命中标题行后开始输出，遇到下一个 "## [" 停止；
+          # 跳过文件底部的引用链接行（形如 "[3.0.0-beta1]: https://..."）。
+          awk -v head="## [$V]" '
+            index($0, head) == 1 { on = 1; next }
+            on && index($0, "## [") == 1 { exit }
+            on && $0 ~ /^\[[^]]*\]:/ { next }
+            on { print }
+          ' CHANGELOG.md > release-body.md
+          if [ ! -s release-body.md ]; then
+            echo "::error::CHANGELOG.md 里没有 $V 的段落，Release 将没有正文，已中止"
+            exit 1
+          fi
+          echo "release notes 行数：$(wc -l < release-body.md)"
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.v.outputs.version) }}
           name: PlumBot ${{ steps.v.outputs.version }}
-          generate_release_notes: true
+          # GitHub 在 body/body_path 非空时会忽略 generate_release_notes，
+          # 二者不能同时渲染，所以这里显式关掉自动 notes，正文全部来自 CHANGELOG。
+          generate_release_notes: false
+          body_path: release-body.md
           prerelease: ${{ contains(steps.v.outputs.version, '-') }}
           files: |
             dist/PlumBot-Bukkit.jar
