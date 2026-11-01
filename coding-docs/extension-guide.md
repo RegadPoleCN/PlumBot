@@ -18,7 +18,9 @@ dependencies {
 }
 ```
 
-必须 `compileOnly` 而不是 `implementation`：把 api 类打进自己的 jar，同一份接口会被两个 ClassLoader 各加载一次，拿到的实例与你声明的接口不是同一个类型，表现为 `ClassCastException`。编译用的 jar 要与服务器上运行的 PlumBot 是同一构建产物：当前版本 `3.0.0-beta1`（`gradle.properties`），`:api` 接口仍可能变动，升级 PlumBot 后要用新的 `dist/` 产物重新编译。
+必须 `compileOnly` 而不是 `implementation`：把 api 类打进自己的 jar，同一份接口会被两个 ClassLoader 各加载一次，拿到的实例与你声明的接口不是同一个类型，表现为 `ClassCastException`。
+
+编译用的 jar 要与服务器上运行的 PlumBot 是同一构建产物：以 `gradle.properties` 与 `dist/` 产物为准，`:api` 接口仍可能变动，升级 PlumBot 后要用新的 `dist/` 产物重新编译。
 
 ### 2. 运行期：普通插件依赖
 
