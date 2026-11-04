@@ -135,7 +135,7 @@ jobs:
           echo "release notes 行数：$(wc -l < release-body.md)"
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.v.outputs.version) }}
           name: PlumBot ${{ steps.v.outputs.version }}
