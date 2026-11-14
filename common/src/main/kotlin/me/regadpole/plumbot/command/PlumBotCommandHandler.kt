@@ -6,6 +6,7 @@ package me.regadpole.plumbot.command
 import me.regadpole.plumbot.bot.BotProvider
 import me.regadpole.plumbot.database.DatabaseProvider
 import me.regadpole.plumbot.internal.HealthCounters
+import me.regadpole.plumbot.internal.PlayerNameRules
 import me.regadpole.plumbot.render.PlaywrightDiagnosis
 import me.regadpole.plumbot.render.PlaywrightInstallResult
 import me.regadpole.plumbot.render.RenderHealth
@@ -165,12 +166,15 @@ class PlumBotCommandHandler(
             return
         }
         val playerName = subArgs[1]
-        if (DatabaseProvider.getBindByName(playerName) == null) {
+        val record = DatabaseProvider.getBindingByName(playerName)
+        if (record == null) {
             output.send(error("[PlumBot] 玩家 $playerName 未被绑定。"))
             return
         }
         DatabaseProvider.getDatabase()?.removeBind(playerName)
-        host.kickPlayer(playerName)
+        // 踢人统一用库里的规范名（小写存储）：管理员输入大小写不同的名字时，
+        // 大小写敏感的宿主平台用原始输入可能踢不中在线玩家。
+        host.kickPlayer(record.playerName)
         output.send(success("[PlumBot] 已成功解绑并移出白名单: $playerName"))
     }
 
@@ -185,17 +189,26 @@ class PlumBotCommandHandler(
             output.send(error("[PlumBot] 无效的 QQ 号: ${subArgs[1]}"))
             return
         }
+        if (!PlayerNameRules.isValid(playerName)) {
+            output.send(error("[PlumBot] 无效的玩家名: $playerName（3-16 位，仅字母/数字/下划线/点/星号）"))
+            return
+        }
         val database = DatabaseProvider.getDatabase()
         if (database == null) {
             output.send(error("[PlumBot] 数据库尚未就绪，无法执行绑定。"))
             return
         }
+        // 先查只为给出更友好的提示；写入用 addBindIfAbsent 原子兜底，
+        // 预检与写入之间的并发绑定由唯一索引裁决（库里存 lowercase）。
         val existing = DatabaseProvider.getBindByName(playerName)
         if (existing != null) {
             output.send(error("[PlumBot] 玩家 $playerName 已被 QQ $existing 绑定！"))
             return
         }
-        database.addBind(qq, playerName)
+        if (!database.addBindIfAbsent(qq.toString(), playerName)) {
+            output.send(error("[PlumBot] 玩家 $playerName 已被绑定！"))
+            return
+        }
         output.send(success("[PlumBot] 成功将玩家 $playerName 绑定至 QQ $qq！"))
     }
 

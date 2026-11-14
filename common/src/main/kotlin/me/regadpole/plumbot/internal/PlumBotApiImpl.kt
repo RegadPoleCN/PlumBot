@@ -169,9 +169,11 @@ internal class PlumBotApiImpl(private val plugin: PlumBot) : PlumBotAPI {
         val database = DatabaseProvider.getDatabase() ?: return@withContext false
         val cleanName = playerName.trim()
         if (!PlayerNameRules.isValid(cleanName)) return@withContext false
-        if (isPlayerWhitelisted(cleanName)) return@withContext false
 
-        database.addBind(userId, cleanName)
+        // 原子写入：此前"先查再写"在并发调用下两个请求都可能通过预检，
+        // 依赖唯一索引兜底会以 SQLException 的形式砸给调用方。addBindIfAbsent
+        // 把存在性检查挪进写入路径，冲突时安静地返回 false（视为已绑定）。
+        if (!database.addBindIfAbsent(userId.toString(), cleanName)) return@withContext false
         if (uuid != null) {
             database.setUUID(cleanName, uuid)
         }

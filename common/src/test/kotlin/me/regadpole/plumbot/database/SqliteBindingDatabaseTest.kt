@@ -256,6 +256,25 @@ class SqliteBindingDatabaseTest {
     }
 
     @Test
+    fun `within limit stays atomic under concurrent writes`() {
+        val db = newDatabase()
+        db.initialize()
+
+        // 8 个线程同时往同一个 QQ 名下写不同的玩家名：每个名字都不重复，
+        // 唯一索引帮不上忙，名额上限（2）只能靠"计数 + 写入"的原子性守住。
+        val threads = (0 until 8).map { i ->
+            Thread { db.addBindIfAbsentWithinLimit("10001", "user-$i", 2, null) }
+        }
+        threads.forEach { it.start() }
+        threads.forEach { it.join(10_000) }
+        threads.forEach { assertFalse(it.isAlive, "并发写入不得卡死") }
+
+        val rows = db.getByUser("10001")
+        assertTrue(rows.isNotEmpty(), "并发路径至少应成功一条")
+        assertTrue(rows.size <= 2, "并发写入不得突破名额上限，实际 ${rows.size} 条")
+    }
+
+    @Test
     fun `a legacy table without source group column is migrated in place`() {
         val db = newDatabase()
 
