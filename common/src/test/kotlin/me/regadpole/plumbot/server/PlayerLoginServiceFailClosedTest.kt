@@ -233,6 +233,40 @@ class PlayerLoginServiceFailClosedTest {
         assertFalse(message.contains("申请白名单"), "故障时不该让玩家以为是自己没申请：$message")
     }
 
+    @Test
+    fun `the cached fast path answers from the cache without touching the database`() {
+        val db = startDatabase()
+        db.addBind("10001", "Steve")
+        val login = service()
+        login.check("Steve") // 预热正向缓存
+
+        val callsBefore = db.calls.get()
+        val result = login.checkCached("Steve")
+
+        assertTrue(result != null && result.allowed, "正向缓存命中必须放行")
+        assertEquals(callsBefore, db.calls.get(), "快路径不允许再打库")
+    }
+
+    @Test
+    fun `the cached fast path denies an unbound player with the same copy`() {
+        startDatabase()
+        val login = service()
+        login.check("Alex") // 预热负缓存
+
+        val result = login.checkCached("Alex")
+
+        assertFalse(result == null || result.allowed, "负缓存命中必须拒绝")
+        assertEquals(PreLoginDenial.NOT_BOUND, result!!.denial)
+        assertTrue(result.kickMessage!!.contains("申请白名单"), "拒绝文案要与完整查询一致")
+    }
+
+    @Test
+    fun `the cached fast path returns null on a cache miss`() {
+        startDatabase()
+
+        assertTrue(service().checkCached("Nobody") == null, "缓存未命中必须交回完整查询路径")
+    }
+
     private companion object {
         var settingsInitialized = false
 

@@ -96,7 +96,7 @@ class HytalePlatformScheduler(
         val job = scope.launch {
             kotlinx.coroutines.delay(initialDelay)
             while (isActive) {
-                syncDispatcher.dispatch(task)
+                runGuarded { syncDispatcher.dispatch(task) }
                 kotlinx.coroutines.delay(period)
             }
         }
@@ -107,11 +107,26 @@ class HytalePlatformScheduler(
         val job = scope.launch {
             kotlinx.coroutines.delay(initialDelay)
             while (isActive) {
-                task()
+                runGuarded(task)
                 kotlinx.coroutines.delay(period)
             }
         }
         return PlatformTaskHandle { job.cancel(); true }
+    }
+
+    /**
+     * 周期任务的异常隔离：一个坏任务只丢当前周期，循环本身继续按周期运行（scope 虽带
+     * SupervisorJob，但未捕获异常仍会杀死所在协程，定时广播会无声消失）。
+     * [CancellationException] 必须原样上抛，否则 scope.cancel() 无法停掉循环。
+     */
+    private fun runGuarded(task: () -> Unit) {
+        try {
+            task()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            warn("[PlumBot-Hytale] 周期任务执行异常（已跳过本次，下一周期继续）：${t.message ?: t.javaClass.simpleName}")
+        }
     }
 
     /** 取消调度作用域。由关闭钩子（[ShutdownRegistry]）在插件停用时调用；重复调用安全。 */

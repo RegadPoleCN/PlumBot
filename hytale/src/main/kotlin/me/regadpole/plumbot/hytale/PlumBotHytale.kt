@@ -71,18 +71,35 @@ class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
 
     override val platform: PlatformContext get() = platformContext
 
+    /** setup() 失败后置位：start() 据此跳过，避免在配置未加载的状态下二次爆炸。 */
+    private var setupFailed = false
+
     override fun setup() {
-        dependencyLoader.loadDependencies()
-        // 交给渲染门户：engine=playwright 且真正出图时才按需下载 Playwright
-        RenderProvider.registerLibraryLoader(dependencyLoader)
-        // 外观解析器：服主覆盖目录 + 平台日志出口
-        HytaleAvatarResolver.overrideRoot = dataDirectory.resolve("assets/characters").toFile()
-        HytaleAvatarResolver.logSink = { message -> logger.atWarning().log(message) }
-        loadConfig()
-        metrics
+        try {
+            dependencyLoader.loadDependencies()
+            // 交给渲染门户：engine=playwright 且真正出图时才按需下载 Playwright
+            RenderProvider.registerLibraryLoader(dependencyLoader)
+            // 外观解析器：服主覆盖目录 + 平台日志出口
+            HytaleAvatarResolver.overrideRoot = dataDirectory.resolve("assets/characters").toFile()
+            HytaleAvatarResolver.logSink = { message -> logger.atWarning().log(message) }
+            loadConfig()
+            metrics
+        } catch (t: Throwable) {
+            // 与 Bukkit/Velocity 启动入口对齐：失败要留下 PlumBot 侧的可读错误，
+            // 而不是把裸堆栈丢给宿主；跳过剩余初始化，让服务器继续运行。
+            setupFailed = true
+            logger.atSevere().log("[PlumBot] Hytale 平台初始化失败，插件已停用：${t.message ?: t.javaClass.simpleName}")
+            if (debugProvider.isEnabled) {
+                debugProvider.log("[PlumBot] 初始化失败堆栈：${t.stackTraceToString()}")
+            }
+        }
     }
 
     override fun start() {
+        if (setupFailed) {
+            logger.atSevere().log("[PlumBot] 初始化阶段已失败，跳过启动。")
+            return
+        }
         BotProvider.clearFactories()
         BotProvider.registerFactory(OneBotFactory)
 

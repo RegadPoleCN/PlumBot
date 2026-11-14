@@ -92,6 +92,34 @@ internal object BindingLookupService {
     }
 
     /**
+     * 仅读缓存的快路径：正向（含陈旧放行窗口）或负向条目命中时立即给出结论，**不打库也不等
+     * 单飞**；缓存未命中返回 `null`，由调用方（同步事件回调）决定是否走 [resolve] 的有界等待。
+     *
+     * 动机：Hytale 等平台的握手回调是同步的（无异步续延 API），每次登录都阻塞事件线程不可取；
+     * 缓存命中时这一步零阻塞，未命中才付出有界等待的代价。语义与 [resolve] 的缓存前半段一致。
+     */
+    internal fun peek(playerName: String, ttlSeconds: Long): LookupResult? {
+        ensureRunning()
+        val key = BindingLookupCache.keyOf(playerName)
+        val now = clock()
+        val cached = BindingLookupCache.get(key) ?: return null
+        val ttlMillis = if (cached.userId == null) {
+            NEGATIVE_TTL_MS
+        } else {
+            ttlSeconds.coerceAtLeast(1L) * 1000L
+        }
+        val age = now - cached.storedAt
+        return when {
+            age in 0 until ttlMillis -> cached.toResult()
+            cached.userId != null && age in ttlMillis until (ttlMillis + STALE_GRACE_MS) -> {
+                startLoad(key)
+                LookupResult(Outcome.BOUND)
+            }
+            else -> null
+        }
+    }
+
+    /**
      * 确保查询协程可用。
      *
      * [DatabaseProvider.shutdown] 会取消这个作用域（插件停用 / 重载），而重载后

@@ -34,11 +34,14 @@ class ServerListener(private val plugin: PlumBot) : Listener {
     @EventHandler
     fun onChat(event: AsyncPlayerChatEvent) {
         if (event.isCancelled) return
-        bridge.onChat(
-            event.player.name,
-            resolveServerName(),
-            event.message
-        )
+        val playerName = event.player.name
+        val serverName = resolveServerName()
+        val message = event.message
+
+        // 与相邻 handler 对齐：桥接涉及过滤、查库与渲染，聊天高峰期不在事件线程上同步执行。
+        plugin.platform.scheduler.runAsync {
+            bridge.onChat(playerName, serverName, message)
+        }
     }
 
     @EventHandler

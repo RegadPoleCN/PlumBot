@@ -24,6 +24,10 @@ dependencies {
     compileOnly(libs.miraimcVelocity)
     kapt(libs.velocityApi)
 
+    testImplementation(kotlin("test"))
+    testImplementation(libs.velocityApi)
+    testImplementation(libs.adventureApi)
+
     implementation(libs.libbyVelocity)
     implementation(libs.bstatsVelocity)
 }

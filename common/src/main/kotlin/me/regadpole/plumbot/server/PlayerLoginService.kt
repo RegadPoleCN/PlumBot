@@ -65,6 +65,33 @@ class PlayerLoginService(
     }
 
     /**
+     * 缓存快路径：只读 [BindingLookupService] 的既有缓存结论，命中即时放行/拒绝（拒绝语义与
+     * [check] 完全一致：计数 + 群通知 + 同一踢出文案）；缓存未命中返回 `null`，调用方（没有
+     * 异步续延能力的同步事件回调）再走 [check] 的有界等待，避免每次登录都阻塞事件线程。
+     */
+    fun checkCached(playerName: String): PreLoginResult? {
+        if (!BindFeature.enabled(config)) return PreLoginResult(allowed = true)
+        if (!config.getBoolean("feature", "bind", "whitelist")) return PreLoginResult(allowed = true)
+
+        val peek = BindingLookupService.peek(playerName, cacheTtlSeconds()) ?: return null
+        return when (peek.outcome) {
+            BindingLookupService.Outcome.BOUND -> PreLoginResult(allowed = true)
+
+            BindingLookupService.Outcome.NOT_BOUND -> {
+                notifyKick(playerName)
+                PreLoginResult(
+                    allowed = false,
+                    kickMessage = kickGuide(),
+                    denial = PreLoginDenial.NOT_BOUND
+                )
+            }
+
+            // peek 不会产出该结论；为穷尽 when 而写——快路径拿不到确定结论就交回完整查询。
+            BindingLookupService.Outcome.UNAVAILABLE -> null
+        }
+    }
+
+    /**
      * 读一个「可能缺失」的整数配置：`getLong` 缺失时回 0，而 0 秒 TTL / 0 毫秒超时都是非法值。
      * 判据与 `ConsoleEchoSetting` 一致：`rawTypeOf` 为 missing 才用默认值（不通过 `node.boolean`
      * 之类的属性读，免得把默认值写回配置树）。

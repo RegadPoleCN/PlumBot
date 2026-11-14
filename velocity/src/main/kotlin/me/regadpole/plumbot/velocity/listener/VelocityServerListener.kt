@@ -3,6 +3,8 @@
 
 package me.regadpole.plumbot.velocity.listener
 
+import com.velocitypowered.api.event.Continuation
+import com.velocitypowered.api.event.EventTask
 import com.velocitypowered.api.event.PostOrder
 import com.velocitypowered.api.event.Subscribe
 import com.velocitypowered.api.event.connection.DisconnectEvent
@@ -27,12 +29,21 @@ class VelocityServerListener(
         return player?.currentServer?.map { it.serverInfo.name }?.orElse("Proxy") ?: "Proxy"
     }
 
+    /**
+     * 白名单校验移交 Velocity 的异步事件任务执行：返回 [EventTask] 后，事件线程（Netty
+     * event loop）不再同步等待数据库查询，连接风暴下的登录排队不会放大到事件循环。
+     * [Continuation.resume] 必须无条件调用（含失败路径），否则整个事件处理会挂起。
+     */
     @Subscribe(order = PostOrder.FIRST)
-    fun onPreLogin(event: PreLoginEvent) {
-        val result = loginService.check(event.username)
-        if (!result.allowed) {
-            val kickReason = (result.kickMessage ?: "Not in whitelist").asMiniMessage()
-            event.result = PreLoginEvent.PreLoginComponentResult.denied(kickReason)
+    fun onPreLogin(event: PreLoginEvent): EventTask = EventTask.withContinuation { continuation ->
+        try {
+            val result = loginService.check(event.username)
+            if (!result.allowed) {
+                val kickReason = (result.kickMessage ?: "Not in whitelist").asMiniMessage()
+                event.result = PreLoginEvent.PreLoginComponentResult.denied(kickReason)
+            }
+        } finally {
+            continuation.resume()
         }
     }
 

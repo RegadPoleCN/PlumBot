@@ -131,6 +131,25 @@ class HytalePlatformContext(
         val startNanos = System.nanoTime()
         val capturer = CapturingHytaleCommandSender()
         log(LogLevel.WARN, RemoteConsoleAudit.describe(command, logCommandsEnabled()))
+        // 平台 handleCommand 对未知指令同样"无异常完成"，无法区分"指令不存在"与"执行成功
+        // 无输出"；借命令注册表（含别名）做存在性预检，未命中直接按 UNKNOWN_OR_REJECTED 返回。
+        val rootName = command.trim().removePrefix("/").substringBefore(' ')
+        val precheck = if (rootName.isBlank()) {
+            null
+        } else {
+            runCatching { CommandManager.get().resolveCommand(rootName) != null }.getOrNull()
+        }
+        if (precheck == false) {
+            return CompletableFuture.completedFuture(
+                EchoResult(
+                    state = EchoState.UNKNOWN_OR_REJECTED,
+                    channel = "hytale",
+                    durationMs = (System.nanoTime() - startNanos) / 1_000_000,
+                    code = EchoCode.ECHO_UNKNOWN_COMMAND,
+                    detail = "Hytale 未注册指令：$rootName"
+                )
+            )
+        }
         val future = CompletableFuture<EchoResult>()
         CommandManager.get().handleCommand(capturer, command).whenComplete { _, err ->
             val lines = capturer.getOutputOrEmpty()
@@ -159,7 +178,8 @@ class HytalePlatformContext(
                         channel = "hytale",
                         durationMs = durationMs,
                         code = EchoCode.ECHO_NO_CHANNEL,
-                        detail = "Hytale 执行成功，但没有捕获到回显"
+                        detail = "Hytale 执行成功，但没有捕获到回显" +
+                            (if (precheck == null) "（命令注册表预检不可用，无法区分指令是否存在）" else "")
                     )
                 }
             )

@@ -29,8 +29,11 @@ class HytaleServerListener(
 
     fun register() {
         // 1. 最前置握手白名单拦截：在区块和实体加载前直接阻断
+        // 平台事件回调是同步的（PlayerSetupConnectEvent 无异步续延 API）：缓存命中时零阻塞
+        // 放行/拒绝，未命中才走有界同步查询（上限 feature.bind.login_lookup_timeout_ms，
+        // fail-closed 语义不变）。
         eventRegistry.register(PlayerSetupConnectEvent::class.java) { event ->
-            val result = loginService.check(event.username)
+            val result = loginService.checkCached(event.username) ?: loginService.check(event.username)
             if (!result.allowed) {
                 event.isCancelled = true
                 event.reason = Message.raw(result.kickMessage ?: "未在白名单内")
