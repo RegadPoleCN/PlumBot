@@ -53,7 +53,7 @@ internal class FailureMapper(
                 stage,
                 viewRoute,
                 "导航到模板失败：" + detail,
-                "检查入口文件是否存在、route 是否在模板中实现；若日志出现已拦截越权请求，请把资源域名加入 render.allowed_hosts。",
+                "检查入口文件是否存在、route 是否在模板中实现；若日志出现已拦截越权请求，请把资源域名加入 render.avatar.domains。",
                 null,
                 cause
             )
@@ -150,13 +150,13 @@ internal class FailureMapper(
         cause
     )
 
-    /** 请求拦截规则注册失败（render.allowed_hosts 配置形态）。 */
+    /** 请求拦截规则注册失败（render.avatar.domains 配置形态）。 */
     fun requestGuardFailed(detail: String, cause: Throwable): PlaywrightRenderException = failure(
         PlaywrightErrorCodes.LAUNCH_FAILED,
         "context",
         null,
         detail,
-        "检查 render.allowed_hosts 配置是否为字符串列表。",
+        "检查 render.avatar.domains 配置是否为字符串列表。",
         null,
         cause
     )

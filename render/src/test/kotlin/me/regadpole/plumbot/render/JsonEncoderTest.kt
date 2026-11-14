@@ -122,5 +122,12 @@ class JsonEncoderTest {
         assertEquals("""{"ints":[1,2],"longs":[3],"bools":[true,false]}""", json)
     }
 
+    @Test
+    fun `null 键被跳过而不是变成字符串 null`() {
+        val json = JsonEncoder.encode(linkedMapOf<Any?, Any?>(null to "v", "a" to 1))
+        assertEquals("""{"a":1}""", json)
+        assertTrue(!json.contains("\"null\""), "null 键不应被编码成名为 null 的字段：$json")
+    }
+
     private enum class TestEngine { AWT, PLAYWRIGHT }
 }

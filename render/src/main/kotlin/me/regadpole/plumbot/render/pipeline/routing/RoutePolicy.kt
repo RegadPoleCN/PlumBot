@@ -22,7 +22,9 @@ internal class RoutePolicy(
 ) {
 
     /**
-     * 引擎解析：未显式配置时跟随路由首选，未知取值一次 WARN 后回落 AWT。
+     * 引擎解析：未显式配置时跟随路由首选；未知取值一次 WARN 后**原样返回**，
+     * 实际的 AWT 回落由引擎表装配完成（见 [me.regadpole.plumbot.render.pipeline.engines.EngineRegistry.rendererFor]）——
+     * 提示与出图行为一致，且错拼原文留在日志/降级记录里便于排查。
      *
      * 门控见 [picEnabled]，提示见 [NoticeSink.warnUnknownEngine] /
      * [NoticeSink.noticeGlobalEngineOverride]。
@@ -40,8 +42,13 @@ internal class RoutePolicy(
         val specificExplicit = specific?.takeUnless { it.equals(RenderLimits.ENGINE_AUTO, ignoreCase = true) }
         val globalExplicit = global?.takeUnless { it.equals(RenderLimits.ENGINE_AUTO, ignoreCase = true) }
         val explicit = specificExplicit ?: if (specific != null) null else globalExplicit
-        val engine = (explicit ?: route.preferredEngine ?: RenderLimits.ENGINE_AWT).lowercase()
-        warnIfUnknownEngine(route, engine)
+        val resolved = (explicit ?: route.preferredEngine ?: RenderLimits.ENGINE_AWT).lowercase()
+        // 未知取值保留原名并一次 WARN；是否真有 AWT 图不再取决于 fallback_to_awt，
+        // 引擎表对未知名一律装配 AWT（与提示一致），原名继续流向指标与降级日志。
+        val engine = if (resolved in RenderLimits.KNOWN_ENGINES) resolved else {
+            notices.warnUnknownEngine(route, resolved)
+            resolved
+        }
         notices.noticeGlobalEngineOverride(route, specific, global, engine)
         return engine
     }
@@ -96,8 +103,4 @@ internal class RoutePolicy(
             runCatching { engineFor(route) }.getOrDefault(RenderLimits.ENGINE_AWT) == RenderLimits.ENGINE_PLAYWRIGHT
     }
 
-    private fun warnIfUnknownEngine(route: RenderRoute, engine: String) {
-        if (engine in RenderLimits.KNOWN_ENGINES) return
-        notices.warnUnknownEngine(route, engine)
-    }
 }

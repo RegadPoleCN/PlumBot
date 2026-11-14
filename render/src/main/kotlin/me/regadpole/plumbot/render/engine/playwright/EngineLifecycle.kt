@@ -329,12 +329,13 @@ internal class EngineLifecycle(
 
     private fun installRequestGuard(browserCtx: BrowserContext) {
         val themeRoots = themeManager().allowedFileRoots
-        val allowedHosts = resolveAllowedHosts()
         try {
             browserCtx.route("**/*") { route ->
                 val request = route.request()
                 val url = request.url()
-                if (isRequestAllowed(url, themeRoots, allowedHosts)) {
+                // 白名单每次请求时从配置现读：render.avatar.domains 不在引擎指纹里，
+                // reload 不会重建浏览器；固化进闭包的话改配置必须重启进程才生效。
+                if (isRequestAllowed(url, themeRoots, resolveAllowedHosts())) {
                     route.resume()
                 } else {
                     if (request.resourceType() == "document") {

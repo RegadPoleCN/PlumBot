@@ -692,7 +692,8 @@ public class PlaywrightInstaller(
 
         const val DRIVER_JAR_CLASS = "com.microsoft.playwright.impl.driver.jar.DriverJar"
 
-        fun cmdQuote(value: String): String = "\"" + value.replace("\"", "\\\"") + "\""
+        // cmd.exe 的解析不识别反斜杠转义，内嵌引号须按 cmd 语法双写（""）。
+        fun cmdQuote(value: String): String = "\"" + value.replace("\"", "\"\"") + "\""
 
         fun shQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
     }

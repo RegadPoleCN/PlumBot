@@ -15,6 +15,9 @@ import me.regadpole.plumbot.render.TextPayload
  */
 internal object JsonEncoder {
 
+    // null 键只告警一次：载荷异常构造时逐条打日志会刷屏。
+    private val warnedNullKey = java.util.concurrent.atomic.AtomicBoolean(false)
+
     fun encode(value: Any?): String {
         val sb = StringBuilder(64)
         write(sb, value)
@@ -68,9 +71,18 @@ internal object JsonEncoder {
         sb.append('{')
         var first = true
         for ((key, item) in map) {
+            // JSON 键不能为 null：兜底成字符串 "null" 会让模板读到名为 null 的字段，
+            // 语义混淆——跳过该字段并告警一次。
+            if (key == null) {
+                if (warnedNullKey.compareAndSet(false, true)) {
+                    java.util.logging.Logger.getLogger("PlumBot")
+                        .warning("[PlumBot-Render] 渲染载荷存在 null 键，已跳过该字段。")
+                }
+                continue
+            }
             if (!first) sb.append(',')
             first = false
-            writeString(sb, key?.toString() ?: "null")
+            writeString(sb, key.toString())
             sb.append(':')
             write(sb, item)
         }

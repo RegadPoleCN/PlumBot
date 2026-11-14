@@ -111,13 +111,15 @@ internal class EngineRegistry(
         }
 
         renderers[engine]?.let { return it }
-        if (engine != RenderLimits.ENGINE_AWT) return null
+        // 未知引擎名（RoutePolicy 已 WARN "已回落 awt"）与显式 awt 一样按 AWT 装配：
+        // 没有这一步，提示说回落了、实际却按"引擎不可用"降级，提示与行为不符。
+        // playwright 在上方分支单独处理；none / auto 在 RoutePolicy 层已被拦截或解析。
 
-        // AWT 引擎按需（重新）装配。
+        // AWT 引擎按需（重新）装配；未知名统一落回 "awt" 键，避免反复构造。
         // `reload()` 会在配置变化时关闭并清空引擎表，若这里只查表不重建，
         // reload 之后**再也出不了图**（渲染一律 Failed）。
         return synchronized(lock) {
-            renderers[engine] ?: AwtImageRenderer(context).also {
+            renderers[RenderLimits.ENGINE_AWT] ?: AwtImageRenderer(context).also {
                 register(it)
                 markEnginesCurrent()
             }
