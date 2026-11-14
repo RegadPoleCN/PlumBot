@@ -471,17 +471,6 @@ internal object TextToImg {
     fun toByteArray(string: String, ampersandCodes: Boolean = false): ByteArray {
         return render(string, ampersandCodes)
     }
-
-    /** 渲染文本为临时 PNG 文件。 */
-    fun toFile(string: String, ampersandCodes: Boolean = false): File {
-        try {
-            val bytes = render(string, ampersandCodes)
-            val file = File.createTempFile("PlumBot", ".png")
-            file.writeBytes(bytes)
-            return file
-        } catch (e: Exception) {
-            throw RuntimeException(e)
-        }
-    }
 }
+
 

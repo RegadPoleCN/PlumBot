@@ -75,7 +75,11 @@ internal class AvatarService(
         // 合成逻辑本身变化时提升 RenderLimits.AVATAR_CACHE_POLICY_VERSION 即可作废旧图。
         val key = request.cacheKey
             ?.takeIf { it.isNotBlank() }
-            ?.let { "v${RenderLimits.AVATAR_CACHE_POLICY_VERSION}:h${avatarHeadSize()}:$it" }
+            ?.let {
+                // h{...} 是皮肤漏斗裁切参数（head_size），不是合成画布尺寸；合成结果同时依赖
+                // 两者，键里缺了 request.size 时同 key 不同 size 会互相命中错误尺寸的成品。
+                "v${RenderLimits.AVATAR_CACHE_POLICY_VERSION}:s${request.size}:h${avatarHeadSize()}:$it"
+            }
         if (key != null) {
             cache.read(key)?.let { return@withContext toDataUrl(it) }
         }

@@ -258,7 +258,7 @@ internal class ThemeManager(
                 "模板目标目录不存在：${destinationFile.absolutePath}"
             )
         parent.mkdirs()
-        val tempFile = File(parent, "${destinationFile.name}.tmp")
+        val tempFile = newTemplateTempFile(destinationFile, parent)
 
         // 开始 / 完成各一行 INFO；候选切换与逐跳明细一律 DEBUG。
         context.log(LogLevel.INFO, "[PlumBot-Render] 开始下载模板（共 ${candidates.size} 个候选）：${candidates.first()}")
@@ -408,3 +408,11 @@ internal class ThemeManager(
         fun shQuote(value: String): String = "'" + value.replace("'", "'\\''") + "'"
     }
 }
+
+/**
+ * 模板下载的临时文件：临时名**每次唯一**。
+ * reload 会构建新 ThemeManager 并与旧实例并发写同一目标路径，
+ * 固定 "<name>.tmp" 会交错写坏模板（与 AvatarCache.write 的教训一致）。
+ */
+internal fun newTemplateTempFile(destinationFile: File, parent: File): File =
+    File.createTempFile("${destinationFile.name}.", ".tmp", parent)

@@ -75,13 +75,15 @@ internal class AvatarCache(
      *
      * @return 本次删除的文件数
      */
-    fun prune(now: Long = System.currentTimeMillis(), force: Boolean = false): Int {
+    fun prune(now: Long = System.currentTimeMillis()): Int {
         val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".png") } ?: return 0
         var removed = 0
         val survivors = ArrayList<File>(files.size)
         for (file in files) {
+            // 判据只有"过期"与"超容量"两条，都与 lastPruneAt 解耦：
+            // 任何"按上次清理时间"的额外语义都会让两次清理之间新写的文件幸存，反直觉。
             val expired = ttlMillis > 0 && now - file.lastModified() > ttlMillis
-            if (expired || (force && file.lastModified() < lastPruneAt)) {
+            if (expired) {
                 if (file.delete()) removed++
             } else {
                 survivors += file
