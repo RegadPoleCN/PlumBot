@@ -12,37 +12,62 @@ import kotlin.time.Duration.Companion.milliseconds
 
 @PublicApi
 object TaskProviderImpl {
-    private val mainScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private val asyncScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scopeLock = Any()
+
+    // @Volatile + 取消后重建：平台"禁用→再次启用"时 shutdown() 取消过的作用域必须能恢复，
+    // 否则重新启用后 submit* 静默不入队、等待结果的调用永久挂起。
+    @Volatile
+    private var mainScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    @Volatile
+    private var asyncScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
+    private fun readyMainScope(): CoroutineScope {
+        val current = mainScope
+        if (current.isActive) return current
+        synchronized(scopeLock) {
+            if (!mainScope.isActive) mainScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+            return mainScope
+        }
+    }
+
+    private fun readyAsyncScope(): CoroutineScope {
+        val current = asyncScope
+        if (current.isActive) return current
+        synchronized(scopeLock) {
+            if (!asyncScope.isActive) asyncScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+            return asyncScope
+        }
+    }
 
     fun submit(task: Runnable): Future<*> {
-        return launchAsFuture(mainScope) {
+        return launchAsFuture(readyMainScope()) {
             task.run()
         }
     }
 
     fun submitAsync(task: Runnable): Future<*> {
-        return launchAsFuture(asyncScope) {
+        return launchAsFuture(readyAsyncScope()) {
             task.run()
         }
     }
 
     fun submitLater(delay: Long, task: Runnable): Future<*> {
-        return launchAsFuture(mainScope) {
+        return launchAsFuture(readyMainScope()) {
             delay(delay.milliseconds)
             task.run()
         }
     }
 
     fun submitLaterAsync(delay: Long, task: Runnable): Future<*> {
-        return launchAsFuture(asyncScope) {
+        return launchAsFuture(readyAsyncScope()) {
             delay(delay.milliseconds)
             task.run()
         }
     }
 
     fun submitTimer(delay: Long, period: Long, task: Runnable): Future<*> {
-        return launchAsFuture(mainScope) {
+        return launchAsFuture(readyMainScope()) {
             delay(delay.milliseconds)
             while (isActive) {
                 task.run()
@@ -52,7 +77,7 @@ object TaskProviderImpl {
     }
 
     fun submitTimerAsync(delay: Long, period: Long, task: Runnable): Future<*> {
-        return launchAsFuture(asyncScope) {
+        return launchAsFuture(readyAsyncScope()) {
             delay(delay.milliseconds)
             while (isActive) {
                 task.run()
@@ -67,8 +92,10 @@ object TaskProviderImpl {
             try {
                 block()
                 future.complete(Unit)
-            } catch (e: Exception) {
-                future.completeExceptionally(e)
+            } catch (t: Throwable) {
+                // 捕获 Throwable：Error（NoClassDefFoundError 等）若漏掉，Future 永不完成，
+                // get() 调用方永久挂起；CancellationException 以取消语义传播，符合 Future 约定。
+                future.completeExceptionally(t)
             }
         }
         future.initJob(job)
@@ -76,13 +103,15 @@ object TaskProviderImpl {
     }
 
     fun shutdown() {
-        mainScope.cancel()
-        asyncScope.cancel()
+        synchronized(scopeLock) {
+            mainScope.cancel()
+            asyncScope.cancel()
+        }
     }
 
     fun <T> launchFuture(block: suspend CoroutineScope.() -> T): CompletableFuture<T> {
         val future = CompletableFuture<T>()
-        asyncScope.launch {
+        readyAsyncScope().launch {
             try {
                 future.complete(block())
             } catch (e: Throwable) {

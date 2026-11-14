@@ -25,6 +25,8 @@ import me.regadpole.plumbot.internal.HealthCounters
 import me.regadpole.plumbot.listener.DefaultBotHandler
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import me.regadpole.plumbot.render.RenderProvider
 import me.regadpole.plumbot.render.RenderRequest
 import me.regadpole.plumbot.render.RenderResult
@@ -285,7 +287,7 @@ abstract class AbstractBotAdapter : IBot {
 
     override fun start(): IBot {
         transitionTo(BotState.CONNECTING)
-        loadAnnounced = false
+        loadAnnounced.set(false)
         handler = DefaultBotHandler(context, this)
 
         // 协议相关初始化（连接、登录校验等），子类实现。
@@ -299,8 +301,7 @@ abstract class AbstractBotAdapter : IBot {
 
         // 同步适配器在 doStart 内 markOnline() 时已补发广播；异步适配器（OneBot）仍在
         // CONNECTING，由 markOnline() 在连接就绪后触发。此处无条件广播会在后端未启动时抛连接异常。
-        if (botState == BotState.ONLINE && !loadAnnounced) {
-            loadAnnounced = true
+        if (botState.get() == BotState.ONLINE && loadAnnounced.compareAndSet(false, true)) {
             announceLoaded()
         }
 
@@ -312,12 +313,12 @@ abstract class AbstractBotAdapter : IBot {
     override fun shutdown() {
         // 只有"确实在线过"才广播关闭：从未连上（OneBot 后端未启动）时发送同样会抛
         // WebsocketNotConnectedException，且这条消息本来就没有任何接收者。
-        val wasOnline = botState == BotState.ONLINE
+        val wasOnline = botState.get() == BotState.ONLINE
         transitionTo(BotState.STOPPING)
-        if (loadAnnounced && wasOnline) {
+        if (loadAnnounced.get() && wasOnline) {
             announceUnloaded()
         }
-        loadAnnounced = false
+        loadAnnounced.set(false)
 
         // 卸载广播是异步出图任务：先有界等待它们结束，再回收作用域，
         // 否则刚派发的通知会被 cancel 掉。
@@ -349,32 +350,35 @@ abstract class AbstractBotAdapter : IBot {
         }
     }
 
-    @Volatile
-    private var botState: BotState = BotState.INIT
+    // AtomicReference/AtomicBoolean：transitionTo 的读-判-写与 markOnline 的双检
+    // 在重连风暴下会互相覆盖（重复/漏发广播、迁移日志丢失），用 CAS 保证原子性。
+    private val botState = AtomicReference(BotState.INIT)
 
     /** 本次启动是否已补发 load 广播：异步连接只在首次确认在线时广播，重连不重复。 */
-    @Volatile
-    private var loadAnnounced = false
+    private val loadAnnounced = AtomicBoolean(false)
 
-    override val state: BotState get() = botState
+    override val state: BotState get() = botState.get()
 
     /** 状态迁移唯一入口；只在**变化时**记 INFO，避免热路径与状态查询把控制台刷满。 */
     protected fun transitionTo(next: BotState, detail: String? = null) {
-        val previous = botState
-        if (previous == next) return
-        botState = next
-        val suffix = detail?.let { "（$it）" } ?: ""
-        context.log(LogLevel.INFO, "[PlumBot] Bot 状态：$previous → $next$suffix")
+        var previous = botState.get()
+        while (previous != next) {
+            if (botState.compareAndSet(previous, next)) {
+                val suffix = detail?.let { "（$it）" } ?: ""
+                context.log(LogLevel.INFO, "[PlumBot] Bot 状态：$previous → $next$suffix")
+                return
+            }
+            previous = botState.get()
+        }
     }
 
     /** 子类在**确认连接可用**后调用（OneBot 在 WebSocket 就绪、同步适配器在完成初始化后）。 */
     protected fun markOnline() {
-        val wasOnline = botState == BotState.ONLINE
         transitionTo(BotState.ONLINE)
         // 首次确认在线时才补发 load 广播：连接未就绪时 action() 会抛
         // WebsocketNotConnectedException（2026-10-18 Velocity/Hytale 实测）。
-        if (!wasOnline && !loadAnnounced) {
-            loadAnnounced = true
+        // compareAndSet 保证并发断线/重连下广播至多一次（布尔双检读-判-写会重复或跳过）。
+        if (loadAnnounced.compareAndSet(false, true)) {
             announceLoaded()
         }
     }
@@ -519,8 +523,9 @@ abstract class AbstractBotAdapter : IBot {
         MemberInfo(userId, userId.toString(), userId.toString())
 
     companion object {
-        private val COLOR_CODE_AMP = Regex("&([0-9a-fklmnor])")
-        private val COLOR_CODE_SECTION = Regex("§([0-9a-fklmnor])")
+        // IGNORE_CASE：大写色码（&A~&F、§B 等）同样要剥离，否则原样透传到 QQ
+        private val COLOR_CODE_AMP = Regex("&([0-9a-fklmnor])", RegexOption.IGNORE_CASE)
+        private val COLOR_CODE_SECTION = Regex("§([0-9a-fklmnor])", RegexOption.IGNORE_CASE)
 
         /** Adapter 层默认同步等待超时（毫秒），需与 [DefaultGroupMemberCache] 的 10 秒保持一致。 */
         const val DEFAULT_ADAPTER_TIMEOUT_MS = 10000L

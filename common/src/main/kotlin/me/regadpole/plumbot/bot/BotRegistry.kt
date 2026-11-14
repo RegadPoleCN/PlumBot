@@ -12,32 +12,39 @@ class BotRegistry {
     private val factories = linkedMapOf<String, BotFactory>()
 
     fun register(factory: BotFactory) {
-        factories[normalize(factory.metadata.type)] = factory
+        synchronized(factories) { factories[normalize(factory.metadata.type)] = factory }
     }
 
-    fun unregister(type: String) {
-        factories.remove(normalize(type))
+    /**
+     * 注销单个 factory。
+     *
+     * @return 确实删除了 factory 时返回 `true`；键不存在时返回 `false`（读-判-删在锁内一步完成，
+     * 调用方无需再先查后删，避免两步之间状态被并发修改）。
+     */
+    fun unregister(type: String): Boolean {
+        return synchronized(factories) { factories.remove(normalize(type)) != null }
     }
 
     fun clear() {
-        factories.clear()
+        synchronized(factories) { factories.clear() }
     }
 
     fun find(type: String?): BotFactory? {
-        if (type.isNullOrBlank()) return factories.values.firstOrNull()
-        return factories[normalize(type)]
+        return synchronized(factories) {
+            if (type.isNullOrBlank()) factories.values.firstOrNull() else factories[normalize(type)]
+        }
     }
 
     fun compatibleFactories(platformType: PlatformType): List<BotFactory> {
-        return factories.values.filter { it.metadata.supports(platformType) }
+        return synchronized(factories) { factories.values.filter { it.metadata.supports(platformType) } }
     }
 
     fun registeredTypes(): Set<String> {
-        return factories.keys.toSet()
+        return synchronized(factories) { factories.keys.toSet() }
     }
 
     fun factories(): List<BotFactory> {
-        return factories.values.toList()
+        return synchronized(factories) { factories.values.toList() }
     }
 
     private fun normalize(type: String): String {

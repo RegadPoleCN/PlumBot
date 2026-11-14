@@ -38,11 +38,7 @@ object BotProvider {
      * @return 确实删除了 factory 时返回 `true`，否则 `false`
      */
     fun unregisterFactory(type: String): Boolean {
-        val key = type.lowercase()
-        val before = registry.factories().map { it.metadata.type.lowercase() }
-        if (key !in before) return false
-        registry.unregister(type)
-        return true
+        return registry.unregister(type)
     }
 
     fun clearFactories() {
@@ -69,8 +65,12 @@ object BotProvider {
             throw IllegalStateException("Bot type ${factory.metadata.type} requires missing plugins: ${missingPlugins.joinToString()}")
         }
 
+        var fresh: IBot? = null
         try {
-            bot = factory.create(context).start()
+            // 新实例先落局部变量：start() 抛异常时 `bot` 字段仍是旧值，
+            // 直接用它清理会误关旧实例，真正泄漏的半初始化新实例反而无人释放。
+            fresh = factory.create(context)
+            bot = fresh.start()
             context.log(
                 LogLevel.INFO,
                 "Loaded bot ${factory.metadata.type} with capabilities: ${factory.metadata.capabilities.joinToString()}"
@@ -81,10 +81,9 @@ object BotProvider {
             context.log(LogLevel.ERROR, "Failed to load bot ${factory.metadata.type}: ${e.message ?: e.javaClass.name}")
             context.log(LogLevel.ERROR, e.stackTraceToString())
             hasLoaded = false
-            // 半初始化实例可能已持有连接/协程作用域：置空并尽力释放，避免残留（否则 unloadBot 也够不着它）
-            val failed = bot
+            // 只释放本次新建的实例（可能已持有连接/协程作用域），避免残留（否则 unloadBot 也够不着它）
             bot = null
-            runCatching { failed?.shutdown() }
+            runCatching { fresh?.shutdown() }
             throw IllegalStateException("Failed to load bot ${factory.metadata.type}", e)
         }
     }
