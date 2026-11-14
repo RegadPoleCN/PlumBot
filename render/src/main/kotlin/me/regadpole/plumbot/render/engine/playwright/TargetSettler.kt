@@ -9,6 +9,7 @@ import kotlinx.coroutines.delay
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.render.PlaywrightErrorCodes
+import me.regadpole.plumbot.render.pipeline.RenderBudget
 
 /**
  * `#render-target` 的裁剪矩形（CSS 像素，相对页面左上角）与现场诊断。
@@ -47,11 +48,11 @@ internal class TargetSettler(
      * 等 `#render-target` 布局稳定，并返回可交给 `page.screenshot(clip)` 的矩形。
      *
      * 稳定性判据：连续两次采样（间隔 [SETTLE_INTERVAL_MS]）几何完全一致，且文档字体
-     * 已是 `loaded` 状态。总等待上限 [SETTLE_TIMEOUT_MS]，超时也返回当前几何 ——
-     * 让随后的截图超时给出更准确的错误，而不是在这里盲等。
+     * 已是 `loaded` 状态。总等待上限取 [SETTLE_TIMEOUT_MS] 与剩余渲染预算的较小者，
+     * 超时也返回当前几何 —— 让随后的截图超时给出更准确的错误，而不是在这里盲等。
      */
-    suspend fun settle(page: Page, viewRoute: String): RenderTargetBox {
-        val deadline = System.currentTimeMillis() + SETTLE_TIMEOUT_MS
+    suspend fun settle(page: Page, viewRoute: String, budget: RenderBudget): RenderTargetBox {
+        val deadline = System.currentTimeMillis() + minOf(SETTLE_TIMEOUT_MS, budget.remainingMs())
         var previous: RenderTargetBox? = null
         while (true) {
             val current = sample(page, viewRoute)
@@ -147,8 +148,9 @@ internal class TargetSettler(
          * `#render-target` 稳定性等待的上限与采样间隔。
          *
          * 取值理由：模板自身的 READY 信号通常已等过两帧（约 33ms），这里再补 1.5s 足够覆盖
-         * 异步字体/图片回流；50ms 的采样间隔足以识别"还在动"。两者都不与整体渲染预算竞争
-         * —— 超时后照常按当前几何截图，由截图超时给出真实错误。
+         * 异步字体/图片回流；50ms 的采样间隔足以识别"还在动"。稳定化等待受整体渲染预算
+         * 约束：上限取 SETTLE_TIMEOUT_MS 与剩余预算的较小者，超时后照常按当前几何截图，
+         * 由截图超时给出真实错误。
          */
         const val SETTLE_TIMEOUT_MS = 1_500L
         const val SETTLE_INTERVAL_MS = 50L

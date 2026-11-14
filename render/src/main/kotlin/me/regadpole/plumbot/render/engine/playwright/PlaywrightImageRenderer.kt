@@ -137,7 +137,7 @@ internal class PlaywrightImageRenderer(
             // 绝对截止时间：options.timeoutMs 是整次渲染的预算，不是每阶段预算。
             val budget = RenderBudget(options.timeoutMs)
             val theme = themeName()
-            val entryUrl = resolveTemplateEntry(theme, viewRoute)
+            val entryUrl = resolveTemplateEntry(theme, viewRoute, budget)
             val pooled = acquirePage(viewRoute, options.timeoutMs, budget)
             val stage = RenderStage()
             var pageHealthy = true
@@ -167,9 +167,10 @@ internal class PlaywrightImageRenderer(
         context.config.getString("render", "playwright", "theme")?.takeIf { it.isNotBlank() } ?: "default"
 
     /** 解析主题入口并转成浏览器安全 URL；模板缺失/非法都在这里映射成固定错误码。 */
-    private suspend fun resolveTemplateEntry(theme: String, viewRoute: String): String {
+    private suspend fun resolveTemplateEntry(theme: String, viewRoute: String, budget: RenderBudget): String {
         val resolution = try {
-            themeManager.resolveTheme(theme, viewRoute)
+            // 模板下载纳入整次渲染预算：下载慢时宁可本次降级，也不把预算外的时间全耗在网络。
+            themeManager.resolveTheme(theme, viewRoute, budget.remainingMs())
         } catch (e: Throwable) {
             throw failureMapper.failure(
                 PlaywrightErrorCodes.TEMPLATE_MISSING,
@@ -234,14 +235,20 @@ internal class PlaywrightImageRenderer(
         viewRoute: String,
         timeoutMs: Long,
         budget: RenderBudget
-    ): PagePool.PooledPage = pagePool.acquire(budget.remainingMs()) ?: throw failureMapper.failure(
-        PlaywrightErrorCodes.RENDER_TIMEOUT,
-        "pool",
-        viewRoute,
-        "页面池等待超时（" + timeoutMs + "ms）",
-        "提高 render.playwright.render_timeout_ms，或降低并发渲染数量。",
-        null
-    )
+    ): PagePool.PooledPage {
+        val startedAt = System.currentTimeMillis()
+        return pagePool.acquire(budget.remainingMs()) ?: run {
+            val waited = System.currentTimeMillis() - startedAt
+            throw failureMapper.failure(
+                PlaywrightErrorCodes.RENDER_TIMEOUT,
+                "pool",
+                viewRoute,
+                "页面池等待超时（实际等待 " + waited + "ms，剩余渲染预算已耗尽）",
+                "提高 render.playwright.render_timeout_ms，或降低并发渲染数量。",
+                null
+            )
+        }
+    }
 
     /** payload → 导航 → manifest 握手 → READY，之后再注入字体。 */
     private fun preparePage(
@@ -329,7 +336,7 @@ internal class PlaywrightImageRenderer(
         }
 
         stage.value = "settle"
-        val target = targetSettler.settle(page, viewRoute)
+        val target = targetSettler.settle(page, viewRoute, budget)
         val targetDiagnostics = target.diagnose()
 
         val format = ScreenshotFormat.normalize(

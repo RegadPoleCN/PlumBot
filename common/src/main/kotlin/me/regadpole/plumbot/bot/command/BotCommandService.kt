@@ -192,8 +192,16 @@ class BotCommandService(
         return false
     }
 
-    fun render(template: String, vararg replacements: Pair<String, String>): String =
-        replacements.fold(template) { result, (placeholder, value) -> result.replace(placeholder, value) }
+    /**
+     * 单遍占位符替换：用正则一次扫描，替换值里再出现 "%xxx%" 不会被二次展开
+     * （旧实现的链式 replace 会让用户可控内容注入占位符）。
+     * 同一占位符传多次时取最后一个值（与旧 fold 语义一致）。
+     */
+    fun render(template: String, vararg replacements: Pair<String, String>): String {
+        if (replacements.isEmpty()) return template
+        val map = replacements.toMap()
+        return PLACEHOLDER_REGEX.replace(template) { match -> map[match.value] ?: match.value }
+    }
 
     /**
      * 以**指定路由**发送结构化载荷；门户不可用或渲染失败时自动降级为 [fallbackText]。
@@ -612,5 +620,8 @@ class BotCommandService(
     private companion object {
         /** 模板 manifest 未声明该路由时的判词前缀。 */
         const val ROUTE_MISSING_MARKER = "模板未实现 route"
+
+        /** 占位符形态：%snake_case%（替换值本身不再参与展开）。 */
+        val PLACEHOLDER_REGEX = Regex("%[a-zA-Z_]+%")
     }
 }

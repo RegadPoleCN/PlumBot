@@ -4,6 +4,7 @@
 package me.regadpole.plumbot.render.pipeline
 
 import me.regadpole.plumbot.render.RenderCard
+import me.regadpole.plumbot.render.TextPayload
 
 /**
  * Payload 长度治理，三层策略：
@@ -64,7 +65,8 @@ internal class PayloadGovernor(
             null -> null
             is String -> governString(value)
             is RenderCard -> governCard(value, depth)
-            is Map<*, *> -> value.entries.associate { (key, item) -> key to walk(item, depth + 1) }
+            is TextPayload -> governTextPayload(value)
+            is Map<*, *> -> value.entries.associate { (key, item) -> governKey(key) to walk(item, depth + 1) }
             is List<*> -> value.map { walk(it, depth + 1) }
             is Set<*> -> value.map { walk(it, depth + 1) }
             is Array<*> -> value.map { walk(it, depth + 1) }
@@ -90,6 +92,31 @@ internal class PayloadGovernor(
             title = card.title?.let { governString(it) as? String },
             data = governedData
         )
+    }
+
+    /**
+     * TextPayload 整体透传会绕过文本治理：正文/标题也要走截断与 Zalgo 收敛。
+     * body 若意外是 data: URL（governBinary 可能判 null），保守保留原值——
+     * 丢正文比超预算更破坏用户可见结果。
+     */
+    private fun governTextPayload(payload: TextPayload): TextPayload = TextPayload(
+        body = governString(payload.body) as? String ?: payload.body,
+        title = payload.title?.let { governString(it) as? String },
+        ampersandCodes = payload.ampersandCodes
+    )
+
+    /** Map 键同样是字符串入口：超长键会把无头浏览器的 DOM 与 JSON 预算一并撑爆。 */
+    private fun governKey(key: Any?): Any? {
+        if (key == null || key is Number || key is Boolean) return key
+        val text = key.toString()
+        totalChars += text.length
+        val cleaned = ZALGO.replace(text, "")
+        return if (cleaned.length > displayTextMax) {
+            truncatedFields++
+            cleaned.take(displayTextMax) + TRUNCATION_MARK
+        } else {
+            cleaned
+        }
     }
 
     private fun governString(value: String): Any? {

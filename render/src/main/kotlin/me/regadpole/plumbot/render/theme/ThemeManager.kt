@@ -7,6 +7,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -36,7 +37,7 @@ internal sealed interface ThemeResolution {
  * - [resolveTheme] 返回 [ThemeResolution]，**失败原因不丢失**，旧模板在失败时保持可用；
  * - 候选由 [TemplateMirrors] 给出（官方直链优先 + 3 个公共加速站，`template_urls`
  *   非空即完全覆盖），逐个尝试，全失败才报错并给出手动命令；
- * - 候选只接受 **https**；下载有体积上限、sha256 校验与原子替换；
+ * - 候选只接受 **https**；下载有体积上限、sha256 校验、原子替换、负缓存与渲染预算约束；
  * - 校验失配**直接失败、不换镜像重试**（否则改一个镜像就能绕过校验）；
  * - 未内置模板，也不在 Playwright 启动时隐式安装任何东西。
  */
@@ -46,9 +47,18 @@ internal class ThemeManager(
     /** 开发期直读目录；为空表示禁用。 */
     private val devWebDir: File? = null,
     /** 下载 User-Agent；由门户装配时注入共享常量，避免硬编码散落。 */
-    private val userAgent: String = DEFAULT_RENDER_USER_AGENT
+    private val userAgent: String = DEFAULT_RENDER_USER_AGENT,
+    /** 时钟可注入，测试用它控制负缓存过期。 */
+    private val clock: () -> Long = System::currentTimeMillis
 ) {
     private val downloadMutex = Mutex()
+
+    /**
+     * 下载失败负缓存（键=主题名）：失败后 [NEGATIVE_CACHE_TTL_MS] 内不重复发起网络下载。
+     * 没有它，模板源不可达时每一次渲染都会同步阻塞一个下载超时（且不受渲染预算约束）。
+     */
+    private val negativeCacheUntil = ConcurrentHashMap<String, Long>()
+    private val lastNegativeDetail = ConcurrentHashMap<String, String>()
 
     /** 允许被无头浏览器以 `file://` 读取的根目录（用于收紧沙箱）。 */
     val allowedFileRoots: List<File>
@@ -61,7 +71,7 @@ internal class ThemeManager(
     suspend fun resolveThemeEntry(theme: String, viewRoute: String): File? =
         (resolveTheme(theme, viewRoute) as? ThemeResolution.Available)?.file
 
-    suspend fun resolveTheme(theme: String, viewRoute: String): ThemeResolution {
+    suspend fun resolveTheme(theme: String, viewRoute: String, budgetMs: Long? = null): ThemeResolution {
         val sanitized = sanitizeName(theme)
         if (sanitized == null) {
             context.log(
@@ -78,10 +88,20 @@ internal class ThemeManager(
             if (index.isFile && index.length() > 0L) return ThemeResolution.Available(index)
         }
 
+        val now = clock()
+        val blockedUntil = negativeCacheUntil[themeName]
+        if (blockedUntil != null && now < blockedUntil) {
+            val last = lastNegativeDetail[themeName]
+            return ThemeResolution.Failed(
+                ThemeFailureKind.MISSING,
+                "模板下载在 ${NEGATIVE_CACHE_TTL_MS / 1000} 秒内刚失败过（负缓存），暂不重试" + (last?.let { "：$it" } ?: "")
+            )
+        }
+
         val resolved = downloadMutex.withLock {
             localEntry(themeName, viewRoute)?.let { return@withLock ThemeResolution.Available(it) }
             val index = File(File(runtimeWebDir, themeName), "index.html")
-            when (val download = downloadTemplate(index)) {
+            when (val download = downloadTemplate(index, budgetMs)) {
                 TemplateDownload.Downloaded ->
                     localEntry(themeName, viewRoute)?.let { ThemeResolution.Available(it) }
                         ?: ThemeResolution.Failed(
@@ -95,12 +115,18 @@ internal class ThemeManager(
         if (resolved is ThemeResolution.Available) return resolved
 
         val failure = resolved as ThemeResolution.Failed
+        // 只缓存 MISSING（网络/候选不可达这类会反复撞墙的失败）；INVALID 是确定性配置错误，
+        // 修复配置后应立即可用，缓存反而拖慢恢复。
+        if (failure.kind == ThemeFailureKind.MISSING) {
+            negativeCacheUntil[themeName] = clock() + NEGATIVE_CACHE_TTL_MS
+            lastNegativeDetail[themeName] = failure.detail.take(200)
+        }
         if (themeName != DEFAULT_THEME) {
             context.log(
                 LogLevel.WARN,
                 "[PlumBot-Render] 主题 '$themeName' 不可用（${failure.detail}），自动回退到 '$DEFAULT_THEME' 主题。"
             )
-            return resolveTheme(DEFAULT_THEME, viewRoute)
+            return resolveTheme(DEFAULT_THEME, viewRoute, budgetMs)
         }
 
         context.log(
@@ -193,7 +219,7 @@ internal class ThemeManager(
      * - 内容校验失配 → **立即整体失败**，不换镜像重试（否则等于允许绕过完整性校验），
      *   旧模板原样保留。
      */
-    private suspend fun downloadTemplate(destinationFile: File): TemplateDownload = withContext(Dispatchers.IO) {
+    private suspend fun downloadTemplate(destinationFile: File, budgetMs: Long? = null): TemplateDownload = withContext(Dispatchers.IO) {
         val candidates = templateCandidates()
         if (candidates.isEmpty()) {
             return@withContext TemplateDownload.Failure(
@@ -219,6 +245,10 @@ internal class ThemeManager(
 
         val configuredTimeout = context.config.getInteger("render", "playwright", "download_timeout_ms")
         val timeoutMs = if (configuredTimeout <= 0) DEFAULT_TIMEOUT_MS else configuredTimeout
+        // 整次渲染的剩余预算收敛下载超时：预算外的时间不该被网络下载吃掉。
+        val effectiveTimeout = budgetMs?.takeIf { it > 0 }
+            ?.let { minOf(timeoutMs.toLong(), it).toInt() }
+            ?: timeoutMs
         val configuredMax = context.config.getInteger("render", "playwright", "template_max_bytes")
         val maxBytes = if (configuredMax <= 0) DEFAULT_MAX_BYTES else configuredMax
 
@@ -246,7 +276,7 @@ internal class ThemeManager(
                 context.log(LogLevel.DEBUG, "[PlumBot-Render] 改用第 $hop/${candidates.size} 个候选：$rawUrl")
             }
 
-            when (val attempt = fetchCandidate(rawUrl, destinationFile, tempFile, expected, timeoutMs, maxBytes)) {
+            when (val attempt = fetchCandidate(rawUrl, destinationFile, tempFile, expected, effectiveTimeout, maxBytes)) {
                 is CandidateAttempt.Success -> {
                     context.log(
                         LogLevel.INFO,
@@ -364,6 +394,9 @@ internal class ThemeManager(
     private companion object {
         const val DEFAULT_THEME = "default"
         const val DEFAULT_TIMEOUT_MS = 10_000
+
+        /** 下载失败负缓存 TTL：这段时间内直接用上次失败原因回答，不再发起网络请求。 */
+        const val NEGATIVE_CACHE_TTL_MS = 60_000L
         const val DEFAULT_MAX_BYTES = 8 * 1024 * 1024
 
         val NAME_PATTERN = Regex("[A-Za-z0-9_-]{1,64}")

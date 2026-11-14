@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.render.pipeline.flow
 
+import kotlinx.coroutines.CancellationException
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.render.engine.RenderOptions
@@ -82,6 +83,9 @@ internal class RenderPipeline(
             val bytes = try {
                 primary.render(route.route, payload, options)
             } catch (t: Throwable) {
+                // 协程取消必须原样上抛：吞掉会让外层 withTimeout/结构化取消失效，
+                // 渲染协程把"正在被取消"当成"引擎失败"再兜底渲染一次。
+                if (t is CancellationException) throw t
                 primaryFailure = t.message?.takeIf { it.isNotBlank() } ?: t.javaClass.simpleName
                 null
             }
@@ -137,6 +141,8 @@ internal class RenderPipeline(
         val fallbackBytes = try {
             fallback.render(route.route, payload, options)
         } catch (t: Throwable) {
+            // 同主引擎路径：取消不是渲染失败，必须继续向上传播。
+            if (t is CancellationException) throw t
             context.log(LogLevel.WARN, "[PlumBot-Render] AWT 兜底失败: ${t.message}")
             null
         }
