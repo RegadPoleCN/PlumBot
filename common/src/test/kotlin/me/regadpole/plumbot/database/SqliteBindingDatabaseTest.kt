@@ -301,6 +301,37 @@ class SqliteBindingDatabaseTest {
         assertEquals("12345", assertNotNull(db.getByName("Alex")).sourceGroup)
     }
 
+    @Test
+    fun `malformed binding time is reported instead of fabricated`() {
+        val db = newDatabase()
+        db.initialize()
+        db.addBind("10001", "Steve")
+
+        // 模拟手改/迁移出错：把 binding_time 写成非法值。读取层不得回落"当前时间"——
+        // 那会把损坏伪装成"刚刚绑定"，管理员无法察觉数据已坏。
+        db.getConnection().connection.use { conn ->
+            conn.createStatement().use { st ->
+                assertEquals(
+                    1,
+                    st.executeUpdate(
+                        "UPDATE $BINDING_TABLE_NAME SET binding_time = 'not-a-number' WHERE player_name = 'steve'"
+                    )
+                )
+            }
+        }
+        val hit = assertNotNull(db.getByName("Steve"), "损坏行仍应能读出记录")
+        assertNull(hit.bindingTime, "binding_time 损坏时必须读成 null（上层显示未知），不得伪造时间")
+
+        // 历史数据行（字段为 NULL）：允许回落当前时间
+        db.getConnection().connection.use { conn ->
+            conn.createStatement().use { st ->
+                st.executeUpdate("UPDATE $BINDING_TABLE_NAME SET binding_time = NULL WHERE player_name = 'steve'")
+            }
+        }
+        val historical = assertNotNull(db.getByName("Steve"))
+        assertNotNull(historical.bindingTime, "字段缺失（历史数据行）允许回落当前时间")
+    }
+
     private fun columnsOf(db: AbstractBindingDatabase<*, *>): List<String> =
         db.getConnection().connection.use { conn ->
             conn.createStatement().use { st ->

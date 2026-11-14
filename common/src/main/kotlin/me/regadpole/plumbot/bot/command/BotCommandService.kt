@@ -138,6 +138,9 @@ class BotCommandService(
     @Volatile
     private var warnedNoMemberCheck = false
 
+    /** 适配器缺 IMAGE_SEND 的降级只告警一次，避免每条绑定回复刷屏。 */
+    private var warnedNoImageSend = false
+
     /**
      * 管理员**代绑**前的成员校验（`feature.bind.require_in_group`）。
      *
@@ -523,10 +526,8 @@ class BotCommandService(
     }
 
     fun sendBindMessage(groupId: Long, message: String) {
-        val pic = true
         bot.requireCapability(BotCapability.GROUP_MESSAGE_SEND)
-        if (pic) bot.requireCapability(BotCapability.IMAGE_SEND)
-        bot.sendMsg(true, groupId, message, pic)
+        bot.sendMsg(true, groupId, message, preferImage())
     }
 
     fun sendBindTemplate(groupId: Long, template: String, vararg replacements: Pair<String, String>) {
@@ -534,10 +535,8 @@ class BotCommandService(
     }
 
     fun sendListTemplate(groupId: Long, template: String, vararg replacements: Pair<String, String>) {
-        val pic = true
         bot.requireCapability(BotCapability.GROUP_MESSAGE_SEND)
-        if (pic) bot.requireCapability(BotCapability.IMAGE_SEND)
-        bot.sendMsg(true, groupId, render(template, *replacements), pic)
+        bot.sendMsg(true, groupId, render(template, *replacements), preferImage())
     }
 
     fun sendWrongUsage(groupId: Long) {
@@ -546,8 +545,25 @@ class BotCommandService(
 
     fun sendRawMessage(groupId: Long, message: String, pic: Boolean = false) {
         bot.requireCapability(BotCapability.GROUP_MESSAGE_SEND)
-        if (pic) bot.requireCapability(BotCapability.IMAGE_SEND)
-        bot.sendMsg(true, groupId, message, pic)
+        bot.sendMsg(true, groupId, message, pic && preferImage())
+    }
+
+    /**
+     * 是否按图片发送：适配器声明了 IMAGE_SEND 才出图，否则降级为纯文本并告警一次。
+     *
+     * 此前这里硬性 requireCapability(IMAGE_SEND)：不支持发图的适配器上所有绑定/白名单回复
+     * （含执行出错的兜底提示）都会抛异常被上层吞掉，玩家以为机器人无响应。
+     */
+    private fun preferImage(): Boolean {
+        val supported = BotCapability.IMAGE_SEND in bot.metadata.capabilities
+        if (!supported && !warnedNoImageSend) {
+            warnedNoImageSend = true
+            context.log(
+                LogLevel.WARN,
+                "[PlumBot-Bind] 适配器 " + bot.metadata.type + " 未声明 IMAGE_SEND 能力，绑定/白名单回复将降级为纯文本发送。"
+            )
+        }
+        return supported
     }
 
     fun groupMemberNameCard(groupId: Long, userId: Long): Pair<String, String> {

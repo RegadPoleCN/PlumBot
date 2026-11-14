@@ -52,7 +52,7 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         groupId = groupId,
                         playerName = playerName,
                         qq = userId.toString(),
-                        bindTime = DatabaseProvider.getBindingByName(playerName)?.bindingTime?.toString(),
+                        bindTime = DatabaseProvider.getBindingByName(playerName)?.let { it.bindingTime?.toString() ?: "未知" },
                         fallbackText = service.render(
                             Messages.playerAddBind,
                             *service.userReplacements(groupId, userId),
@@ -106,7 +106,7 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         groupId = groupId,
                         playerName = playerName,
                         qq = targetUserIdStr,
-                        bindTime = DatabaseProvider.getBindingByName(playerName)?.bindingTime?.toString(),
+                        bindTime = DatabaseProvider.getBindingByName(playerName)?.let { it.bindingTime?.toString() ?: "未知" },
                         fallbackText = service.render(
                             Messages.adminAddBind,
                             *service.originReplacements(groupId, userId),
@@ -163,7 +163,7 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                 groupId = groupId,
                 playerName = playerName,
                 qq = userId.toString(),
-                bindTime = DatabaseProvider.getBindingByName(playerName)?.bindingTime?.toString(),
+                bindTime = DatabaseProvider.getBindingByName(playerName)?.let { it.bindingTime?.toString() ?: "未知" },
                 fallbackText = service.render(
                     Messages.playerAddBind,
                     *service.userReplacements(groupId, userId),
