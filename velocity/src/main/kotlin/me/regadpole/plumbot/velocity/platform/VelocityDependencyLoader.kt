@@ -49,14 +49,14 @@ class VelocityDependencyLoader(
             var failure: String? = null
             val ok = RuntimeLibraries.PLAYWRIGHT.all { spec ->
                 runCatching {
-                    libraryManager.loadLibrary(
-                        Library.builder()
-                            .groupId(spec.groupId)
-                            .artifactId(spec.artifactId)
-                            .version(spec.version)
-                            .resolveTransitiveDependencies(spec.transitive)
-                            .build()
-                    )
+                    val builder = Library.builder()
+                        .groupId(spec.groupId)
+                        .artifactId(spec.artifactId)
+                        .version(spec.version)
+                        .resolveTransitiveDependencies(spec.transitive)
+                    // 清单钉定的 SHA-256：Libby 下载后自动比对，不匹配即拒绝装载
+                    spec.sha256?.let { builder.checksum(it) }
+                    libraryManager.loadLibrary(builder.build())
                 }.onFailure {
                     failure = "${spec.artifactId}: ${it.message ?: it.javaClass.simpleName}"
                 }.isSuccess
@@ -117,6 +117,8 @@ class VelocityDependencyLoader(
                 .artifactId(spec.artifactId)
                 .version(spec.version)
                 .resolveTransitiveDependencies(spec.transitive)
+            // 清单钉定的 SHA-256：Libby 下载后自动比对，不匹配即拒绝装载
+            spec.sha256?.let { builder.checksum(it) }
             spec.relocates.forEach { builder.relocate(it.from, it.to) }
             libraryManager.loadLibrary(builder.build())
         }

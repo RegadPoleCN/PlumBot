@@ -218,4 +218,30 @@ class FilterThesaurusNetworkTest {
             manager.shutdown()
         }
     }
+
+    @Test
+    fun `a non http source is rejected and other sources still load`() {
+        // 下载端把连接强转成 HttpURLConnection，file: 等协议只会得到难排查的 ClassCastException；
+        // 解析配置时必须直接拒绝该源，且不影响其余源。
+        val url = serve(body = """{"words":["好词"]}""")
+        val cacheDir = java.nio.file.Files.createTempDirectory("plumbot-thesaurus-scheme").toFile()
+        val context = contextWith(url, cacheDir)
+        context.set("filter.cloud.urls", listOf("file:///etc/passwd", url))
+        val manager = FilterThesaurusManager(context)
+
+        try {
+            runBlocking { manager.reload() }
+
+            assertTrue(
+                manager.process("这里包含好词").matchedWords.isNotEmpty(),
+                "非法协议源被跳过后，其余源必须照常生效"
+            )
+            assertTrue(
+                context.logs.any { it.contains("仅支持 http/https") },
+                "非法协议必须给出清晰告警（实际日志：${context.logs}）"
+            )
+        } finally {
+            manager.shutdown()
+        }
+    }
 }

@@ -204,4 +204,23 @@ class RuntimeLibrariesTest {
             assertTrue(spec.coordinate !in base, "回退项 ${spec.coordinate} 不能同时出现在 ALL 里")
         }
     }
+
+    @Test
+    fun `every maven central spec is pinned to a sha256 digest`() {
+        // JitPack 构件的构建不可复现，钉住反而会在其重建后把可用版本判成损坏；
+        // 其余构件都来自 Maven Central，必须全部钉定（Libby 下载后自动比对）。
+        val unpinned = setOf("taboolib-database", "AOneBot")
+        val digest = Regex("^[0-9a-f]{64}$")
+        (RuntimeLibraries.ALL + RuntimeLibraries.HYTALE_ONLY + RuntimeLibraries.KYORI_FALLBACK + RuntimeLibraries.PLAYWRIGHT)
+            .forEach { spec ->
+                if (spec.artifactId in unpinned) {
+                    assertTrue(spec.sha256 == null, "${spec.artifactId} 是 JitPack 构件，不得钉定摘要")
+                } else {
+                    assertTrue(
+                        spec.sha256 != null && digest.matches(spec.sha256),
+                        "${spec.artifactId} 必须钉定 64 位小写十六进制 SHA-256（实际：${spec.sha256 ?: "缺失"}）",
+                    )
+                }
+            }
+    }
 }

@@ -114,6 +114,7 @@ class FilterThesaurusManager(private val context: PlatformContext) {
         // 1. 并发抓取多云端源词库列表
         val cloudUrls = if (config.getBoolean("filter", "cloud", "enable")) {
             config.getStringList("filter", "cloud", "urls").filterNotNull().filter { it.isNotBlank() }
+                .mapNotNull { url -> validateCloudUrl(url) }
         } else {
             emptyList()
         }
@@ -175,13 +176,31 @@ class FilterThesaurusManager(private val context: PlatformContext) {
         results.flatten().toSet()
     }
 
+    /**
+     * 词库 URL 只允许 http/https：下载端会把连接强转成 HttpURLConnection，
+     * file: 等协议会抛 ClassCastException 并掉进"拉取失败"分支，排查困难；
+     * 在解析配置时直接拒绝并给出清晰原因（指明 url 与允许的协议）。
+     */
+    private fun validateCloudUrl(url: String): String? {
+        val scheme = runCatching { URI(url).scheme?.lowercase() }.getOrNull()
+        if (scheme != "http" && scheme != "https") {
+            log(
+                LogLevel.WARN,
+                "[PlumBot] 云端词库地址被跳过 (" + url + ")：仅支持 http/https 协议，请修正 filter.cloud.urls 配置。"
+            )
+            return null
+        }
+        return url
+    }
+
     private fun fetchSingleSourceWithCache(url: String, cacheDir: File, timeoutMs: Int): Set<String> {
         val urlHash = sha256(url).take(16)
         val cacheFile = File(cacheDir, "source_$urlHash.json")
 
-        // 优先联网抓取
+        // 优先联网抓取；无论成败（含提前 return），finally 统一断开连接，避免 socket 泄漏
+        var connection: HttpURLConnection? = null
         try {
-            val connection = URI(url).toURL().openConnection() as HttpURLConnection
+            connection = URI(url).toURL().openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = timeoutMs
             connection.readTimeout = timeoutMs
@@ -197,7 +216,6 @@ class FilterThesaurusManager(private val context: PlatformContext) {
                         LogLevel.WARN,
                         "[PlumBot] 云端源响应超过上限（${MAX_SOURCE_BYTES / 1024 / 1024}MB），将尝试读取本地缓存。($url)"
                     )
-                    connection.disconnect()
                 } else {
                     val words = parseWordsFromJson(jsonText)
                     // 只有解析出内容才覆盖快照：把坏响应（HTML 错误页 / 空体）写进缓存会让"离线降级"这条退路一起失效。
@@ -215,6 +233,9 @@ class FilterThesaurusManager(private val context: PlatformContext) {
             }
         } catch (e: Exception) {
             log(LogLevel.WARN, "[PlumBot] 云端源拉取失败 ($url): ${e.message}，将尝试读取本地缓存。")
+        } finally {
+            // 响应读取已完成或失败；连接若已建立则必须断开，成功 return 的路径同样会走到这里
+            connection?.disconnect()
         }
 
         // 降级：读取该源的历史本地快照文件
