@@ -27,8 +27,15 @@ internal class CapacityGate(private val context: PlatformContext) {
     /** 全局渲染容量 = 并发数 + 排队深度；`tryAcquire` 失败即视为队列溢出。 */
     private val capacity = Semaphore(RenderLimits.CONCURRENCY + RenderLimits.QUEUE_DEPTH)
 
-    /** 同一目标串行渲染，保证出图顺序与消息顺序一致。 */
-    private val targetLocks = ConcurrentHashMap<String, Mutex>()
+    /** 同一目标串行渲染，保证出图顺序与消息顺序一致。值附带在途使用计数，供空闲驱逐判断。 */
+    private val targetLocks = ConcurrentHashMap<String, TargetLock>()
+
+    /** 目标锁 + 在途使用计数。计数由 [ConcurrentHashMap.compute] 的分桶内原子性保护。 */
+    private class TargetLock(val mutex: Mutex = Mutex()) {
+        /** 正在持有或等待该锁的 dispatch 数；0 表示条目空闲、可被驱逐。 */
+        @Volatile
+        var users: Int = 0
+    }
 
     /**
      * 按 `targetKey` 串行后进入容量闸。
@@ -44,19 +51,31 @@ internal class CapacityGate(private val context: PlatformContext) {
         val targetKey = request.targetKey
         if (targetKey == null) return renderWithCapacity(route, engine, render)
 
-        val lock = targetLocks.computeIfAbsent(targetKey) { Mutex() }
-        lock.lock()
+        // compute 与 removeIf 在同一个分桶上互斥：进入者先把 users 计数加一并拿到
+        // 稳定的锁对象，驱逐者据此判断没人持锁也没人在等才移除条目。旧实现只看
+        // mutex.isLocked，刚从表里取出还没来得及 lock() 的等待者会被误判为空闲而
+        // 遭驱逐，等待者与新调用者拿到不同锁对象，"同一目标串行渲染"就此失效。
+        val lock = targetLocks.compute(targetKey) { _, existing ->
+            (existing ?: TargetLock()).also { it.users++ }
+        } ?: error("compute 的重映射函数从不返回 null")
+        lock.mutex.lock()
         return try {
             renderWithCapacity(route, engine, render)
         } finally {
-            lock.unlock()
-            // 水位超限时只清理**空闲**条目：`clear()` 会把其它协程正在持有的 Mutex 一并
-            // 丢弃，等待者与新调用者拿到的锁对象不同 ——"同一目标串行渲染"就此失效。
-            // `isLocked` 为 false 但仍有人刚排队的极端时序下仍可能被移除，代价是那一瞬间
-            // 的串行性，而不是把正在执行的渲染放跑。
-            if (targetLocks.size > RenderLimits.MAX_TRACKED_TARGETS) {
-                targetLocks.entries.removeIf { (key, mutex) -> key != targetKey && !mutex.isLocked }
-            }
+            lock.mutex.unlock()
+            lock.users--
+            evictIdleLocks(targetKey)
+        }
+    }
+
+    /**
+     * 水位超限时驱逐空闲条目。判据是 users == 0（无人持锁也无人等待），而不是
+     * mutex.isLocked —— 后者会把刚入表还没来得及 lock 的等待者误判为可驱逐。
+     */
+    internal fun evictIdleLocks(excludeKey: String?) {
+        if (targetLocks.size <= RenderLimits.MAX_TRACKED_TARGETS) return
+        targetLocks.entries.removeIf { (key, lock) ->
+            key != excludeKey && lock.users == 0 && !lock.mutex.isLocked
         }
     }
 
@@ -64,6 +83,9 @@ internal class CapacityGate(private val context: PlatformContext) {
     fun clear() {
         targetLocks.clear()
     }
+
+    /** 测试观察用：当前跟踪的目标数。 */
+    internal fun trackedTargetCount(): Int = targetLocks.size
 
     private suspend fun renderWithCapacity(
         route: RenderRoute,

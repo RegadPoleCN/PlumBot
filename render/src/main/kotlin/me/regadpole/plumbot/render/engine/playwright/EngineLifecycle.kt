@@ -14,7 +14,9 @@ import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
+import me.regadpole.plumbot.render.PlaywrightErrorCodes
 import me.regadpole.plumbot.render.PlaywrightInstallOptions
+import me.regadpole.plumbot.render.PlaywrightRenderException
 import me.regadpole.plumbot.render.engine.playwright.startup.EngineStartup
 import me.regadpole.plumbot.render.install.BrowserDecision
 import me.regadpole.plumbot.render.install.PlaywrightInstallGate
@@ -52,7 +54,17 @@ internal class EngineLifecycle(
     private val onShutdown: () -> Unit = {}
 ) {
 
-    private val isInitialized = AtomicBoolean(false)
+    /**
+     * 引擎状态机：IDLE（未启动/已回收）→ STARTING（启动中）→ STARTED。
+     *
+     * 取代旧的单布尔 isInitialized：启动窗口（STARTING）必须对关闭方可见，否则
+     * shutdown 与正在进行的启动交错时会漏掉对刚启动完成引擎的回收（复活泄漏）。
+     */
+    private enum class EngineState { IDLE, STARTING, STARTED }
+
+    @Volatile
+    private var state: EngineState = EngineState.IDLE
+
     private val shutdownHookRegistered = AtomicBoolean(false)
 
     /** JVM 关闭钩子（用于在插件禁用时主动摘除，见 [removeShutdownHookIfNeeded]）。 */
@@ -78,7 +90,7 @@ internal class EngineLifecycle(
 
     @Synchronized
     fun ensureStarted() {
-        if (isInitialized.get()) return
+        if (state == EngineState.STARTED) return
 
         // DriverJar.getDriverResourceURI() 用的是 Thread.currentThread().contextClassLoader。
         // Libby 把 playwright 注入插件加载器后，工作线程的 TCCL 可能仍是服务端加载器，
@@ -89,20 +101,40 @@ internal class EngineLifecycle(
             Thread.currentThread().contextClassLoader = ownLoader
         }
         try {
+            // 进入启动窗口：shutdown 与 onDisconnected 都按状态判断，启动完成后
+            // 要么被正常接管（STARTED），要么被关闭方回收，不再出现无人认领的引擎。
+            state = EngineState.STARTING
             startEngine()
+        } catch (e: Throwable) {
+            // 启动失败回到 IDLE 允许后续重试；STARTING 不能停留。
+            state = EngineState.IDLE
+            throw e
         } finally {
-            if (previousTccl != null) {
-                Thread.currentThread().contextClassLoader = previousTccl
-            }
+            // 无条件恢复：previousTccl 为 null（平台线程本就没设 TCCL）时也要清掉
+            // 本次注入的 ownLoader，否则插件类加载器会滞留在平台线程上（TCCL 泄漏）。
+            Thread.currentThread().contextClassLoader = previousTccl
         }
     }
 
-    /** 关闭引擎。幂等；重量级清理的线程策略由调用方决定。 */
+    /**
+     * 关闭引擎。幂等；重量级清理的线程策略由调用方决定。
+     *
+     * 与 [ensureStarted] 共用同一把监视器锁：正在进行的启动会先完成，随后的关闭
+     * 必然看到 STARTED 并回收资源。旧实现的 CAS 失败早退会让启动完成后的引擎
+     * 既无人拥有也无人回收（复活泄漏）；意外断连后残留的关服钩子也在此一并摘除。
+     */
+    @Synchronized
     fun shutdown() {
         // 先标记"主动关闭"，再改状态：onDisconnected 立刻据此把这次断连判为预期内。
         closingInternally = true
         onShutdown()
-        if (!isInitialized.compareAndSet(true, false)) return
+        if (state != EngineState.STARTED) {
+            // 未启动 / 已被意外回收 —— 没有已发布资源可回收，只摘关服钩子。
+            // （STARTING 期间不会走到这里：本方法与 ensureStarted 同锁，启动先完成。）
+            removeShutdownHookIfNeeded()
+            return
+        }
+        state = EngineState.IDLE
         releaseAll()
         removeShutdownHookIfNeeded()
     }
@@ -122,14 +154,14 @@ internal class EngineLifecycle(
             // **绝不在渲染线程内联下载**：这里只"按一下"装载门就立刻失败，
             // 真正的下载在平台异步泳道上进行，完成后下一次出图自动改用高清引擎。
             val requested = installGate?.startOnce("render") == true
-            val state = if (requested) {
+            val stateText = if (requested) {
                 "已按需在后台开始装载，本次先用 AWT 兜底，装载完成后自动改用 Playwright 引擎。"
             } else {
                 "装载未在本次触发（已就绪 / 正在装载 / 失败冷却中），执行 /plumbot render doctor 查看原因。"
             }
             val options = startup.installOptions()
             throw failureMapper.dependencyMissing(
-                "Playwright 运行库尚未装载：com.microsoft.playwright.Playwright 不在类路径。$state",
+                "Playwright 运行库尚未装载：com.microsoft.playwright.Playwright 不在类路径。$stateText",
                 startup.manualInstallCommand(options)
             )
         }
@@ -162,6 +194,20 @@ internal class EngineLifecycle(
             installRequestGuard(browserCtx)
             pagePool.seed(browserCtx)
 
+            // 发布前校验：启动窗口内浏览器崩溃时，onDisconnected 因 STARTING 不做回收，
+            // 这里必须兜底，否则会把已死的浏览器发布成已启动引擎（复活泄漏）。
+            if (!browserInstance.isConnected) {
+                throw PlaywrightRenderException(
+                    code = PlaywrightErrorCodes.LAUNCH_FAILED,
+                    stage = "launch",
+                    detail = "浏览器在启动完成前断开连接（启动窗口内崩溃），已中止发布。",
+                    hint = "检查系统浏览器路径/版本是否有效，或执行 /plumbot render install 安装内置 Chromium。",
+                    command = null,
+                    route = null,
+                    cause = null
+                )
+            }
+
             playwright = pw
             browser = browserInstance
             browserContext = browserCtx
@@ -169,7 +215,7 @@ internal class EngineLifecycle(
             registerShutdownHook()
             // 新引擎就绪：复位"主动关闭"标记，让后续真实断连仍然报警。
             closingInternally = false
-            isInitialized.set(true)
+            state = EngineState.STARTED
             context.log(LogLevel.INFO, "[PlumBot-Render] Playwright 高清渲染引擎就绪！")
         } catch (e: Throwable) {
             runCatching { createdContext?.close() }
@@ -308,14 +354,19 @@ internal class EngineLifecycle(
     private fun onDisconnected(browserInstance: Browser) {
         // 旧实例的迟到回调（重建后 browser 已指向新实例）直接忽略。
         if (browser !== browserInstance) return
-        if (closingInternally || !isInitialized.get()) {
-            // 主动关闭：资源已由 shutdown()/releaseAll() 回收，这里不再重复回收。
-            context.log(LogLevel.INFO, "[PlumBot-Render] Chromium 已按请求关闭（主动释放资源）。")
+        // 回调来自驱动线程，不取引擎监视器：releaseAll 的 closeWithin 正在等驱动退出，
+        // 若这里再排队等监视器就会与 shutdown 互等死锁。改用状态判断：
+        // - STARTING：启动窗口内的崩溃由 startEngine 发布前的 isConnected 守卫兜底；
+        // - 非 STARTED：资源已由 shutdown()/releaseAll() 回收，这里不再重复回收。
+        if (state != EngineState.STARTED) {
+            if (closingInternally) {
+                context.log(LogLevel.INFO, "[PlumBot-Render] Chromium 已按请求关闭（主动释放资源）。")
+            }
             return
         }
         context.log(LogLevel.WARN, "[PlumBot-Render] 底层 Chromium 意外退出，回收资源并重置。")
         releaseAll()
-        isInitialized.set(false)
+        state = EngineState.IDLE
     }
 
     private fun registerShutdownHook() {

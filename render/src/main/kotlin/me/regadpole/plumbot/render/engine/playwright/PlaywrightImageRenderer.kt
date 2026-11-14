@@ -9,6 +9,7 @@ import com.microsoft.playwright.options.ScreenshotAnimations
 import com.microsoft.playwright.options.ScreenshotType
 import java.io.File
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.regadpole.plumbot.api.platform.LogLevel
 import me.regadpole.plumbot.api.platform.PlatformContext
@@ -121,11 +122,17 @@ internal class PlaywrightImageRenderer(
      */
     override fun shutdown() {
         lifecycle.shutdown()
+        // 泳道线程池与引擎同生命周期：不关会泄漏常驻工作线程（插件 reload 场景累积）。
+        runCatching { pagePool.closeDispatcher() }
     }
 
     override suspend fun render(viewRoute: String, payload: Any, options: RenderOptions): ByteArray? =
         withContext(pagePool.dispatcher) {
-            lifecycle.ensureStarted()
+            // 冷启动的 Playwright.create() 可能耗时数十秒且在 EngineLifecycle 监视器上等待：
+            // 挪到 IO 池执行，避免占死泳道线程把另一条泳道也堵死。
+            withContext(Dispatchers.IO) {
+                lifecycle.ensureStarted()
+            }
 
             // 绝对截止时间：options.timeoutMs 是整次渲染的预算，不是每阶段预算。
             val budget = RenderBudget(options.timeoutMs)

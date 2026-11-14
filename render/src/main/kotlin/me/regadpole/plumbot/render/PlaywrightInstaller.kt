@@ -5,9 +5,12 @@ package me.regadpole.plumbot.render
 
 import java.io.File
 import java.io.IOException
+import java.nio.channels.FileChannel
+import java.nio.channels.OverlappingFileLockException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import kotlin.io.path.absolutePathString
@@ -171,6 +174,15 @@ public class PlaywrightInstaller(
     private val log: (String) -> Unit = {}
 ) {
 
+    /** 进程内互斥：同一 JVM 里并发的 install 调用只放行一个。 */
+    private val installMutex = Object()
+
+    /**
+     * 跨进程锁的打开函数（internal var 便于测试注入失败/占用场景）。约定：
+     * 返回 null = 锁被其它进程或调用持有；抛 IOException = 锁文件不可用（调用方降级）。
+     */
+    internal var installLockOpener: (Path) -> FileChannel? = { lockFile -> openInstallLockChannel(lockFile) }
+
     public fun diagnose(options: PlaywrightInstallOptions): PlaywrightDiagnosis {
         val driverBundle = locateDriverBundle(options)
         val playwrightJar = findPlaywrightJar(driverBundle)
@@ -230,6 +242,11 @@ public class PlaywrightInstaller(
     /**
      * 显式安装 Chromium。
      *
+     * 进程内用互斥监视器串行化；跨进程用 browsers_path 下的 [LOCK_FILE_NAME]
+     * 文件锁互斥（两个服务器进程共用同一 browsers_path 时，并发安装会互相覆盖
+     * 正在使用的浏览器目录）。锁文件不可用时退化为仅进程内互斥并记日志；锁被
+     * 其它进程持有时立即失败，不排队。
+     *
      * @param force false 时若已检测到可用浏览器则直接返回成功（幂等）。
      */
     public fun install(options: PlaywrightInstallOptions, force: Boolean = false): PlaywrightInstallResult {
@@ -248,7 +265,59 @@ public class PlaywrightInstaller(
                 )
             }
         }
+        return synchronized(installMutex) { installWithLock(options) }
+    }
 
+    /** 持有进程内互斥后的安装入口；负责跨进程锁的获取与释放。 */
+    private fun installWithLock(options: PlaywrightInstallOptions): PlaywrightInstallResult {
+        val lockFile = Path.of(options.browsersPath).resolve(LOCK_FILE_NAME)
+        var lockUnavailable = false
+        val channel = try {
+            installLockOpener(lockFile)
+        } catch (e: IOException) {
+            lockUnavailable = true
+            log(
+                "[PlumBot-Render] 无法创建跨进程安装锁（" + lockFile.toString() + "）：" +
+                    (e.message ?: e::class.java.simpleName) + "，退化为仅本进程互斥。"
+            )
+            null
+        }
+        if (channel == null && !lockUnavailable) {
+            return failure(
+                PlaywrightErrorCodes.INSTALL_FAILED,
+                "另一个安装正在执行（锁：" + lockFile.toString() + "）。" +
+                    "请等待其完成后再执行安装；若确认没有其它进程或调用在装，删除该锁文件后重试。",
+                emptyList(), null, false,
+                runCatching { manualCommand(options) }.getOrDefault(""),
+            )
+        }
+        try {
+            return installLocked(options)
+        } finally {
+            runCatching { channel?.close() }
+        }
+    }
+
+    /** 打开跨进程安装锁：拿到文件锁返回 channel；锁被占用返回 null；锁文件不可用抛 IOException。 */
+    private fun openInstallLockChannel(lockFile: Path): FileChannel? = try {
+        Files.createDirectories(lockFile.parent)
+        val channel = FileChannel.open(
+            lockFile,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.WRITE,
+            StandardOpenOption.READ
+        )
+        if (channel.tryLock() == null) {
+            runCatching { channel.close() }
+            null
+        } else {
+            channel
+        }
+    } catch (e: OverlappingFileLockException) {
+        null
+    }
+
+    private fun installLocked(options: PlaywrightInstallOptions): PlaywrightInstallResult {
         val driverBundle = locateDriverBundle(options)
             ?: return failure(
                 PlaywrightErrorCodes.DEPENDENCY_MISSING,
@@ -617,7 +686,10 @@ public class PlaywrightInstaller(
         is BrowserDecision.Missing -> "无可用浏览器"
     }
 
-    private companion object {
+    internal companion object {
+        /** browsers_path 下的跨进程安装锁文件名（internal 供测试与同包诊断引用）。 */
+        internal val LOCK_FILE_NAME: String = ".plumbot-install.lock"
+
         const val DRIVER_JAR_CLASS = "com.microsoft.playwright.impl.driver.jar.DriverJar"
 
         fun cmdQuote(value: String): String = "\"" + value.replace("\"", "\\\"") + "\""

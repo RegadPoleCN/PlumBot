@@ -6,7 +6,7 @@ package me.regadpole.plumbot.render.engine.playwright
 import com.microsoft.playwright.BrowserContext
 import com.microsoft.playwright.Page
 import java.util.concurrent.Executors
-import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.ExecutorCoroutineDispatcher
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.channels.Channel
@@ -35,9 +35,21 @@ internal class PagePool(private val context: PlatformContext) {
      * 渲染协程泳道。并发 2 是给 AWT 兜底与排队留的余量，Playwright 侧复用单页，
      * 真正出图仍是串行的。
      */
-    val dispatcher: CoroutineDispatcher = Executors.newFixedThreadPool(RENDER_THREADS) { r ->
+    /**
+     * 渲染协程泳道。并发 2 是给 AWT 兜底与排队留的余量，Playwright 侧复用单页，
+     * 真正出图仍是串行的。
+     *
+     * 显式声明为 [ExecutorCoroutineDispatcher]：引擎关停时由 [closeDispatcher] 归还
+     * 底层线程池；旧实现匿名 asCoroutineDispatcher 后无人持有 Executor，池永不关闭。
+     */
+    val dispatcher: ExecutorCoroutineDispatcher = Executors.newFixedThreadPool(RENDER_THREADS) { r ->
         Thread(r, "PlumBot-Render-Worker").apply { isDaemon = true }
     }.asCoroutineDispatcher()
+
+    /** 关停渲染泳道并归还底层线程池（引擎关停时调用一次）。 */
+    fun closeDispatcher() {
+        dispatcher.close()
+    }
 
     private val pages = Channel<PooledPage>(PAGE_POOL_SIZE)
 

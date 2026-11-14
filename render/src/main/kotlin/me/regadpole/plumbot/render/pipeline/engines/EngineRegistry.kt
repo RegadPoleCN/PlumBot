@@ -38,6 +38,7 @@ internal class EngineRegistry(
     private val renderers = mutableMapOf<String, ImageRenderer>()
 
     /** Playwright 驱动（惰性构造；与 [renderers] 中的同名项是同一对象）。 */
+    @Volatile
     private var playwrightRenderer: PlaywrightImageRenderer? = null
 
     /** 派生状态重建的代数：快速连续的 configure/reload 只有最新一代生效。 */
