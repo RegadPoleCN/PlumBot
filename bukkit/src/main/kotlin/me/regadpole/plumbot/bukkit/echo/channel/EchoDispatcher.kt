@@ -66,7 +66,7 @@ internal class EchoDispatcher(
                 }
             }
             EchoChannels.PLUGIN_COMMAND -> preparePluginCommand(command, session, reasons)
-            EchoChannels.CONSOLE -> prepareConsole(session, settings)
+            EchoChannels.CONSOLE -> prepareConsole(session, settings, reasons)
             EchoChannels.RCON -> {
                 if (!settings.rcon.enabled) {
                     reasons += "rcon 未启用"
@@ -169,9 +169,20 @@ internal class EchoDispatcher(
         )
     }
 
-    private fun prepareConsole(session: EchoSession, settings: EchoSettings): PreparedLocalEcho {
+    private fun prepareConsole(
+        session: EchoSession,
+        settings: EchoSettings,
+        reasons: MutableList<String>
+    ): PreparedLocalEcho {
         val real: ConsoleCommandSender = Bukkit.getConsoleSender()
-        val sender = EchoProxyFactory.create(real, session, EchoChannels.CONSOLE) ?: real
+        val proxy = EchoProxyFactory.create(real, session, EchoChannels.CONSOLE)
+        if (proxy == null) {
+            // 代理创建失败不阻断指令执行：回退真实控制台，但必须把"这次没有捕获"写进结果与日志，
+            // 否则管理员看到"未捕获输出"时无从知道其实走了回退。
+            reasons += "console: 无法创建 ConsoleCommandSender 代理，已回退真实控制台（仅旁路日志捕获）"
+            debug("[RemoteEcho] console 通道代理创建失败，已回退真实控制台派发（仅旁路日志捕获）")
+        }
+        val sender = proxy ?: real
         val sources = EchoLogSources.create(session, settings, debug)
         return PreparedLocalEcho(
             channel = EchoChannels.CONSOLE,

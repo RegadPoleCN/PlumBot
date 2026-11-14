@@ -72,6 +72,9 @@ qqEmptyBind: "%user_name% 尚未申请白名单"
 # 按玩家名查询时玩家未绑定
 # 变量: player
 idEmptyBind: "%player% 尚未申请白名单"
+# 按玩家名查询命中脏数据（绑定的 QQ 号不是数字），需人工修库
+# 变量: player
+bindDataInvalid: "绑定记录数据异常（%player% 的绑定不是合法 QQ 号），无法查询，请检查数据库。"
 # player_name
 existsBind: "%player_name% 已被他人绑定!"
 # 变量: player_name

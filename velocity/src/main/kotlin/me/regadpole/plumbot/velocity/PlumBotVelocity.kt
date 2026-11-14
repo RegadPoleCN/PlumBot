@@ -125,7 +125,11 @@ class PlumBotVelocity @Inject constructor(
         if (useMirai) {
             if (!miraiAvailable) {
                 slf4jLogger.error("[PlumBot] MiraiMC 插件未加载！若要使用 Mirai bot，请在 Velocity 代理端安装 MiraiMC。")
-                pluginManager.getPlugin("plumbot").get().executorService.shutdown()
+                slf4jLogger.error("[PlumBot] 插件将保持未激活状态，安装 MiraiMC 并重启代理后恢复。")
+                // 这里只能"不启用"，不能拿 executorService.shutdown() 充当禁用：
+                // 该线程池属于插件容器、每次代理运行只有一份，提前关掉会让后续任何
+                // 依赖它的组件拿到已死的池。不注册工厂、不启用，插件保持惰性；
+                // 资源回收交给 onProxyShutdown 的常规链路。
                 return
             } else {
                 BotProvider.registerFactory(MiraiMCFactory)

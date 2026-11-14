@@ -50,6 +50,7 @@ class TemplateVariableConsistencyTest {
         "consoleMetaLine" to setOf("state", "channel"),
         "qqEmptyBind" to setOf("user_id", "user_name", "user_nick"),
         "idEmptyBind" to setOf("player"),
+        "bindDataInvalid" to setOf("player"),
         "existsBind" to setOf("player_name"),
         "notExistsBind" to setOf("player_name"),
         "notBelongToYou" to setOf("player_name"),

@@ -44,6 +44,7 @@ object Messages {
     var consoleMetaLine: String = "<missing:consoleMetaLine>"
     var qqEmptyBind: String = "<missing:qqEmptyBind>"
     var idEmptyBind: String = "<missing:idEmptyBind>"
+    var bindDataInvalid: String = "<missing:bindDataInvalid>"
     var existsBind: String = "<missing:existsBind>"
     var notExistsBind: String = "<missing:notExistsBind>"
     var notBelongToYou: String = "<missing:notBelongToYou>"

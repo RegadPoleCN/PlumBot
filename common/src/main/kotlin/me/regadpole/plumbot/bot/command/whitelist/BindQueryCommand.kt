@@ -6,6 +6,7 @@ package me.regadpole.plumbot.bot.command.whitelist
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.database.DatabaseProvider
+import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.utils.escapeMiniMessageTags
 
 class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
@@ -25,7 +26,12 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                     }
                     val targetUserId = wl.toLongOrNull()
                     if (targetUserId == null) {
-                        service.sendWrongUsage(groupId)
+                        // 脏数据（绑定的 QQ 号非数字）不是用法错误：给专用提示并留 WARN 现场便于修库。
+                        service.context.log(
+                            LogLevel.WARN,
+                            "id: 查询命中非数字绑定记录（player=$arg, user_id=$wl），已回复数据异常提示"
+                        )
+                        service.sendBindTemplate(groupId, Messages.bindDataInvalid, "%player%" to arg)
                         return
                     }
                     service.sendBindTemplate(
