@@ -121,15 +121,20 @@ class BukkitPlatformContext(
 
     /**
      * 旧接口的兼容投影：新代码用 [dispatchConsoleCommandEcho]，这里把结构化结果压回
-     * 旧字符串，保证未迁移调用方的行为（含原兜底文案）不变。
+     * 旧字符串，保证未迁移调用方的行为（含原兜底文案）不变。识别标记与分类端
+     * （[EchoResult.fromLegacyOutput]）共用同一常量，改文案不会让分类静默失准。
      */
+    @Deprecated(
+        "字符串契约已由 dispatchConsoleCommandEcho 的结构化结果取代",
+        ReplaceWith("dispatchConsoleCommandEcho(command)")
+    )
     override fun dispatchConsoleCommand(command: String): CompletableFuture<String> =
         dispatchConsoleCommandEcho(command).thenApply { echo ->
             when (echo.state) {
                 EchoState.CAPTURED -> echo.text
                 EchoState.SUCCESS_NO_OUTPUT -> "指令已在主线程执行成功（无控制台回显）。"
-                EchoState.UNKNOWN_OR_REJECTED -> echo.text.ifBlank { "指令执行失败或未识别此指令。" }
-                EchoState.FAILED -> "执行指令出现异常: " + (
+                EchoState.UNKNOWN_OR_REJECTED -> echo.text.ifBlank { "指令执行" + EchoResult.LEGACY_UNKNOWN_MARKER + "此指令。" }
+                EchoState.FAILED -> EchoResult.LEGACY_EXCEPTION_PREFIX + ": " + (
                     echo.detail?.takeIf { it.isNotBlank() } ?: echo.code ?: "未知错误"
                     )
             }

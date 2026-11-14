@@ -26,7 +26,8 @@ import kotlin.time.Duration.Companion.milliseconds
  * OneBot（AOneBot WebSocket）协议适配器。
  *
  * 连接是异步建立的：[start] 只发起连接，由监控循环确认在线后 `markOnline()` 补发启动广播
- * 并预热群缓存；断线按指数退避自动重连。图片发送返回 `Boolean`，失败时由基类回落纯文本。
+ * 并预热群缓存；断线按指数退避自动重连。文本发送在断连窗口内记 WARN 后静默（文本方法
+ * 无返回值，调用方无从兜底）；图片发送返回 `Boolean`，失败时由基类回落纯文本。
  */
 class OneBotAdapter(
     override val context: PlatformContext,
@@ -125,12 +126,22 @@ class OneBotAdapter(
 
     override fun sendGroupMsg(targetId: Long, message: String) {
         val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
-        client.action(SendGroupMessageSegments(targetId, segments))
+        // action() 在连接未建立时抛 WebsocketNotConnectedException / IllegalStateException（见 [start] 的实测说明）。
+        // 文本方法无返回值，调用方无从兜底；与图片路径对齐：记 WARN 后吞掉，不中断当次事件处理。
+        try {
+            client.action(SendGroupMessageSegments(targetId, segments))
+        } catch (t: Throwable) {
+            log(LogLevel.WARN, "[OneBot] 群消息发送失败 ($targetId): ${t.message}")
+        }
     }
 
     override fun sendUserMsg(targetId: Long, message: String) {
         val segments = OneBotSegmentBuilder.buildArray(OneBotSegmentBuilder.text(message))
-        client.action(SendPrivateMessageSegments(targetId, segments))
+        try {
+            client.action(SendPrivateMessageSegments(targetId, segments))
+        } catch (t: Throwable) {
+            log(LogLevel.WARN, "[OneBot] 私聊消息发送失败 ($targetId): ${t.message}")
+        }
     }
 
     override fun sendGroupImage(targetId: Long, imageFile: File): Boolean =
@@ -168,7 +179,11 @@ class OneBotAdapter(
             OneBotSegmentBuilder.at(userId),
             OneBotSegmentBuilder.text(" $message")
         )
-        client.action(SendGroupMessageSegments(targetId, segments))
+        try {
+            client.action(SendGroupMessageSegments(targetId, segments))
+        } catch (t: Throwable) {
+            log(LogLevel.WARN, "[OneBot] 群消息发送失败 ($targetId): ${t.message}")
+        }
     }
 
     override fun sendGroupMsgAtAll(targetId: Long, message: String) {
@@ -176,7 +191,11 @@ class OneBotAdapter(
             OneBotSegmentBuilder.atAll(),
             OneBotSegmentBuilder.text(" $message")
         )
-        client.action(SendGroupMessageSegments(targetId, segments))
+        try {
+            client.action(SendGroupMessageSegments(targetId, segments))
+        } catch (t: Throwable) {
+            log(LogLevel.WARN, "[OneBot] 群消息发送失败 ($targetId): ${t.message}")
+        }
     }
 
     override fun preloadGroupCaches() {

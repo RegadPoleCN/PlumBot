@@ -49,7 +49,18 @@ data class EchoResult(
         get() = lines.joinToString("\n")
 
     companion object {
-        private val EXCEPTION_PREFIX = "执行指令出现异常"
+        /**
+         * 旧字符串契约的异常前缀：[fromLegacyOutput] 按它识别执行失败。生产方（各平台
+         * `dispatchConsoleCommand` 的异常分支）必须引用同一常量拼接文案——两侧共用，
+         * 改文案才不会让分类静默失准。
+         */
+        const val LEGACY_EXCEPTION_PREFIX = "执行指令出现异常"
+
+        /**
+         * 旧字符串契约的"未知/拒绝"识别标记：[fromLegacyOutput] 用 contains 判定，
+         * 生产方的兜底文案必须包含该标记。
+         */
+        const val LEGACY_UNKNOWN_MARKER = "失败或未识别"
 
         /**
          * 兼容旧平台实现的字符串返回值，只用于尚未迁移到 [EchoResult] 的平台；正式实现必须
@@ -64,14 +75,14 @@ data class EchoResult(
                     code = EchoCode.ECHO_NO_CHANNEL,
                     detail = "平台未返回回显文本"
                 )
-                trimmed.startsWith(EXCEPTION_PREFIX) -> EchoResult(
+                trimmed.startsWith(LEGACY_EXCEPTION_PREFIX) -> EchoResult(
                     state = EchoState.FAILED,
                     channel = "legacy",
                     lines = listOf(trimmed),
                     code = EchoCode.ECHO_EXCEPTION,
                     detail = trimmed
                 )
-                trimmed.contains("失败或未识别") -> EchoResult(
+                trimmed.contains(LEGACY_UNKNOWN_MARKER) -> EchoResult(
                     state = EchoState.UNKNOWN_OR_REJECTED,
                     channel = "legacy",
                     lines = listOf(trimmed),

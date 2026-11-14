@@ -71,6 +71,10 @@ class VelocityPlatformContext(
     private fun logCommandsEnabled(): Boolean =
         config.getBoolean("feature", "remote_console", "log_commands")
 
+    @Deprecated(
+        "字符串契约已由 dispatchConsoleCommandEcho 的结构化结果取代",
+        ReplaceWith("dispatchConsoleCommandEcho(command)")
+    )
     override fun dispatchConsoleCommand(command: String): CompletableFuture<String> {
         val future = CompletableFuture<String>()
         val capturer = CapturingVelocityCommandSource(server.consoleCommandSource)
@@ -80,7 +84,7 @@ class VelocityPlatformContext(
         server.commandManager.executeAsync(capturer, command).thenAccept { _ ->
             future.complete(capturer.getOutput())
         }.exceptionally { err ->
-            future.complete("执行指令出现异常: ${err.message}")
+            future.complete(EchoResult.LEGACY_EXCEPTION_PREFIX + ": " + err.message)
             null
         }
         return future

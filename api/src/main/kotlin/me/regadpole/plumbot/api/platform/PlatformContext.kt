@@ -45,9 +45,16 @@ interface PlatformContext {
     fun getMspt(): Double? = null
 
     /**
-     * 在平台控制台异步执行指令，并返回执行后的控制台文本回显内容。
+     * 旧字符串契约：在平台控制台异步执行指令，并返回执行后的控制台文本回显内容。
      * 需受 [PlatformCapability.COMMAND_DISPATCH] 约束。
+     *
+     * 已由 [dispatchConsoleCommandEcho] 取代：字符串契约靠前缀文案分类结果，任一侧改
+     * 文案就静默失准；新实现与调用方都应迁移到结构化的 [EchoResult]。
      */
+    @Deprecated(
+        "字符串契约已由 dispatchConsoleCommandEcho 的结构化结果取代",
+        ReplaceWith("dispatchConsoleCommandEcho(command)")
+    )
     fun dispatchConsoleCommand(command: String): java.util.concurrent.CompletableFuture<String> =
         java.util.concurrent.CompletableFuture.completedFuture("当前平台不支持指令执行回显。")
 
@@ -57,6 +64,7 @@ interface PlatformContext {
      * 默认实现把旧 [dispatchConsoleCommand] 的字符串包装为 [EchoResult]，
      * 因此未迁移的平台仍可工作；具备多通道捕获能力的平台应覆盖本方法。
      */
+    @Suppress("DEPRECATION")
     fun dispatchConsoleCommandEcho(command: String): java.util.concurrent.CompletableFuture<EchoResult> =
         dispatchConsoleCommand(command).thenApply { EchoResult.fromLegacyOutput(it) }
 

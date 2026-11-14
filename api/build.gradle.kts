@@ -10,6 +10,7 @@ dependencies {
     compileOnly(libs.adventureApi)
     api(libs.kotlinxCoroutines)
     api(libs.kotlinxDatetime)
+    testImplementation(kotlin("test"))
 }
 
 /**
