@@ -4,14 +4,22 @@
 package me.regadpole.plumbot.velocity.platform
 
 import com.velocitypowered.api.proxy.ProxyServer
+import me.regadpole.plumbot.api.platform.PlatformConfig
 import me.regadpole.plumbot.api.platform.PlatformPlayerService
+import me.regadpole.plumbot.server.KickTexts
 import me.regadpole.plumbot.utils.asMiniMessage
 
-class VelocityPlayerService(private val server: ProxyServer) : PlatformPlayerService {
+class VelocityPlayerService(
+    private val server: ProxyServer,
+    private val configProvider: () -> PlatformConfig,
+) : PlatformPlayerService {
 
     override fun kickPlayer(name: String) {
         val player = server.getPlayer(name).orElse(null) ?: return
-        player.disconnect("您已被移出服务器。".asMiniMessage())
+        // 与登录拒绝共用同一份加群引导模板（messages.yml 的 kickServer），不再硬编码文案。
+        player.disconnect(
+            KickTexts.kickServer(configProvider().getLongList("groups")).asMiniMessage()
+        )
     }
 
     override fun listPlayers(): List<String> =

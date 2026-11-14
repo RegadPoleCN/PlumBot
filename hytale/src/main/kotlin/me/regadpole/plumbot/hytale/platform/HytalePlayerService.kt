@@ -7,14 +7,21 @@ import com.hypixel.hytale.server.core.Message
 import com.hypixel.hytale.server.core.NameMatching
 import com.hypixel.hytale.server.core.universe.Universe
 import me.regadpole.plumbot.api.platform.PlatformAvatarLayer
+import me.regadpole.plumbot.api.platform.PlatformConfig
 import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.hytale.avatar.HytaleAvatarResolver
+import me.regadpole.plumbot.server.KickTexts
 
-class HytalePlayerService : PlatformPlayerService {
+class HytalePlayerService(
+    private val configProvider: () -> PlatformConfig,
+) : PlatformPlayerService {
 
     override fun kickPlayer(name: String) {
         val player = Universe.get().getPlayerByUsername(name, NameMatching.EXACT) ?: return
-        player.packetHandler.disconnect(Message.raw("您已被移出服务器。"))
+        // 与登录拒绝共用同一份加群引导模板；Hytale 侧按纯文本下发。
+        player.packetHandler.disconnect(
+            Message.raw(KickTexts.kickServer(configProvider().getLongList("groups")))
+        )
     }
 
     override fun listPlayers(): List<String> =

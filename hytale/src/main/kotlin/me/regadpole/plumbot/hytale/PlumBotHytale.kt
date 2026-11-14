@@ -55,7 +55,7 @@ class PlumBotHytale(init: JavaPluginInit) : JavaPlugin(init), PlumBot {
 
     // 调度器需要告警出口：拿不到世界 tick 线程时 runSync 会悄悄回退异步，必须留痕。
     private val platformScheduler by lazy { HytalePlatformScheduler(warn = { logger.atWarning().log(it) }) }
-    private val playerService by lazy { HytalePlayerService() }
+    private val playerService by lazy { HytalePlayerService { config } }
 
     private val platformContext: HytalePlatformContext by lazy {
         HytalePlatformContext(

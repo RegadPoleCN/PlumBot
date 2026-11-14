@@ -117,9 +117,7 @@ class PlayerLoginService(
 
     /** 被踢玩家看到的加群提示；图片卡与纯文本提示共用这一份。 */
     private fun kickGuide(): String = getLegacyFromComponent(
-        getComponentFromMiniMsg(
-            Messages.kickServer.replace("%groups%", config.getLongList("groups").toString())
-        )
+        getComponentFromMiniMsg(KickTexts.kickServer(config.getLongList("groups")))
     )
 
     /** 校验通道故障时的提示：不提加群、不提绑定，免得玩家以为是自己没申请。 */

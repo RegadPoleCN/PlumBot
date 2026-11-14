@@ -75,7 +75,7 @@ class PlumBotVelocity @Inject constructor(
     }
 
     private val platformScheduler by lazy { VelocityPlatformScheduler(this, server) }
-    private val playerService by lazy { VelocityPlayerService(server) }
+    private val playerService by lazy { VelocityPlayerService(server) { config } }
 
     private val platformContext: VelocityPlatformContext by lazy {
         VelocityPlatformContext(

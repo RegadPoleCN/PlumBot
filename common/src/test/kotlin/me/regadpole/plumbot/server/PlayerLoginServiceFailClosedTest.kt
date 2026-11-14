@@ -162,6 +162,24 @@ class PlayerLoginServiceFailClosedTest {
     }
 
     @Test
+    fun `the kick guide renders the group list readably`() {
+        startDatabase()
+        val context = FakePlatformContext(
+            enabledConfig() + mapOf("groups" to listOf(123456L, 789012L))
+        )
+        Messages.kickServer = "请加入qq群:%groups% 申请白名单"
+
+        val result = service(context = context).check("Alex")
+
+        assertFalse(result.allowed)
+        assertTrue(
+            result.kickMessage!!.contains("123456、789012"),
+            "群列表要用顿号连接成人读格式：${result.kickMessage}"
+        )
+        assertFalse(result.kickMessage!!.contains("%groups%"), "占位符必须被替换")
+    }
+
+    @Test
     fun `an unavailable lookup denies the player and is counted`() {
         DatabaseProvider.shutdown()
         val context = FakePlatformContext(enabledConfig())

@@ -3,7 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.platform
 
-import me.regadpole.plumbot.config.Messages
+import me.regadpole.plumbot.server.KickTexts
 import me.regadpole.plumbot.config.YamlConfigurator
 import me.regadpole.plumbot.api.platform.PlatformPlayerService
 import me.regadpole.plumbot.utils.getComponentFromMiniMsg
@@ -17,10 +17,9 @@ class BukkitPlayerService(
     private val configProvider: () -> YamlConfigurator,
 ): PlatformPlayerService {
     override fun kickPlayer(name: String) {
-        val kickMessage = getLegacyFromComponent(getComponentFromMiniMsg(
-            Messages.kickServer
-                .replace("%groups%", configProvider().getLongList("groups").toString())
-        ))
+        val kickMessage = getLegacyFromComponent(
+            getComponentFromMiniMsg(KickTexts.kickServer(configProvider().getLongList("groups")))
+        )
         server.getPlayer(name)?.kickPlayer(kickMessage)
     }
 

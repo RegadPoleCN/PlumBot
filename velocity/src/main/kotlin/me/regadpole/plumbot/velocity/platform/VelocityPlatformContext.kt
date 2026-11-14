@@ -7,6 +7,7 @@ import com.velocitypowered.api.proxy.ProxyServer
 import me.regadpole.plumbot.DebugProvider
 import me.regadpole.plumbot.internal.RemoteConsoleAudit
 import me.regadpole.plumbot.api.platform.*
+import me.regadpole.plumbot.config.ConsoleEchoSetting
 import me.regadpole.plumbot.config.YamlConfigurator
 import net.kyori.adventure.text.Component
 import org.slf4j.Logger
@@ -55,6 +56,8 @@ class VelocityPlatformContext(
     }
 
     override fun sendMessage(message: Component) {
+        // 与 Bukkit/Hytale 对齐：群消息回显控制台受 feature.message.console_echo 控制。
+        if (!ConsoleEchoSetting.enabled(config)) return
         server.sendMessage(message)
     }
 

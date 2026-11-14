@@ -20,6 +20,13 @@ class HytaleServerListener(
     private val loginService: PlayerLoginService
 ) {
 
+    /** 来源服名：优先取 `server.name` 配置，缺省回落 "Hytale"（与 Velocity 侧同一约定）。 */
+    private fun resolveServerName(): String {
+        val configured = plugin.config.getString("server", "name")
+        if (!configured.isNullOrBlank()) return configured
+        return "Hytale"
+    }
+
     fun register() {
         // 1. 最前置握手白名单拦截：在区块和实体加载前直接阻断
         eventRegistry.register(PlayerSetupConnectEvent::class.java) { event ->
@@ -43,7 +50,7 @@ class HytaleServerListener(
             val sender = event.sender.username
             val message = event.content
             plugin.platform.scheduler.runAsync {
-                eventBridge.onChat(sender, "Hytale", message)
+                eventBridge.onChat(sender, resolveServerName(), message)
             }
         }
 
@@ -51,7 +58,7 @@ class HytaleServerListener(
         eventRegistry.register(PlayerDisconnectEvent::class.java) { event ->
             val username = event.playerRef.username
             plugin.platform.scheduler.runAsync {
-                eventBridge.onLeave(username, "Hytale")
+                eventBridge.onLeave(username, resolveServerName())
             }
         }
     }
