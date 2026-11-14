@@ -11,6 +11,7 @@ import org.bukkit.Bukkit
 import org.bukkit.command.CommandSender
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
+import java.util.Collections
 import java.util.function.Consumer
 
 /**
@@ -40,9 +41,13 @@ internal class PaperFeedbackEcho(private val debug: (String) -> Unit) {
     @Volatile
     private var cachedSender: CommandSender? = null
 
-    /** 当前正在接收反馈的会话；sender 的 Consumer 从这里取目标。 */
+    /**
+     * 在册会话集合：prepare 注册、finishAction 注销，反馈广播给全部在册会话。
+     * 单槽（旧实现）在 rcon 与 paper_feedback 并发启用时会把一次的反馈投给另一轮的会话；
+     * 广播让两个并发会话各自拿到完整反馈，sender 仍复用（不放弃 4ms 类加载优化）。
+     */
     @Volatile
-    private var activeSession: EchoSession? = null
+    private var activeSessions: MutableSet<EchoSession> = Collections.newSetFromMap(java.util.concurrent.ConcurrentHashMap())
 
     val available: Boolean
         get() = probe() != null
@@ -65,13 +70,13 @@ internal class PaperFeedbackEcho(private val debug: (String) -> Unit) {
     fun prepare(session: EchoSession): PreparedLocalEcho? {
         val current = probe() ?: return null
         val sender = sender(current) ?: return null
-        // 反馈是**同步**回调（Bukkit.dispatchCommand 期间），因此 activeSession 的
-        // 生命周期严格包住一次 dispatch；finishAction 兜底清理，避免下次误投。
-        activeSession = session
+        // 反馈是**同步**回调（Bukkit.dispatchCommand 期间），会话生命周期严格包住一次
+        // dispatch；finishAction 兜底注销，避免下一轮误投。
+        activeSessions.add(session)
         return PreparedLocalEcho(
             channel = EchoChannels.PAPER_FEEDBACK,
             dispatcher = { command -> Bukkit.dispatchCommand(sender, command) },
-            finishAction = { activeSession = null },
+            finishAction = { activeSessions.remove(session) },
             detail = null
         )
     }
@@ -86,7 +91,9 @@ internal class PaperFeedbackEcho(private val debug: (String) -> Unit) {
 
     private fun createSender(current: Probe): CommandSender? {
         val consumer = Consumer<Any?> { value ->
-            activeSession?.let { capture(it, value) }
+            for (session in activeSessions) {
+                capture(session, value)
+            }
         }
         current.createMethod?.let { method ->
             runCatching { method.invoke(Bukkit.getServer(), consumer) as? CommandSender }

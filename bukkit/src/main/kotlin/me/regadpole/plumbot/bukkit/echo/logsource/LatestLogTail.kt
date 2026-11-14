@@ -39,9 +39,17 @@ internal class LatestLogTail(
         RandomAccessFile(path.toFile(), "r").use { file ->
             var length = file.length()
             if (length < offset) offset = 0L
-            val remaining = length - offset
+            var remaining = length - offset
             if (remaining <= 0L) return
-            val toRead = minOf(remaining, MAX_READ_BYTES.toLong()).toInt()
+            // 超出单次预算时改读**尾部**：旧实现把 offset 推进到窗口前 1MB 处，被截断的中段
+            // 下次永远不会再读回来，紧跟指令的最新报错反而被丢。这里把起点滑到窗口起点 +
+            // (剩余-预算)，保证本轮读到的总是距离当前文件尾最近的 MAX_READ_BYTES 字节，
+            // 且 offset 恰好落在文件尾，中段确实丢失但最新输出不丢。
+            if (remaining > MAX_READ_BYTES.toLong()) {
+                offset = length - MAX_READ_BYTES.toLong()
+                remaining = MAX_READ_BYTES.toLong()
+            }
+            val toRead = remaining.toInt()
             val bytes = ByteArray(toRead)
             file.seek(offset)
             file.readFully(bytes)

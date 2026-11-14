@@ -114,6 +114,11 @@ class BukkitPlatformContext(
         echoExecutor.warmUp()
     }
 
+    /** 关停回显调度线程（插件 disable 时调用）。 */
+    fun shutdownEcho() {
+        runCatching { echoExecutor.close() }
+    }
+
     /**
      * 旧接口的兼容投影：新代码用 [dispatchConsoleCommandEcho]，这里把结构化结果压回
      * 旧字符串，保证未迁移调用方的行为（含原兜底文案）不变。

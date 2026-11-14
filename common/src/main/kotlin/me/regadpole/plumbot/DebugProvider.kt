@@ -7,13 +7,14 @@ import me.regadpole.plumbot.api.platform.PlatformTaskHandle
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.io.path.pathString
 
 class DebugProvider(private val plugin: PlumBot) {
-    private val loggerList = ConcurrentLinkedQueue<String>()
+    // 双端队列：写盘失败时按原序放回，不丢批次；积压超上限丢弃最旧日志防无限膨胀。
+    private val loggerList = ConcurrentLinkedDeque<String>()
     private val diskWriteLock = ReentrantLock()
 
     private lateinit var loggerFile: File
@@ -88,7 +89,10 @@ class DebugProvider(private val plugin: PlumBot) {
                 }
             }
         } else {
-            loggerList.add(entry)
+            loggerList.addLast(entry)
+            while (loggerList.size > MAX_BACKLOG) {
+                loggerList.pollFirst()
+            }
         }
     }
 
@@ -97,14 +101,27 @@ class DebugProvider(private val plugin: PlumBot) {
         if (loggerList.isEmpty()) return
 
         diskWriteLock.withLock {
-            val logs = generateSequence { loggerList.poll() }.toList()
+            val logs = ArrayList<String>()
+            while (true) {
+                val entry = loggerList.pollFirst() ?: break
+                logs.add(entry)
+            }
             if (logs.isNotEmpty()) {
                 try {
                     loggerFile.appendText(logs.joinToString(""))
                 } catch (e: Exception) {
-                    System.err.println("[PlumBot-Debug] 批量落盘日志失败: ${e.message}")
+                    // 写失败按原序放回队首，下一周期重试；不放回会让排查时段整段空白。
+                    for (i in logs.indices.reversed()) {
+                        loggerList.addFirst(logs[i])
+                    }
+                    System.err.println("[PlumBot-Debug] 批量落盘日志失败: " + e.message)
                 }
             }
         }
+    }
+
+    private companion object {
+        /** 待写盘积压上限：超出即丢最旧日志，防止磁盘长时间不可写时内存无限膨胀。 */
+        private const val MAX_BACKLOG = 50_000
     }
 }

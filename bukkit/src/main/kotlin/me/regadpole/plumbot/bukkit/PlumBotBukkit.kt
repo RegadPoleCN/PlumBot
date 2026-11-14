@@ -146,6 +146,7 @@ class PlumBotBukkit: JavaPlugin(), PlumBot{
 
     override fun onDisable() {
         disable()
+        runCatching { platformContext.shutdownEcho() }
         // 清空注册表，避免 /reload 后残留外部 adapter。
         runCatching {
             for (type in BotProvider.availableAdapters().map { it.type }) {

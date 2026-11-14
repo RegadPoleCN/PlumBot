@@ -43,6 +43,11 @@ internal class EchoExecutor(
     private val nms = NmsEcho(debug)
     private val dispatcher = EchoDispatcher(paperFeedback, nms, logger, debug)
 
+    /** 关停内部调度线程；插件 disable 时调用，防止 /reload 反复启停后守护线程逐轮累积。 */
+    fun close() {
+        dispatcher.shutdownNow()
+    }
+
     @Volatile
     private var lastResult: EchoResult? = null
 

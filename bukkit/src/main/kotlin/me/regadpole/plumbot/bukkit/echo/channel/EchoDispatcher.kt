@@ -31,13 +31,20 @@ internal class EchoDispatcher(
     private val debug: (String) -> Unit
 ) {
 
-    private var nmsUnavailableWarned = false
+    // nms 不可用只告警一次：prepare 可从主线程与 rcon 线程并发进入，CAS 保证恰好一条 WARN。
+    private val nmsUnavailableWarned = java.util.concurrent.atomic.AtomicBoolean(false)
 
     private val finalizer = Executors.newSingleThreadScheduledExecutor { runnable ->
         Thread(runnable, "PlumBot-Echo-Finalizer").apply { isDaemon = true }
     }
     private val rconExecutor = Executors.newSingleThreadExecutor { runnable ->
         Thread(runnable, "PlumBot-Echo-Rcon").apply { isDaemon = true }
+    }
+
+    /** 停掉内部调度线程；关停后再派发的任务走 RejectedExecutionException 兜底内联收尾，结果不丢。 */
+    internal fun shutdownNow() {
+        finalizer.shutdownNow()
+        rconExecutor.shutdownNow()
     }
 
     internal fun prepare(
@@ -86,8 +93,7 @@ internal class EchoDispatcher(
                     if (prepared == null) {
                         sources.forEach { runCatching { it.finish(session) } }
                         reasons += "nms: " + nms.unavailableReason
-                        if (!nmsUnavailableWarned) {
-                            nmsUnavailableWarned = true
+                        if (nmsUnavailableWarned.compareAndSet(false, true)) {
                             logger.log(LogLevel.WARN, "[RemoteEcho] nms 通道不可用: " + nms.unavailableReason)
                         }
                     }
