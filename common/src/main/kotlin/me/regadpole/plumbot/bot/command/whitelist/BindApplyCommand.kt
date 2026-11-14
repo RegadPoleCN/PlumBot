@@ -7,6 +7,7 @@ import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.internal.PlayerNameRules
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.database.DatabaseProvider
+import me.regadpole.plumbot.utils.escapeMiniMessageTags
 
 class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
 
@@ -57,7 +58,7 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                             *service.userReplacements(groupId, userId),
                             "%target_player%" to playerName,
                             "%num%" to wl.size.toString(),
-                            "%current%" to wl.keys.joinToString(", ")
+                            "%current%" to wl.keys.joinToString(", ") { escapeMiniMessageTags(it) }
                         ),
                         bindCount = wl.size,
                         current = wl.keys.toList()
@@ -110,11 +111,11 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                             Messages.adminAddBind,
                             *service.originReplacements(groupId, userId),
                             "%user_id%" to targetUserIdStr,
-                            "%user_name%" to service.bot.getGroupUserName(groupId, targetUserId),
-                            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUserId),
+                            "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, targetUserId)),
+                            "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, targetUserId)),
                             "%target_player%" to playerName,
                             "%num%" to wl.size.toString(),
-                            "%current%" to wl.keys.joinToString(", ")
+                            "%current%" to wl.keys.joinToString(", ") { escapeMiniMessageTags(it) }
                         ),
                         originId = userId.toString(),
                         originName = service.bot.getGroupUserCard(groupId, userId),
@@ -168,7 +169,7 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                     *service.userReplacements(groupId, userId),
                     "%target_player%" to playerName,
                     "%num%" to wl.size.toString(),
-                    "%current%" to wl.keys.joinToString(", ")
+                    "%current%" to wl.keys.joinToString(", ") { escapeMiniMessageTags(it) }
                 ),
                 bindCount = wl.size,
                 current = wl.keys.toList()
@@ -181,7 +182,8 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
 
     private fun sendFullBindNotice(groupId: Long, targetUser: Long) {
         val wl = DatabaseProvider.getBindByUser(targetUser.toString())
-        // 列表型提示走 bindList 路由；注意 %current% 在这里语义是**数量**，%player_name% 才是名单
+        // 列表型提示走 bindList 路由：%players% 是名单、%num% 是数量，与 playerQueryBind 的语义对齐。
+        // 自定义过 fullBind 模板的部署需要把 %player_name%/%current% 同步改为 %players%/%num%。
         service.sendBindList(
             groupId = groupId,
             title = "白名单已满 · ${service.bot.getGroupUserName(groupId, targetUser)}",
@@ -190,12 +192,12 @@ class BindApplyCommand(service: BotCommandService) : AbstractWhitelistCommand(se
             limit = service.bindingLimit(),
             fallbackText = service.render(
                 Messages.fullBind,
-                "%player_name%" to wl.keys.joinToString(", "),
-                "%current%" to wl.size.toString(),
+                "%players%" to wl.keys.joinToString(", ") { escapeMiniMessageTags(it) },
+                "%num%" to wl.size.toString(),
                 "%user_id%" to targetUser.toString(),
                 "%whitelist_limit%" to service.config.getInteger("feature", "bind", "maxNum").toString(),
-                "%user_name%" to service.bot.getGroupUserName(groupId, targetUser),
-                "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUser)
+                "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, targetUser)),
+                "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, targetUser))
             )
         )
     }

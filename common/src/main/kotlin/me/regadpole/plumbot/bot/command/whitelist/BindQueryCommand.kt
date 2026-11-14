@@ -6,6 +6,7 @@ package me.regadpole.plumbot.bot.command.whitelist
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.database.DatabaseProvider
+import me.regadpole.plumbot.utils.escapeMiniMessageTags
 
 class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
 
@@ -32,8 +33,8 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                         Messages.adminQueryIdBind,
                         *service.originReplacements(groupId, userId),
                         "%user_id%" to wl,
-                        "%user_name%" to service.bot.getGroupUserName(groupId, targetUserId),
-                        "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUserId),
+                        "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, targetUserId)),
+                        "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, targetUserId)),
                         "%player%" to arg
                     )
                     return
@@ -59,8 +60,8 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                             fallbackText = service.render(
                                 Messages.qqEmptyBind,
                                 "%user_id%" to argStr,
-                                "%user_name%" to service.bot.getGroupUserName(groupId, arg),
-                                "%user_nick%" to service.bot.getGroupUserCard(groupId, arg)
+                                "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, arg)),
+                                "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, arg))
                             )
                         )
                         return
@@ -77,8 +78,8 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
                             Messages.adminQueryQQBind,
                             *service.originReplacements(groupId, userId),
                             "%user_id%" to argStr,
-                            "%user_name%" to service.bot.getGroupUserName(groupId, arg),
-                            "%user_nick%" to service.bot.getGroupUserCard(groupId, arg),
+                            "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, arg)),
+                            "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, arg)),
                             "%num%" to wl.size.toString(),
                             "%current%" to formattedList
                         )
@@ -123,6 +124,6 @@ class BindQueryCommand(service: BotCommandService) : AbstractWhitelistCommand(se
 
     private fun formatPlayerList(players: Collection<String>): String {
         if (players.isEmpty()) return "无"
-        return players.joinToString(separator = "\n  • ", prefix = "\n  • ")
+        return players.joinToString(separator = "\n  • ", prefix = "\n  • ") { escapeMiniMessageTags(it) }
     }
 }

@@ -16,13 +16,13 @@ import kotlin.test.assertEquals
  */
 class MessagesBinderTest {
 
-    private val prefixBackup = Messages.prefix
+    private val avatarUsageBackup = Messages.avatarUsage
     private val helpBackup = Messages.help
     private val loadBackup = Messages.load
 
     @AfterTest
     fun restoreMessages() {
-        Messages.prefix = prefixBackup
+        Messages.avatarUsage = avatarUsageBackup
         Messages.help = helpBackup
         Messages.load = loadBackup
     }
@@ -32,20 +32,20 @@ class MessagesBinderTest {
         val dir = createTempDirectory("plumbot-messages")
         dir.resolve("messages.yml").writeText(
             """
-            prefix: "<white>[<aqua>PlumBot<white>]<reset> "
+            avatarUsage: "用法：%cmdprefix%avatar <玩家名>"
             help:
               - "line-a"
               - "line-b"
             """.trimIndent() + "\n",
         )
         val conf = YamlConfigurator.createConfig(dir, "messages.yml")!!
-        Messages.prefix = "<missing:prefix>"
+        Messages.avatarUsage = "<missing:avatarUsage>"
         Messages.help = emptyList()
         Messages.load = "<missing:load>"
 
         MessagesBinder.apply(conf)
 
-        assertEquals("<white>[<aqua>PlumBot<white>]<reset> ", Messages.prefix)
+        assertEquals("用法：%cmdprefix%avatar <玩家名>", Messages.avatarUsage)
         assertEquals(listOf("line-a", "line-b"), Messages.help)
         assertEquals("<missing:load>", Messages.load)
     }

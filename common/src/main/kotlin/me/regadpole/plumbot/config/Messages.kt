@@ -7,8 +7,6 @@ import me.regadpole.plumbot.api.PublicApi
 
 @PublicApi
 object Messages {
-    var prefix: String = "<missing:prefix>"
-
     var load: String = "<missing:load>"
     var unload: String = "<missing:unload>"
 

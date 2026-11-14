@@ -33,7 +33,7 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         val feature: String,
         val regex: (String, String?) -> String,
         val payload: (String, String?, String) -> String,
-        val handler: (String, Long, Long) -> Unit
+        val handler: (String, Long, Long, String) -> Unit
     )
 
     /**
@@ -76,51 +76,55 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
                 "list",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}$""" },
                 { cmdPrefix, key, message -> "" }
-            ) { message, groupId, userId -> onPlayerList(message, groupId, userId) },
+            ) { message, groupId, userId, _ -> onPlayerList(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("addBind"),
                 "bind",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+(.+)$""" },
                 { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
-            ) { message, groupId, userId -> onWhitelistApply(message, groupId, userId) },
+            ) { message, groupId, userId, _ -> onWhitelistApply(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("deleteBind"),
                 "bind",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+(.+)$""" },
                 { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
-            ) { message, groupId, userId -> onWhitelistRemove(message, groupId, userId) },
+            ) { message, groupId, userId, _ -> onWhitelistRemove(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("queryBind"),
                 "bind",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
                 { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
-            ) { message, groupId, userId -> onWhitelistQuery(message, groupId, userId) },
+            ) { message, groupId, userId, _ -> onWhitelistQuery(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("status"),
                 "status",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}$""" },
                 { cmdPrefix, key, message -> "" }
-            ) { message, groupId, userId -> statusCommandService.showStatus(message, groupId, userId) },
+            ) { message, groupId, userId, _ -> statusCommandService.showStatus(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("remote_console"),
                 "remote_console",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
                 { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
-            ) { message, groupId, userId -> remoteConsoleCommandService.execute(message, groupId, userId) },
+            ) { message, groupId, userId, _ -> remoteConsoleCommandService.execute(message, groupId, userId) },
             // 平台原生头像卡片：Hytale 上解析原生外观图层，其余平台回落绑定 QQ 头像
             CommandRegistration(
                 keys.getStringList("avatar"),
                 "avatar",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
                 { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
-            ) { message, groupId, userId -> onAvatar(message, groupId, userId) }
+            ) { message, groupId, userId, cmdPrefix -> onAvatar(message, groupId, userId, cmdPrefix) }
         )
     }
 
-    private fun onAvatar(message: String, groupId: Long, userId: Long) {
+    private fun onAvatar(message: String, groupId: Long, userId: Long, cmdPrefix: String) {
         val playerName = message.trim().substringBefore(' ').trim()
         if (playerName.isEmpty()) {
-            commandService.sendRawMessage(groupId, commandService.render(Messages.avatarUsage))
+            // 无参路径是纯用法提示：把真实命令前缀传进模板，别让玩家看到裸的 %cmdprefix%
+            commandService.sendRawMessage(
+                groupId,
+                commandService.render(Messages.avatarUsage, "%cmdprefix%" to cmdPrefix)
+            )
             return
         }
         commandService.sendAvatarCard(
@@ -241,7 +245,7 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         feature: String,
         regex: (String, String?) -> String,
         payload: (String, String?, String) -> String,
-        handler: (String, Long, Long) -> Unit,
+        handler: (String, Long, Long, String) -> Unit,
         groupId: Long,
         userId: Long
     ): Boolean {
@@ -258,7 +262,7 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
                 return true
             }
 
-            handler(payload(prefix, it, message), groupId, userId)
+            handler(payload(prefix, it, message), groupId, userId, prefix)
             return true
         }
         return false

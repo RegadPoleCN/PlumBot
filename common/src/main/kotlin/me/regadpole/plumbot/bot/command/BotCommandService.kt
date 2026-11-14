@@ -30,6 +30,7 @@ import me.regadpole.plumbot.render.RenderPortal
 import me.regadpole.plumbot.render.RenderRequest
 import me.regadpole.plumbot.render.RenderResult
 import me.regadpole.plumbot.render.RenderRoute
+import me.regadpole.plumbot.utils.escapeMiniMessageTags
 
 class BotCommandService(
     val context: PlatformContext,
@@ -554,12 +555,16 @@ class BotCommandService(
         return bot.getGroupUserName(groupId, userId) to bot.getGroupUserCard(groupId, userId)
     }
 
+    /**
+     * 玩家昵称/名片来自群成员资料（用户可控），进模板前先转义 MiniMessage 标签：
+     * 名片里的 `<red>` 之类文本若不转义，会被当成标签解析，轻则吞字重则改变整条消息的样式。
+     */
     fun userReplacements(groupId: Long, userId: Long): Array<Pair<String, String>> {
         val (name, card) = groupMemberNameCard(groupId, userId)
         return arrayOf(
             "%user_id%" to userId.toString(),
-            "%user_name%" to name,
-            "%user_nick%" to card
+            "%user_name%" to escapeMiniMessageTags(name),
+            "%user_nick%" to escapeMiniMessageTags(card)
         )
     }
 
@@ -567,7 +572,7 @@ class BotCommandService(
         val (_, card) = groupMemberNameCard(groupId, userId)
         return arrayOf(
             "%origin_id%" to userId.toString(),
-            "%origin_name%" to card
+            "%origin_name%" to escapeMiniMessageTags(card)
         )
     }
 

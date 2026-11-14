@@ -6,6 +6,7 @@ package me.regadpole.plumbot.bot.command.whitelist
 import me.regadpole.plumbot.bot.command.BotCommandService
 import me.regadpole.plumbot.config.Messages
 import me.regadpole.plumbot.database.DatabaseProvider
+import me.regadpole.plumbot.utils.escapeMiniMessageTags
 
 class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(service) {
 
@@ -32,7 +33,7 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
                     requireDatabase().removeBind(playerName)
                     service.context.playerService.kickPlayer(playerName)
                     val remaining = DatabaseProvider.getBindByUser(targetUserId)
-                    val remainingNames = remaining.keys.joinToString(", ")
+                    val remainingNames = remaining.keys.joinToString(", ") { escapeMiniMessageTags(it) }
                     // 删除结果与申请共用 bindList 路由：走 render.outputs.bind 的同一道图片门控，
                     // 正文真源仍是 adminDeleteBind，图片版与文字版同源。
                     service.sendBindList(
@@ -45,8 +46,8 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
                             Messages.adminDeleteBind,
                             *service.originReplacements(groupId, userId),
                             "%user_id%" to targetUserId.toString(),
-                            "%user_name%" to service.bot.getGroupUserName(groupId, targetUserId),
-                            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetUserId),
+                            "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, targetUserId)),
+                            "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, targetUserId)),
                             "%target_player%" to playerName,
                             "%num%" to remaining.size.toString(),
                             "%current%" to remainingNames
@@ -74,8 +75,8 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
                             groupId,
                             Messages.qqEmptyBind,
                             "%user_id%" to targetQqStr,
-                            "%user_name%" to service.bot.getGroupUserName(groupId, targetQq),
-                            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetQq)
+                            "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, targetQq)),
+                            "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, targetQq))
                         )
                         return
                     }
@@ -87,7 +88,7 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
                     requireDatabase().removeBind(matchedPlayer)
                     service.context.playerService.kickPlayer(matchedPlayer)
                     val remaining = DatabaseProvider.getBindByUser(targetQqStr)
-                    val remainingNames = remaining.keys.joinToString(", ")
+                    val remainingNames = remaining.keys.joinToString(", ") { escapeMiniMessageTags(it) }
                     // 同上：列表型删除结果统一走 bindList（bind 门控），文字兜底仍是 adminDeleteBind。
                     service.sendBindList(
                         groupId = groupId,
@@ -99,8 +100,8 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
                             Messages.adminDeleteBind,
                             *service.originReplacements(groupId, userId),
                             "%user_id%" to targetQqStr,
-                            "%user_name%" to service.bot.getGroupUserName(groupId, targetQq),
-                            "%user_nick%" to service.bot.getGroupUserCard(groupId, targetQq),
+                            "%user_name%" to escapeMiniMessageTags(service.bot.getGroupUserName(groupId, targetQq)),
+                            "%user_nick%" to escapeMiniMessageTags(service.bot.getGroupUserCard(groupId, targetQq)),
                             "%target_player%" to matchedPlayer,
                             "%num%" to remaining.size.toString(),
                             "%current%" to remainingNames
@@ -119,7 +120,7 @@ class BindRemoveCommand(service: BotCommandService) : AbstractWhitelistCommand(s
             requireDatabase().removeBind(matchedPlayer)
             service.context.playerService.kickPlayer(matchedPlayer)
             val remaining = DatabaseProvider.getBindByUser(userId.toString())
-            val remainingNames = remaining.keys.joinToString(", ")
+            val remainingNames = remaining.keys.joinToString(", ") { escapeMiniMessageTags(it) }
             // 自主删除与自助申请走同一套卡片门控；文字兜底仍是 playerDeleteBind。
             service.sendBindList(
                 groupId = groupId,
