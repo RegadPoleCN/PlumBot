@@ -122,9 +122,9 @@ class FilterThesaurusManager(private val context: PlatformContext) {
         // 2. 本地自定义黑名单
         val localWords = config.getStringList("filter", "local_words").filterNotNull().filter { it.isNotBlank() }.toSet()
 
-        // 3. 忽略/误杀白名单（小写归一化）
+        // 3. 忽略/误杀白名单（与匹配同一归一化管线，保证两侧折叠结果可比）
         val ignoredWords = config.getStringList("filter", "ignored_words").filterNotNull()
-            .map { it.trim().lowercase() }
+            .map { TextNormalizer.normalize(it.trim()).text }
             .filter { it.isNotBlank() }
             .toSet()
 
@@ -132,7 +132,7 @@ class FilterThesaurusManager(private val context: PlatformContext) {
         val effectiveWords = (cloudWords + localWords)
             .map { it.trim() }
             .filter { it.isNotBlank() }
-            .filterNot { it.lowercase() in ignoredWords }
+            .filterNot { TextNormalizer.normalize(it).text in ignoredWords }
             .toSet()
 
         // 空结果保护：云端源配置了却一个词都没取到（网络全挂/返回体损坏）时，

@@ -18,6 +18,7 @@ import me.regadpole.plumbot.bot.requireCapability
 import me.regadpole.plumbot.api.platform.PlatformContext
 import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.render.RenderRoute
+import java.util.concurrent.ConcurrentHashMap
 
 class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHandler {
     private val commandService = BotCommandService(context, bot)
@@ -42,6 +43,15 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
      */
     @Volatile
     private var commandsCache: Pair<List<List<String?>>, List<CommandRegistration>>? = null
+
+    /**
+     * 每条群消息都要对每个注册键做一次正则匹配；Regex 编译开销远高于匹配本身，
+     * 按最终模式串缓存编译结果。键取模式串而非 (prefix,key)：prefix 或别名变化
+     * 会产生新模式串，缓存天然失效；旧模式串只是驻留，量级有限（命令数 × 别名数）。
+     */
+    private val regexCache = ConcurrentHashMap<String, Regex>()
+
+    private fun compiled(pattern: String): Regex = regexCache.computeIfAbsent(pattern) { Regex(it) }
 
     private val commands: List<CommandRegistration>
         get() {
@@ -71,19 +81,19 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
                 keys.getStringList("addBind"),
                 "bind",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+(.+)$""" },
-                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
+                { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
             ) { message, groupId, userId -> onWhitelistApply(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("deleteBind"),
                 "bind",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+(.+)$""" },
-                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
+                { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s+"""), "") }
             ) { message, groupId, userId -> onWhitelistRemove(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("queryBind"),
                 "bind",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
-                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
+                { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
             ) { message, groupId, userId -> onWhitelistQuery(message, groupId, userId) },
             CommandRegistration(
                 keys.getStringList("status"),
@@ -95,14 +105,14 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
                 keys.getStringList("remote_console"),
                 "remote_console",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
-                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
+                { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
             ) { message, groupId, userId -> remoteConsoleCommandService.execute(message, groupId, userId) },
             // 平台原生头像卡片：Hytale 上解析原生外观图层，其余平台回落绑定 QQ 头像
             CommandRegistration(
                 keys.getStringList("avatar"),
                 "avatar",
                 { cmdPrefix, key -> """^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}(?:\s+(.*))?$""" },
-                { cmdPrefix, key, message -> message.replaceFirst(Regex("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
+                { cmdPrefix, key, message -> message.replaceFirst(compiled("""^${Regex.escape(cmdPrefix)}${Regex.escape(key ?: "")}\s*"""), "") }
             ) { message, groupId, userId -> onAvatar(message, groupId, userId) }
         )
     }
@@ -236,7 +246,7 @@ class DefaultBotHandler(private val context: PlatformContext, bot: IBot): BotHan
         userId: Long
     ): Boolean {
         keys.forEach {
-            if (!regex(prefix, it).toRegex().matches(message)) return@forEach
+            if (!compiled(regex(prefix, it)).matches(message)) return@forEach
 
             // 命令已命中即算"已被消费"：返回 false 会让 onGroupMessage 把它当普通聊天转发，
             // 于是 `/申请白名单 xxx`、`/cmd op xxx` 这类文本会以聊天形式进入服务器。

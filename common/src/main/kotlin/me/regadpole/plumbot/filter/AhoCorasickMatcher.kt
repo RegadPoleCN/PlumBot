@@ -16,14 +16,17 @@ class AhoCorasickMatcher(words: Collection<String>) {
     private val root = Node()
 
     init {
-        // 1. 构建 Trie 树
+        // 1. 构建 Trie 树：词与被扫描文本必须走同一归一化管线，两侧折叠结果才可比。
+        //    matchedLength 记录折叠后长度，命中区间再经映射切回原文。
         for (word in words) {
             if (word.isBlank()) continue
+            val folded = TextNormalizer.normalize(word).text
+            if (folded.isEmpty()) continue
             var current = root
-            for (ch in word.lowercase()) {
+            for (ch in folded) {
                 current = current.children.computeIfAbsent(ch) { Node() }
             }
-            current.matchedLength = word.length
+            current.matchedLength = folded.length
         }
 
         // 2. 构建 Fail 失败指针 (BFS 广度优先遍历)
@@ -46,14 +49,15 @@ class AhoCorasickMatcher(words: Collection<String>) {
         }
     }
 
-    /** 单次扫描文本，返回所有命中的敏感词区间（含区间内原文）。 */
+    /** 单次扫描文本，返回所有命中的敏感词区间（含区间内原文）。区间以原文索引为准。 */
     fun match(text: String): List<MatchSpan> {
         val spans = mutableListOf<MatchSpan>()
-        val lowerText = text.lowercase()
+        val folded = TextNormalizer.normalize(text)
+        val foldedText = folded.text
         var current = root
 
-        for (i in lowerText.indices) {
-            val ch = lowerText[i]
+        for (i in foldedText.indices) {
+            val ch = foldedText[i]
             while (current != root && !current.children.containsKey(ch)) {
                 current = current.fail ?: root
             }
@@ -61,9 +65,12 @@ class AhoCorasickMatcher(words: Collection<String>) {
 
             var temp: Node? = current
             while (temp != null && temp != root) {
-                if (temp.matchedLength > 0) {
-                    val start = i - temp.matchedLength + 1
-                    val end = i + 1
+                val length = temp.matchedLength
+                if (length > 0) {
+                    // 折叠串里的命中区间映射回原文：起点取首字符的原文起点，终点取末字符的原文终点，
+                    // 并向两端吞并紧邻的被剥离字符（词内/词尾零宽与组合符号），替换后不残留。
+                    val start = folded.inclusiveStart(i - length + 1)
+                    val end = folded.inclusiveEnd(i)
                     spans.add(MatchSpan(start, end, text.substring(start, end)))
                 }
                 temp = temp.fail
