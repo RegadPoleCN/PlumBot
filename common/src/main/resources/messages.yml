@@ -96,5 +96,7 @@ remoteCommandDenied: "权限不足：您未在管理员名单内，无权远程�
 remoteCommandDisabled: "远程控制台通道当前处于关闭状态（可在配置中开启）。"
 remoteCommandNoOutput: "指令已由服务器执行（通道: %channel%，耗时 %duration%ms），但未捕获到控制台回显。\n可能该指令没有输出，或输出只写入了异步日志。可执行 /plumbot doctor echo 检查捕获通道。"
 remoteCommandUnknown: "服务器未识别或拒绝了该指令（通道: %channel%）。\n服务器返回:\n%output%\n请确认指令名称与参数；若指令确实存在，请执行 /plumbot doctor echo 检查捕获通道。"
-remoteCommandFailed: "远程指令执行失败（通道: %channel%，错误码: %code%）：%detail%\n服务器返回:\n%output%\n可执行 /plumbot doctor echo 查看通道状态。"
+remoteCommandFailed: "远程指令执行失败（通道: %channel%，错误码: %code%）。\n服务器返回:\n%output%\n可执行 /plumbot doctor echo 查看通道状态。"
 remoteCommandExecuted: "控制台执行回显:\n%output%"
+remoteCommandError: "远程指令执行时出现异常，请稍后重试或查看服务端日志。"
+remoteCommandTimeout: "远程指令执行超时，请稍后重试或查看服务端日志。"

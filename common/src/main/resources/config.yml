@@ -101,14 +101,18 @@ feature:
     # 远程控制台（仅管理员）
     remote_console:
         enable: false
-        # 是否记录执行的完整指令
+        # 是否记录执行的完整指令（含参数，注意日志文件的访问权限）
         log_commands: true
+        # 只允许这些群使用远程控制台（QQ 群号列表）；留空 = 所有互通群均可
+        groups: []
         # 每个管理员每分钟最多执行次数
         rate_limit_per_minute: 10
         # 全局同时执行的指令数上限
         max_concurrent: 4
         # 回传输出截断长度
         max_output_length: 1500
+        # 等待回显的总超时（毫秒），超时后释放并发额度并提示；<=0 视为 10000
+        echo_timeout_ms: 10000
 
         # 指令回显捕获。Bukkit 侧会按顺序尝试可用通道，拿到第一份非空回显即停止。
         # 通道名：paper_feedback（Paper 反馈转发器）/ plugin_command（插件指令直连）/

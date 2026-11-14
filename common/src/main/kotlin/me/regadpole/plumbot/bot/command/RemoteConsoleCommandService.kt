@@ -12,6 +12,9 @@ import me.regadpole.plumbot.internal.LogLevel
 import me.regadpole.plumbot.internal.RemoteConsoleGuard
 import me.regadpole.plumbot.render.RenderRoute
 import me.regadpole.plumbot.utils.OutputCapturingBuffer
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * 远程控制台指令：管理员鉴权、限流与并发闸门、回显归一化与截断。
@@ -21,6 +24,9 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
     private companion object {
         /** 未配置时的默认回显上限。 */
         const val DEFAULT_MAX_OUTPUT = 1500
+
+        /** 未配置时的默认回显兜底超时（毫秒）。 */
+        const val DEFAULT_ECHO_TIMEOUT_MS = 10_000
     }
 
     fun execute(command: String, groupId: Long, userId: Long) {
@@ -35,6 +41,18 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
             service.context.log(
                 LogLevel.WARN,
                 "[PlumBot-Security] 非管理员 QQ ($userId) 尝试在群 ($groupId) 执行远程指令: $command (已拦截)"
+            )
+            service.sendRawMessage(groupId, Messages.remoteCommandDenied)
+            return
+        }
+
+        // 管理员之外的第二道门槛：按群开关远程控制台。默认空 = 全部互通群可用（向后兼容）；
+        // 配置后仅在指定群生效，防止管理员在未预期的群被诱导执行指令。
+        val allowedGroups = service.context.config.getLongList("feature", "remote_console", "groups")
+        if (allowedGroups.isNotEmpty() && groupId !in allowedGroups) {
+            service.context.log(
+                LogLevel.WARN,
+                "[PlumBot-Security] 群 ($groupId) 不在远程控制台允许名单内，QQ ($userId) 尝试执行指令: $command (已拦截)"
             )
             service.sendRawMessage(groupId, Messages.remoteCommandDenied)
             return
@@ -88,12 +106,28 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
         } catch (err: Throwable) {
             // 同步抛异常时没有任何 future 回调，必须在这里释放，否则并发额度直接泄漏。
             activeGuard.release()
-            service.sendRawMessage(groupId, "执行指令时异常: ${err.message}")
+            // 异常细节只进服务端日志：群聊是多人可见信道，err.message 可能带出内部实现信息。
+            service.context.log(
+                LogLevel.ERROR,
+                "[PlumBot] 远程指令执行异常（指令: $trimmedCmd）: ${err::class.simpleName}: ${err.message}"
+            )
+            service.sendRawMessage(groupId, Messages.remoteCommandError)
             return
         }
 
+        // 释放必须幂等：真实完成回调与超时回调都可能触发，双重释放会把别的在途指令额度误减。
+        val released = AtomicBoolean(false)
+        fun releaseOnce() {
+            if (released.compareAndSet(false, true)) activeGuard.release()
+        }
+        // 回显兜底超时：dispatch 的 future 若因宿主缺陷永不完成，并发额度会被永久占用，
+        // 最终把自己锁死。超时后释放额度并单独告知。
+        val timeoutMs = service.context.config.getInteger("feature", "remote_console", "echo_timeout_ms")
+            .let { if (it <= 0) DEFAULT_ECHO_TIMEOUT_MS else it }
+
         echoFuture
-            .whenComplete { _, _ -> activeGuard.release() }
+            .whenComplete { _, _ -> releaseOnce() }
+            .orTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
             .thenAccept { echo ->
                 // 归一化必须在截断**之前**：控制序列若先占用额度，真正的内容会被挤掉。
                 // EchoResult.lines 已在平台侧投影为 § 色码，这里只清终端控制序列，不动 §。
@@ -118,7 +152,22 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
                     )
                 )
             }.exceptionally { err ->
-                service.sendRawMessage(groupId, "执行指令时异常: ${err.message}")
+                releaseOnce()
+                val timedOut = err is TimeoutException || err.cause is TimeoutException
+                if (timedOut) {
+                    service.context.log(
+                        LogLevel.WARN,
+                        "[PlumBot] 远程指令回显超时（${timeoutMs}ms），指令: $trimmedCmd"
+                    )
+                    service.sendRawMessage(groupId, Messages.remoteCommandTimeout)
+                } else {
+                    // 异常细节只进服务端日志：群聊是多人可见信道，err.message 可能带出内部实现信息。
+                    service.context.log(
+                        LogLevel.ERROR,
+                        "[PlumBot] 远程指令执行异常（指令: $trimmedCmd）: ${err::class.simpleName}: ${err.message}"
+                    )
+                    service.sendRawMessage(groupId, Messages.remoteCommandError)
+                }
                 null
             }
     }
@@ -138,13 +187,21 @@ class RemoteConsoleCommandService(private val service: BotCommandService) {
                 "%channel%" to echo.channel,
                 "%output%" to shown
             )
-            EchoState.FAILED -> service.render(
-                Messages.remoteCommandFailed,
-                "%channel%" to echo.channel,
-                "%code%" to (echo.code ?: "UNKNOWN"),
-                "%detail%" to (echo.detail ?: "无详细信息"),
-                "%output%" to shown
-            )
+            EchoState.FAILED -> {
+                // 失败详情只进服务端日志：拼进群消息会向全体成员暴露内部通道信息。
+                echo.detail?.let {
+                    service.context.log(
+                        LogLevel.WARN,
+                        "[PlumBot] 远程指令执行失败（通道: ${echo.channel}，错误码: ${echo.code ?: "UNKNOWN"}）: $it"
+                    )
+                }
+                service.render(
+                    Messages.remoteCommandFailed,
+                    "%channel%" to echo.channel,
+                    "%code%" to (echo.code ?: "UNKNOWN"),
+                    "%output%" to shown
+                )
+            }
         }
     }
 

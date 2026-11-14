@@ -46,25 +46,37 @@ internal class RemoteConsoleGuard(
     private val maxTrackedUsers = 1024
 
     fun tryAcquire(userId: Long): Decision {
-        if (maxConcurrent > 0 && inFlight.get() >= maxConcurrent) return Decision.TooManyConcurrent
-        if (perMinute <= 0) {
-            inFlight.incrementAndGet()
-            return Decision.Allowed
+        // 占位必须与检查原子化：先 get() 判断再 incrementAndGet 的写法在并发下会让多个线程
+        // 同时通过检查、实际并发突破上限。compareAndSet 循环保证拒绝路径不污染计数。
+        while (true) {
+            val current = inFlight.get()
+            if (maxConcurrent > 0 && current >= maxConcurrent) return Decision.TooManyConcurrent
+            if (inFlight.compareAndSet(current, current + 1)) break
         }
+
+        if (perMinute <= 0) return Decision.Allowed
 
         val now = clock()
         val bucket = buckets.computeIfAbsent(userId) { Bucket(perMinute.toDouble(), now) }
+        var rateLimited = false
         synchronized(bucket) {
             val elapsed = (now - bucket.lastRefillMs).coerceAtLeast(0L)
             bucket.tokens = min(perMinute.toDouble(), bucket.tokens + elapsed * perMinute / 60_000.0)
             bucket.lastRefillMs = now
 
-            if (bucket.tokens < 1.0) return Decision.RateLimited
-            bucket.tokens -= 1.0
+            if (bucket.tokens < 1.0) {
+                rateLimited = true
+            } else {
+                bucket.tokens -= 1.0
+            }
+        }
+        if (rateLimited) {
+            // 已占用的并发额度必须退回，否则限流路径会泄漏并发计数。
+            inFlight.decrementAndGet()
+            return Decision.RateLimited
         }
 
         pruneIfNeeded()
-        inFlight.incrementAndGet()
         return Decision.Allowed
     }
 

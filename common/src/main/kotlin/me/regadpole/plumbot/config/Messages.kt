@@ -67,4 +67,6 @@ object Messages {
     var remoteCommandNoOutput: String = "<missing:remoteCommandNoOutput>"
     var remoteCommandUnknown: String = "<missing:remoteCommandUnknown>"
     var remoteCommandFailed: String = "<missing:remoteCommandFailed>"
+    var remoteCommandError: String = "<missing:remoteCommandError>"
+    var remoteCommandTimeout: String = "<missing:remoteCommandTimeout>"
 }

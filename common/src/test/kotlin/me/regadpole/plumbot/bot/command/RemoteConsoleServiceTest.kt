@@ -108,7 +108,13 @@ class RemoteConsoleServiceTest {
         service.execute("list", groupId, adminQq)
 
         assertEquals(2, context.consoleCommands.size, "同步异常后并发额度必须释放：${allOutput(context, bot)}")
-        assertTrue(allOutput(context, bot).contains("异常"), "第一次异常应告知用户：${allOutput(context, bot)}")
+        val visible = (context.sentMessages + bot.sentMessages).joinToString("\n")
+        assertTrue(visible.isNotBlank(), "异常必须告知用户，不能静默吞掉：${allOutput(context, bot)}")
+        assertFalse(visible.contains("测试：平台同步失败"), "异常细节不得回显到群聊：$visible")
+        assertTrue(
+            context.logs.joinToString("\n").contains("测试：平台同步失败"),
+            "异常细节应进服务端日志以便排查：${context.logs}"
+        )
     }
 
     @Test
@@ -125,5 +131,56 @@ class RemoteConsoleServiceTest {
             output.length < 3_000,
             "回显长度应被钳制到平台上限附近（实际 ${output.length}）—— 若等于原始长度说明截断根本没生效"
         )
+    }
+
+    @Test
+    fun `commands from groups outside the allowlist are rejected`() {
+        val context = context(mapOf("feature.remote_console.groups" to listOf(20002L)))
+        val (service, bot) = service(context)
+
+        service.execute("list", groupId = 30003L, userId = adminQq)
+
+        assertEquals(0, context.consoleCommands.size, "允许名单外的群不得派发指令")
+        assertTrue(allOutput(context, bot).isNotEmpty(), "应给出明确拒绝提示")
+    }
+
+    @Test
+    fun `commands from allowed groups still dispatch`() {
+        val context = context(mapOf("feature.remote_console.groups" to listOf(20002L)))
+        val (service, bot) = service(context)
+
+        service.execute("list", groupId, adminQq)
+
+        assertEquals(1, context.consoleCommands.size, "允许名单内的群应正常派发")
+    }
+
+    @Test
+    fun `an empty group allowlist keeps every group allowed`() {
+        val context = context()
+        val (service, bot) = service(context)
+
+        service.execute("list", groupId = 30003L, userId = adminQq)
+
+        assertEquals(1, context.consoleCommands.size, "未配置 groups 时不应收紧现有行为")
+    }
+
+    @Test
+    fun `a stuck dispatch times out and frees the concurrency slot`() {
+        val context = context(mapOf("feature.remote_console.echo_timeout_ms" to 200))
+        context.consoleCommandResult = { CompletableFuture.supplyAsync { Thread.sleep(10_000); "永不完成" } }
+        val (service, bot) = service(context)
+
+        service.execute("list", groupId, adminQq)
+        assertEquals(1, context.consoleCommands.size)
+        Thread.sleep(400) // 等待兜底超时触发
+
+        // 超时后并发额度必须释放：下一次指令应能正常派发
+        context.consoleCommandResult = { command -> CompletableFuture.completedFuture("已执行: $command") }
+        service.execute("list", groupId, adminQq)
+        assertEquals(2, context.consoleCommands.size, "超时后并发额度必须释放：${allOutput(context, bot)}")
+
+        val visible = (context.sentMessages + bot.sentMessages).joinToString("\n")
+        assertTrue(visible.contains("remoteCommandTimeout"), "超时应单独告知用户：$visible")
+        assertTrue(context.logs.joinToString("\n").contains("超时"), "超时应记录服务端日志：${context.logs}")
     }
 }
