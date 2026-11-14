@@ -24,6 +24,14 @@ interface PlatformConfig {
     fun getDouble(vararg path: String?): Double = Double.NaN
 
     /**
+     * 读取浮点配置项；**缺失或非数值时返回 `null`**，供调用方显式判断"没配"。
+     *
+     * 默认实现基于 [getDouble] 的 NaN 哨兵（未覆写 [getDouble] 的外部实现由此兼容）；
+     * `AbstractConfigurator` 覆写为纯读（复用 `getNumberOrNull`），缺失/非数值统一 `null`。
+     */
+    fun getDoubleOrNull(vararg path: String?): Double? = getDouble(*path).takeUnless { it.isNaN() }
+
+    /**
      * 键是否存在（未被缺失）。
      *
      * 默认实现用 [getString] 判空 —— **纯读**，不会改变配置树；具体实现若有更精确的判据

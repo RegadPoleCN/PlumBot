@@ -58,6 +58,8 @@ class SqliteBindingDatabaseTest {
 
     @AfterTest
     fun cleanup() {
+        // 批量查询测试会把实例挂到全局 Provider 上，一并拆掉
+        runCatching { DatabaseProvider.shutdown() }
         databases.forEach { runCatching { it.close() } }
         databases.clear()
         runCatching {
@@ -330,6 +332,30 @@ class SqliteBindingDatabaseTest {
         }
         val historical = assertNotNull(db.getByName("Steve"))
         assertNotNull(historical.bindingTime, "字段缺失（历史数据行）允许回落当前时间")
+    }
+
+    @Test
+    fun `getBindsByNames fetches all names across chunk boundaries`() {
+        val db = newDatabase()
+        db.initialize()
+        // 520 个名字跨过单批 500 的边界；写入用混合大小写，查询用小写验证规范化匹配。
+        repeat(520) { i -> db.addBind("user-batch-$i", "Player$i") }
+
+        val queries = buildList {
+            repeat(520) { i -> add("player$i") }
+            add("PLAYER0") // normalize 后与 player0 重复，不得重复计数
+            add("nobody-here")
+        }
+        val result = db.getBindsByNames(queries)
+        assertEquals(520, result.size, "跨批查询应恰好取回 520 条绑定")
+        assertTrue(result.all { it.userId.startsWith("user-batch-") })
+
+        // DatabaseProvider 的批量包装：键保持传入名原样，查找按 trim + lowercase
+        DatabaseProvider.start(db)
+        val byName = DatabaseProvider.getBindUserIdsByNames(listOf("Player0", "player1", "NOBODY"))
+        assertEquals("user-batch-0", byName["Player0"])
+        assertEquals("user-batch-1", byName["player1"])
+        assertNull(byName["NOBODY"])
     }
 
     private fun columnsOf(db: AbstractBindingDatabase<*, *>): List<String> =

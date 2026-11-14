@@ -22,6 +22,7 @@ import me.regadpole.plumbot.utils.HttpConstants
 import net.kyori.adventure.text.Component
 import taboolib.module.database.Database
 import java.io.File
+import java.io.IOException
 import java.nio.file.Path
 import kotlin.io.path.pathString
 
@@ -93,14 +94,28 @@ interface PlumBot {
         Database.settingsFile = DatabaseSource(datasource.getNode())
         val mode = config.getString("database", "mode")
         val database = when (mode) {
-            "sqlite" -> SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+            "sqlite" -> SQLite(sqliteDatabasePath())
             "mysql" -> MySQL(config.getNode("database", "mysql"))
             else -> {
                 log(LogLevel.ERROR, "Unknown database type! Using SQLite...")
-                SQLite(config.getString("database", "sqlite", "path")!!.replace("%plugin_folder%", dataDirectory.pathString))
+                SQLite(sqliteDatabasePath())
             }
         }
         DatabaseProvider.start(database)
+    }
+
+    /**
+     * sqlite 文件路径：未配置时回落到数据目录默认名并告警，而不是让空指针砸掉启动。
+     * 显式配置的路径照旧做 %plugin_folder% 占位符替换。
+     */
+    private fun sqliteDatabasePath(): String {
+        val configured = config.getString("database", "sqlite", "path")
+        if (configured != null) {
+            return configured.replace("%plugin_folder%", dataDirectory.pathString)
+        }
+        val fallback = dataDirectory.resolve("plumbot.db").pathString
+        log(LogLevel.WARN, "database.sqlite.path 未配置，使用默认数据库文件：" + fallback)
+        return fallback
     }
 
     /**
@@ -136,23 +151,17 @@ interface PlumBot {
     }
 
     fun loadConfig() {
-        val configFile = dataDirectory.resolve("config.yml").toFile()
-        if (configFile.exists()) {
-            val updated = me.regadpole.plumbot.internal.config.ConfigMigrator.completeMissingDefaults(configFile, "/config.yml")
-            if (updated) {
-                log(LogLevel.INFO, "检测到 config.yml 需要更新，已自动迁移/补齐默认项并写回；注释以插件内最新模板为准。")
-            }
-        }
-        val messagesFile = dataDirectory.resolve("messages.yml").toFile()
-        if (messagesFile.exists()) {
-            val updated = me.regadpole.plumbot.internal.config.ConfigMigrator.completeMissingDefaults(messagesFile, "/messages.yml")
-            if (updated) {
-                log(LogLevel.INFO, "检测到 messages.yml 存在新增消息模板，已自动补齐默认项！")
-            }
-        }
+        migrateDefaults(
+            dataDirectory.resolve("config.yml").toFile(), "/config.yml",
+            "检测到 config.yml 需要更新，已自动迁移/补齐默认项并写回；注释以插件内最新模板为准。"
+        )
+        migrateDefaults(
+            dataDirectory.resolve("messages.yml").toFile(), "/messages.yml",
+            "检测到 messages.yml 存在新增消息模板，已自动补齐默认项！"
+        )
 
-        config = YamlConfigurator.createConfig(dataDirectory, "config.yml")!!
-        datasource = YamlConfigurator.createConfig(dataDirectory, "datasource.yml")!!
+        config = requireConfigFile(YamlConfigurator.createConfig(dataDirectory, "config.yml"), "config.yml")
+        datasource = requireConfigFile(YamlConfigurator.createConfig(dataDirectory, "datasource.yml"), "datasource.yml")
         val messagesConf = YamlConfigurator.createConfig(dataDirectory, "messages.yml")
         if (messagesConf == null) {
             log(LogLevel.WARN, "messages.yml 加载失败，使用默认消息配置")
@@ -160,4 +169,26 @@ interface PlumBot {
         }
         MessagesBinder.apply(messagesConf)
     }
+
+    /**
+     * 迁移/补齐单个配置文件。解析失败（畸形 YAML 等）时记录原因并抛出可读错误终止启动：
+     * 此前异常裸穿到平台层，Velocity 的 catch 只能打出不含原因的消息。
+     */
+    private fun migrateDefaults(file: File, resource: String, updatedMessage: String) {
+        if (!file.exists()) return
+        try {
+            val updated = me.regadpole.plumbot.internal.config.ConfigMigrator.completeMissingDefaults(file, resource)
+            if (updated) log(LogLevel.INFO, updatedMessage)
+        } catch (e: IOException) {
+            val reason = e.message ?: e.javaClass.simpleName
+            log(LogLevel.ERROR, file.name + " 解析失败：" + reason + "。请修复该文件后重启插件。")
+            throw IllegalStateException(file.name + " 无法解析（" + reason + "），插件拒绝以损坏的配置启动", e)
+        }
+    }
+
+    /** createConfig 返回 null（文件不可读/无法创建）时的可读错误；具体原因已由 AbstractConfigurator 写入 stderr。 */
+    private fun requireConfigFile(created: YamlConfigurator?, fileName: String): YamlConfigurator =
+        created ?: throw IllegalStateException(
+            fileName + " 加载失败：无法创建或读取文件（原因见上方 [PlumBot-Config] 日志）"
+        )
 }

@@ -34,10 +34,12 @@ class PlayerListCommandService(private val service: BotCommandService) {
             text = fallback,
             title = "在线玩家"
         ) { portal ->
+            // 一次批量取回全部绑定（键=玩家名原样）：此前逐个 getBindByName，N 名玩家 = N 次 DB 往返。
+            val bindQq = DatabaseProvider.getBindUserIdsByNames(players)
             mapOf(
                 "total" to players.size,
                 "players" to players.map { name ->
-                    val qq = DatabaseProvider.getBindByName(name)
+                    val qq = bindQq[name]
                     mapOf(
                         "name" to name,
                         "boundQq" to qq,

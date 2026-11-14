@@ -150,6 +150,39 @@ abstract class AbstractBindingDatabase<H : Host<E>, E : ColumnBuilder> protected
         }).firstOrNull()
     }
 
+    /**
+     * 批量版 [getByName]：在线列表等场景一次取回全部绑定，替代"每玩家一次查询"的 N+1 往返。
+     * 名单分批（每批 500）拼 IN (...)，规避 SQLite 变量数上限；失败时回落逐个查询，宁可慢不可错。
+     */
+    override fun getBindsByNames(names: Collection<String>): List<Binding> {
+        val cleanNames = names.map { normalize(it) }.filter { it.isNotEmpty() }.distinct()
+        if (cleanNames.isEmpty()) return emptyList()
+        val result = mutableListOf<Binding>()
+        val batchSize = 500
+        var start = 0
+        try {
+            while (start < cleanNames.size) {
+                val chunk = cleanNames.subList(start, minOf(start + batchSize, cleanNames.size))
+                val placeholders = chunk.joinToString(", ") { "?" }
+                dataSource.connection.use { conn ->
+                    conn.prepareStatement(
+                        "SELECT * FROM " + tableName + " WHERE player_name IN (" + placeholders + ")"
+                    ).use { ps ->
+                        chunk.forEachIndexed { i, name -> ps.setString(i + 1, name) }
+                        ps.executeQuery().use { rs ->
+                            while (rs.next()) Binding.of(rs)?.let { result.add(it) }
+                        }
+                    }
+                }
+                start += batchSize
+            }
+            return result
+        } catch (e: java.sql.SQLException) {
+            System.err.println("[PlumBot-DB] 批量查询绑定失败，回落逐个查询：" + e.message)
+            return cleanNames.mapNotNull { getByName(it) }
+        }
+    }
+
     override fun getById(id: Int): Binding? {
         return Binding.of(table.select(dataSource) {
             where { "id" eq id }

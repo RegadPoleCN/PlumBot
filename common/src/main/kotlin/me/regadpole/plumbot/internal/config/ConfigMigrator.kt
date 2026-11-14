@@ -37,12 +37,14 @@ object ConfigMigrator {
     fun completeMissingDefaults(localFile: File, defaultResourcePath: String): Boolean {
         if (!localFile.exists()) return false
 
-        val defaultStream = javaClass.getResourceAsStream(defaultResourcePath) ?: return false
-        val defaultLoader = YamlConfigurationLoader.builder()
-            .source { defaultStream.bufferedReader() }
-            .nodeStyle(NodeStyle.BLOCK)
-            .build()
-        val defaultRoot = defaultLoader.load()
+        // use{} 确保模板流关闭：loader 只在 load() 用一次，但流此前从未显式释放。
+        val defaultRoot = javaClass.getResourceAsStream(defaultResourcePath)?.use { defaultStream ->
+            YamlConfigurationLoader.builder()
+                .source { defaultStream.bufferedReader() }
+                .nodeStyle(NodeStyle.BLOCK)
+                .build()
+                .load()
+        } ?: return false
 
         val localLoader = YamlConfigurationLoader.builder()
             .file(localFile)

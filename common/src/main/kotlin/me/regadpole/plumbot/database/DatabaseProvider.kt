@@ -10,7 +10,11 @@ import java.util.*
 
 object DatabaseProvider {
 
+    // @Volatile：查询线程（Bot 消息协程）与 start()/shutdown() 所在的加载线程不同，
+    // 不加 volatile 会读到过期引用或半初始化状态。
+    @Volatile
     private var database: IDatabase? = null
+    @Volatile
     private var hasLoaded = false
 
     /** @deprecated 零调用成员：请改用 `getDatabase() != null` 判断；主版本内保留。 */
@@ -91,6 +95,17 @@ object DatabaseProvider {
     fun removeBind(name: String) = loadedDatabase.removeBind(name)
     fun getBindByName(name: String): String? {
         return loadedDatabase.getByName(name)?.userId
+    }
+
+    /**
+     * 批量取"玩家名 → 绑定 QQ"：键为传入名字**原样**，未绑定值为 null。
+     * 单次往返替代逐名查询（在线列表此前是 N+1）；匹配与 [getBindByName] 一致（trim + lowercase）。
+     */
+    fun getBindUserIdsByNames(names: Collection<String>): Map<String, String?> {
+        val distinct = names.filter { it.isNotBlank() }.distinct()
+        if (distinct.isEmpty()) return emptyMap()
+        val byName = loadedDatabase.getBindsByNames(distinct).associate { it.playerName to it.userId }
+        return distinct.associateWith { name -> byName[name.trim().lowercase()] }
     }
     fun getBindById(id: Int): String? {
         return loadedDatabase.getById(id)?.userId

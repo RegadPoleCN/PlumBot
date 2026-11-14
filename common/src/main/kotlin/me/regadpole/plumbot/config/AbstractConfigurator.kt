@@ -118,6 +118,13 @@ abstract class AbstractConfigurator<C : AbstractConfigurator<C>> protected const
         return resolveNode(*path).double
     }
 
+    /**
+     * 纯读的浮点读取：缺失或写成非数值时返回 `null`。
+     * 区别于 [getDouble]：configurate 的 `node.double` 对缺失节点返回 0.0，
+     * 调用方无法区分"显式配 0"和"根本没配"。
+     */
+    override fun getDoubleOrNull(vararg path: String?): Double? = getNumberOrNull(*path)?.toDouble()
+
     fun saveConfig(configFile: Path) {
         val loader = loaderBuilder()
             .path(configFile)

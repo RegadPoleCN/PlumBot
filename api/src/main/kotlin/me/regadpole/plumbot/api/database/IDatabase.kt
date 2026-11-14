@@ -31,6 +31,15 @@ interface IDatabase {
     fun getById(id: Int): Binding?
 
     /**
+     * 批量取绑定：返回 player_name（规范化后）命中任一名字的全部记录。
+     *
+     * 默认实现逐个 [getByName] 循环（仅为兼容外部实现），每次查询独立，结果为非原子快照；
+     * 内置实现按名单分批 IN (...) 一次取回。匹配规则与 [getByName] 一致：trim + lowercase。
+     */
+    fun getBindsByNames(names: Collection<String>): List<Binding> =
+        names.map { it.trim().lowercase() }.filter { it.isNotEmpty() }.distinct().mapNotNull { getByName(it) }
+
+    /**
      * 统计某 QQ 的绑定条数。
      *
      * 默认实现为"取回再计数"（兼容既有实现）；内置实现走数据库端 `COUNT(*)`，
