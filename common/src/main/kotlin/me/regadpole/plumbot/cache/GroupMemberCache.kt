@@ -37,15 +37,30 @@ open class DefaultGroupMemberCache(
     private val fetchMember: (groupId: Long, userId: Long) -> CompletableFuture<MemberInfo?>
 ) : GroupMemberCache {
 
-    /** 缓存值允许为 null（成员不在群内 / 群不存在）：Caffeine 当作未命中，不写缓存、不记录
-     *  异步加载异常，避免日志刷 "Exception thrown during asynchronous load"。 */
-    private val cache: LoadingCache<Pair<Long, Long>, MemberInfo?> = Caffeine.newBuilder()
+    /**
+     * 内部缓存条目：[Present] 为真实成员，[Absent] 为"不在群内"的负缓存哨兵。
+     *
+     * 不能直接把 null 交给 Caffeine：aedile 的 loader future 永远在 IO 线程异步完成，而
+     * Caffeine 对 null 完成的条目是**异步最终移除**（LocalAsyncCache#handleCompletion 在
+     * 完成线程上 remove），第二次 get 可能抢在移除前复用同一个 null future——回源次数不确定，
+     * 且"不在群内"完全没有负缓存，每次查询都打 bot API。用非 null 哨兵后行为确定化，
+     * absent 结果同样享受 refreshAfterWrite / expireAfterWrite。
+     * 详见 coding-docs/review/1112/05-GroupMemberCacheTest-rca.md。
+     */
+    private sealed interface Entry {
+        data class Present(val info: MemberInfo) : Entry
+        data object Absent : Entry
+    }
+
+    private val cache: LoadingCache<Pair<Long, Long>, Entry> = Caffeine.newBuilder()
         .refreshAfterWrite(10.minutes.toJavaDuration())
         .expireAfterWrite(30.minutes.toJavaDuration())
-        .asLoadingCache<Pair<Long, Long>, MemberInfo?> { (groupId, userId) ->
+        .asLoadingCache<Pair<Long, Long>, Entry> { (groupId, userId) ->
             try {
-                fetchMember(groupId, userId).await()
+                val info = fetchMember(groupId, userId).await()
+                if (info == null) Entry.Absent else Entry.Present(info)
             } catch (e: Throwable) {
+                // 故障不是"不在群内"：不缓存，下次查询重新回源。
                 invalidate(groupId, userId)
                 throw e
             }
@@ -53,7 +68,10 @@ open class DefaultGroupMemberCache(
 
     override suspend fun getAsync(groupId: Long, userId: Long): MemberInfo? =
         try {
-            cache.get(groupId to userId)
+            when (val entry = cache.get(groupId to userId)) {
+                is Entry.Present -> entry.info
+                Entry.Absent -> null
+            }
         } catch (_: NoSuchElementException) {
             null
         } catch (_: Throwable) {
@@ -66,7 +84,7 @@ open class DefaultGroupMemberCache(
         }
 
     fun put(groupId: Long, userId: Long, info: MemberInfo) {
-        cache.put(groupId to userId, info)
+        cache.put(groupId to userId, Entry.Present(info))
     }
 
     override suspend fun refreshAsync(groupId: Long) {

@@ -85,6 +85,18 @@ object BotEventDispatcher {
         dispatchTo(memberDecreaseHandlers, event, "GroupMemberDecrease")
     }
 
+    /**
+     * 成员进群：失效"不在群内"的负缓存，避免新成员在缓存 TTL（30 分钟）内仍被判为不在群。
+     *
+     * 与 [dispatchUserDecrease] 对称，三端监听器统一汇聚到本方法。目前只做缓存失效，
+     * 不派发公共事件（BotHandler / @PublicApi 事件面暂无进群需求，保持最小改动）。
+     */
+    fun dispatchUserIncrease(groupId: Long, userId: Long) {
+        val bot = BotProvider.getBot()
+        runCatching { bot?.invalidateGroupMember(groupId, userId) }
+            .onFailure { logListenerFailure("成员缓存失效", it) }
+    }
+
     private fun <E> dispatchTo(
         handlers: List<(E) -> Unit>,
         event: E,

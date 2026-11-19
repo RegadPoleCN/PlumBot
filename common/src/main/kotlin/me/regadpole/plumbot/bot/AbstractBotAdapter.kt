@@ -402,7 +402,8 @@ abstract class AbstractBotAdapter : IBot {
     }
 
     /**
-     * 主动失效成员缓存，由 [BotEventDispatcher.dispatchUserDecrease] 统一调用。
+     * 主动失效成员缓存，由 [BotEventDispatcher.dispatchUserDecrease] /
+     * [BotEventDispatcher.dispatchUserIncrease] 统一调用（退群清正向缓存、进群清负缓存）。
      *
      * 放在中心分发点而不是各适配器监听器里，避免"某个适配器忘了失效"这类不对称。
      */
@@ -464,8 +465,9 @@ abstract class AbstractBotAdapter : IBot {
      * 异步获取群成员信息，供 [groupMemberCache] 回源。
      *
      * **契约**：目标不在群内 / 群号无效时请让 future 以 `null` 正常完成，不要用异常表达 ——
-     * 缓存层把 `null` 当"无值"，异常则会被视作异步加载失败并打印
-     * `Exception thrown during asynchronous load`。
+     * 缓存层把 `null` 转为负缓存哨兵（边界仍返回 null），异常则会被视作异步加载失败并打印
+     * `Exception thrown during asynchronous load`。注意 null 结果会被缓存至 TTL，
+     * 成员进群时由 [BotEventDispatcher.dispatchUserIncrease] 统一失效。
      */
     protected abstract fun fetchMember(groupId: Long, userId: Long): CompletableFuture<MemberInfo?>
 

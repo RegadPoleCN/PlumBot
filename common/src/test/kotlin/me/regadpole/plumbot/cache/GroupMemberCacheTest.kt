@@ -14,9 +14,10 @@ import kotlin.test.assertNull
 /**
  * [DefaultGroupMemberCache] 的契约测试。
  *
- * "目标不在群内"时加载器回调 null：若缓存层把它当异常抛出，Caffeine 会打印
- * `Exception thrown during asynchronous load`（见 LocalAsyncCache#handleCompletion），
- * 让正常业务场景在日志里看起来像故障。现在 null 一律按"无值"处理。
+ * "目标不在群内"时加载器回调 null：缓存层用非 null 哨兵做负缓存（不能把 null 直接交给
+ * Caffeine——aedile 异步完成的 null future 会被最终一致地移除，回源次数不确定，且 absent
+ * 结果完全没有缓存）。边界仍返回 null，异常路径不缓存。
+ * 详见 coding-docs/review/1112/05-GroupMemberCacheTest-rca.md。
  */
 class GroupMemberCacheTest {
 
@@ -24,7 +25,7 @@ class GroupMemberCacheTest {
     private val userId = 2001L
 
     @Test
-    fun `成员不在群内时返回 null 且不抛异常`() = runBlocking {
+    fun `成员不在群内时返回 null 且负缓存生效`() = runBlocking {
         val calls = AtomicInteger()
         val cache = DefaultGroupMemberCache { _, _ ->
             calls.incrementAndGet()
@@ -32,8 +33,28 @@ class GroupMemberCacheTest {
         }
 
         assertNull(cache.getAsync(groupId, userId))
-        // null 是"无值"而非缓存值：不写缓存，下次查询会重新回源
+        // absent 是负缓存值：第二次查询命中缓存，不再回源
         assertNull(cache.getAsync(groupId, userId))
+        assertEquals(1, calls.get())
+    }
+
+    @Test
+    fun `不在群内的负缓存可被 invalidate 清除后重新回源`() = runBlocking {
+        val calls = AtomicInteger()
+        val member = MemberInfo(userId, "name", "card")
+        var inGroup = false
+        val cache = DefaultGroupMemberCache { _, _ ->
+            calls.incrementAndGet()
+            CompletableFuture.completedFuture(if (inGroup) member else null)
+        }
+
+        assertNull(cache.getAsync(groupId, userId))
+        assertEquals(1, calls.get())
+
+        // 模拟进群事件触发的失效：此后应重新回源并拿到真实成员
+        inGroup = true
+        cache.invalidate(groupId, userId)
+        assertEquals(member, cache.getAsync(groupId, userId))
         assertEquals(2, calls.get())
     }
 

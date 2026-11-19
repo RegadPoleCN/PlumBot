@@ -3,6 +3,7 @@
 
 package me.regadpole.plumbot.bukkit.listener
 
+import me.dreamvoid.miraimc.bukkit.event.group.member.MiraiMemberJoinEvent
 import me.dreamvoid.miraimc.bukkit.event.group.member.MiraiMemberLeaveEvent
 import me.dreamvoid.miraimc.bukkit.event.message.passive.MiraiGroupMessageEvent
 import me.regadpole.plumbot.PlumBot
@@ -37,6 +38,18 @@ class MiraiMCListener(private val plugin: PlumBot): Listener {
         val targetId = event.targetID
         plugin.platform.scheduler.runAsync {
             BotEventDispatcher.dispatchUserDecrease(groupId, targetId)
+        }
+    }
+
+    @EventHandler
+    fun onGroupIncrease(event: MiraiMemberJoinEvent) {
+        if (!plugin.config.getLongList("groups").contains(event.groupID)) return
+
+        val groupId = event.groupID
+        val memberId = event.newMemberID
+        // 进群失效"不在群内"的负缓存，与退群对称，统一走中心分发点。
+        plugin.platform.scheduler.runAsync {
+            BotEventDispatcher.dispatchUserIncrease(groupId, memberId)
         }
     }
 }

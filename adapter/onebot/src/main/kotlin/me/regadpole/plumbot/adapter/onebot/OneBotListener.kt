@@ -10,6 +10,7 @@ import top.alazeprt.aonebot.event.SubscribeBotEvent
 import top.alazeprt.aonebot.event.message.GroupMessageEvent
 import top.alazeprt.aonebot.event.message.PrivateMessageEvent
 import top.alazeprt.aonebot.event.notice.GroupMemberDecreaseEvent
+import top.alazeprt.aonebot.event.notice.GroupMemberIncreaseEvent
 
 class OneBotListener(private val onebot: OneBotAdapter): Listener {
     @SubscribeBotEvent
@@ -33,6 +34,15 @@ class OneBotListener(private val onebot: OneBotAdapter): Listener {
         // 此处不再自行失效，避免同一件事出现两个实现而再次跑偏。
         TaskProviderImpl.submitAsync {
             BotEventDispatcher.dispatchUserDecrease(event.groupId, event.userId)
+        }
+    }
+
+    @SubscribeBotEvent
+    fun onGroupMemberIncrease(event: GroupMemberIncreaseEvent) {
+        if (!onebot.context.config.getLongList("groups").contains(event.groupId)) return
+        // 进群失效"不在群内"的负缓存，与退群对称，统一走中心分发点。
+        TaskProviderImpl.submitAsync {
+            BotEventDispatcher.dispatchUserIncrease(event.groupId, event.userId)
         }
     }
 }
