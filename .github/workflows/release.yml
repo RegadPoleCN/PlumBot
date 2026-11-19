@@ -138,7 +138,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', steps.v.outputs.version) }}
-          name: PlumBot ${{ steps.v.outputs.version }}
+          name: ${{ format('v{0}', steps.v.outputs.version) }}
           # GitHub 在 body/body_path 非空时会忽略 generate_release_notes，
           # 二者不能同时渲染，所以这里显式关掉自动 notes，正文全部来自 CHANGELOG。
           generate_release_notes: false
